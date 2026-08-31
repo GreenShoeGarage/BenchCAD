@@ -1,4 +1,4 @@
-const CACHE_NAME = "benchcad-v0.28.5";
+const CACHE_NAME = "benchcad-v0.29.1";
 const APP_SHELL = ["./", "./manifest.webmanifest", "./favicon.svg"];
 
 self.addEventListener("install", (event) => {
