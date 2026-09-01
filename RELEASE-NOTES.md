@@ -1,87 +1,106 @@
-# BENCHCAD v0.36.1 — Viewport Clarity and Shell Inspection
+# BENCHCAD v0.36.2 — Shell Interior Edge Visibility
 
-Version 0.36.1 is a focused rendering and inspection maintenance release built on the unchanged project-schema-9 and drawing-schema-5 core. It addresses poor cavity readability in shelled and recessed parts without changing model geometry, feature history, project serialization, or drawing semantics.
+Version 0.36.2 is a focused viewport-maintenance release built on the unchanged project-schema-9 and drawing-schema-5 core. It addresses the remaining readability problem in hollow parts: a correct shell could still look like a smooth open box with its inner floor perimeter and vertical cavity corners nearly invisible.
 
-## Viewport display styles
+## Topology-derived cavity traces
 
-The viewport eye menu now provides five explicit display styles:
+- Adds a dedicated cavity-edge pass separate from the ordinary silhouette and crease-edge overlay.
+- Classifies shared reconstructed-mesh edges by local concavity rather than treating every tessellation edge as design linework.
+- Renders visible shell-cavity traces with a restrained two-tone treatment: a dark halo for separation and a pale core for legibility against both lit and shaded surfaces.
+- Offsets the display traces slightly toward cavity air so coplanar depth testing does not bury the interior linework.
+- Emphasizes the opening lip, inner floor perimeter, and vertical interior corners without modifying model geometry.
+- Uses direct face-index lookup rather than repeated face scans when evaluating shared topology.
 
-- **Shaded + edges** — the new default, combining physically based shaded surfaces with geometry-derived feature edges for everyday modeling.
-- **Shaded** — clean surfaces without feature-edge overlays.
-- **Technical** — neutralized materials and high-contrast edges for shape inspection when authored colors obscure form.
-- **X-ray inspect** — ghosted surfaces plus through-body feature edges for viewing cavities, bores, wall intersections, and obscured geometry.
-- **Wireframe** — triangle-mesh topology inspection.
+## Interior inspect
 
-The selected display style is stored only as a browser-local interface preference. It does not alter the project, body material settings, feature history, or exported model.
+The viewport eye menu now contains a sixth display style:
 
-## Rendering changes
+- **Interior inspect** ghosts the outer shell, emphasizes inner surfaces, and draws dashed through-body cavity traces.
+- A status indicator reports the number of cavity edges in the active view.
+- The mode is browser-local, display-only, and never creates a feature, dirties the project, or changes export geometry.
 
-- Replaced the inherited viewport material presentation with `MeshPhysicalMaterial`-based body materials.
-- Added ACES filmic tone mapping and sRGB output handling.
-- Rebalanced hemisphere, ambient, key, fill, and rim lighting for stronger face separation.
-- Improved contact-shadow behavior in opaque shaded modes.
-- Added geometry-derived edge overlays for shaded-edge, Technical, X-ray, and hole-tool presentation.
-- Added a stronger cyan selected-body outline so selection remains distinct from ordinary feature edges.
-- Preserved authored body opacity and the separate translucent treatment of hole tools.
-- Disabled contact shadows in X-ray and Wireframe modes, where they reduce rather than improve legibility.
-- Replaced the deprecated inherited soft-shadow setting with `PCFShadowMap`.
+Existing **Shaded + edges**, **Shaded**, **Technical**, **X-ray inspect**, and **Wireframe** modes remain available. Shaded + edges remains the default and now includes visible cavity traces for shell-like concave geometry.
 
-## Dense-mesh safeguard
+## Performance guardrails
 
-Feature-edge extraction can be expensive because it analyzes the displayed mesh. BENCHCAD therefore skips ordinary edge extraction for an unselected body above 180,000 triangles. This limit affects the optional display overlay only; it does not change the body mesh, feature history, manufacturing export, drawing projection, or project data.
-
-## Shell-inspection workflow
-
-For a shelled enclosure or open box:
-
-1. Use **Shaded + edges** to inspect the shell lip, interior corners, wall intersections, and opening boundary.
-2. Use **Technical** when the body color creates weak contrast.
-3. Use **X-ray inspect** to reveal through-body feature edges and obscured cavity structure.
-4. Use a true section or technical drawing when a measured cut plane is required. X-ray mode is not a section-analysis substitute.
+- Ordinary feature-edge extraction remains guarded at 180,000 triangles for dense unselected bodies.
+- Shell-cavity extraction is skipped above 220,000 triangles.
+- The display pass stops at 6,000 cavity-edge segments.
+- These safeguards affect optional viewport linework only. Authoritative meshes, reconstruction, manufacturing checks, drawings, and exports remain unchanged.
 
 ## Compatibility
 
-- Application version: **0.36.1**
-- Project schema: **9**
-- Drawing schema: **5**
-- Project migration required: **no**
-- Server or backend required: **no**
-- Build step required for the packaged release: **no**
-
-Existing `.benchcad` projects reopen without schema conversion. Viewport-style preference is separate from project storage.
+- Project schema remains **9**.
+- Drawing schema remains **5**.
+- Existing projects require no migration.
+- The `.benchcad` archive structure is unchanged.
+- Technical Drawings 2.0 semantics and cross-format output remain unchanged.
+- Static root and nested-subdirectory deployment remain supported.
 
 ## Validation
 
-The v0.36.1 production bundle passed **30/30** focused browser checks using the actual Three.js viewport, geometry worker, and packaged Manifold WebAssembly kernel. The test created a fresh project, reconstructed a box and shell feature, exercised all five display modes, confirmed five distinct rendered frame hashes, checked responsive access at 1200, 1024, 820, and 390 pixels, and detected no page errors, console errors, or console warnings.
+- **30/30** focused production-browser shell-interior checks passed.
+- The real geometry worker and packaged Manifold WebAssembly kernel reconstructed the tested open-top shell.
+- The fixture produced **8 topology-derived cavity edges**.
+- All six display styles produced distinct rendered frame hashes.
+- **28/28** retained Technical Drawings 2.0 production-browser checks passed.
+- SVG, DXF, and PDF retained the matching drawing primitive signature `4dd91b27`.
+- No page errors, console errors, or console warnings were observed.
+- The static bundle transformed **210 modules** with no compatibility stubs.
 
-Retained validation evidence from v0.36.0 and Batch 28 remains included for UI behavior, actual worker reconstruction, Technical Drawings 2.0, and static deployment. A new final package report verifies v0.36.1 asset references, schemas, service-worker coverage, syntax, relative paths, screenshots, and archive structure.
+## Scope honesty
 
-See:
-
-- `VIEWPORT-RENDERING-TESTS.json`
-- `VIEWPORT-RENDERING-TESTS.txt`
-- `V0.36.1-PACKAGE-TESTS.json`
-- `KNOWN-LIMITATIONS.md`
-
-## Deployment
-
-Extract the ZIP and copy its contents into the static directory that should serve BENCHCAD. Keep `index.html`, `sw.js`, `manifest.webmanifest`, and `assets/` together.
-
-The package uses relative runtime URLs and can be deployed at a domain root or a nested path such as:
-
-```text
-https://greenshoegarage.com/projects/benchcad/
-```
-
-After replacing an older deployment, perform a hard refresh. If v0.36.0 remains visible, remove the old BENCHCAD service worker/site cache once and reload while online. The v0.36.1 service worker uses a new cache namespace and removes older BENCHCAD application caches during activation.
-
-## Scope
-
-This release improves real-time form legibility; it does not add photorealistic rendering, screen-space ambient occlusion, ray tracing, texture authoring, wall-thickness analysis, or arbitrary viewport sections. Those capabilities are not claimed.
-
-Batch 29 — Large-Model Performance remains the next roadmap stage. Version 0.36.1 is a maintenance release and does not begin that batch.
+Interior inspect is not a true section, wall-thickness map, screen-space ambient occlusion pass, ray-traced renderer, or analytic boundary-representation topology viewer. It is a targeted engineering-legibility aid derived from the tessellated reconstructed mesh.
 
 ---
+
+# BENCHCAD v0.36.1 — Viewport Legibility and Shell Inspection
+
+Version 0.36.1 is a focused rendering and inspection maintenance release built on the unchanged project-schema-9 and drawing-schema-5 core. No project migration is required.
+
+## Cavity-readable default rendering
+
+- Replaced the prior flat-looking default with **Shaded + edges**.
+- Added crease-based feature edges to clarify shell lips, internal corners, Boolean boundaries, and recessed geometry.
+- Added a separate selected-body silhouette so selection remains visible without washing every internal edge in the selection color.
+- Switched normal solid shading to physically based materials with restrained roughness, specular response, and tone-mapped highlights.
+- Added balanced key, fill, rim, hemisphere, and ambient lighting for stronger face separation.
+- Improved shadow bias and reduced floor-shadow opacity so contact shadows support the form instead of obscuring it.
+- Uses `PCFShadowMap` directly, removing the previous runtime deprecation warning.
+
+## Viewport display styles
+
+The eye-shaped viewport display control now offers:
+
+- **Shaded + edges** — default everyday modeling view.
+- **Shaded** — clean surfaces without feature-edge overlays.
+- **Technical** — neutral material with high-contrast edges.
+- **X-ray inspect** — ghosted surfaces with through-body edges.
+- **Wireframe** — triangle-mesh inspection.
+
+The selected style is stored in local interface preferences. X-ray is a visual inspection aid; it is not a wall-thickness or manufacturability analysis.
+
+## Performance guardrail
+
+Crease-edge overlays are skipped for unselected bodies above 180,000 triangles. A selected body remains eligible for the inspection overlay so a dense scene does not force every mesh through the additional edge-generation path.
+
+## Compatibility
+
+- Project schema remains **9**.
+- Drawing schema remains **5**.
+- Existing projects require no migration.
+- Technical Drawings 2.0 behavior and output semantics are unchanged.
+- Static root and subdirectory deployment remain supported.
+- The geometry worker, import worker, and Manifold WebAssembly kernel remain local and packaged.
+
+## Validation
+
+The focused production-browser test passed **30/30 checks**. It created a box, generated an open-top shell through the real geometry worker and packaged Manifold WebAssembly kernel, rendered all five display styles, confirmed five distinct frame hashes, checked responsive containment at 1200, 1024, 820, and 390 pixel widths, and observed no page errors or hard console errors.
+
+Representative viewport screenshots and the machine-readable `VIEWPORT-RENDERING-TESTS.json` report are included in the complete archive.
+
+---
+
 # BENCHCAD v0.36.0 — UI/UX Consolidation
 
 Version 0.36.0 is a broad interface cleanup built on the unchanged project-schema-9 and drawing-schema-5 modeling core. No project migration is required.

@@ -4,7 +4,7 @@
 
 **Local-first browser CAD with approachable solid modeling, exact dimensions, and an editable construction history.**
 
-![Release](https://img.shields.io/badge/release-v0.36.1-ef9f3d)
+![Release](https://img.shields.io/badge/release-v0.36.2-ef9f3d)
 ![Project schema](https://img.shields.io/badge/project%20schema-9-4bc6d3)
 ![Drawing schema](https://img.shields.io/badge/drawing%20schema-5-4bc6d3)
 ![Deployment](https://img.shields.io/badge/deployment-static%20files-54727a)
@@ -26,7 +26,7 @@ The application runs entirely in the browser. It requires no account, backend, c
 
 | Item | Value |
 |---|---|
-| Application | **BENCHCAD v0.36.1** |
+| Application | **BENCHCAD v0.36.2** |
 | Project schema | **9** |
 | Drawing schema | **5** |
 | Release stage | Active pre-1.0 development |
@@ -34,7 +34,7 @@ The application runs entirely in the browser. It requires no account, backend, c
 | Runtime services | None required |
 | Tested runtime | Chromium with the packaged Three.js viewport and Manifold WebAssembly kernel |
 | Additional browser qualification | Firefox and Safari/WebKit scheduled for public-beta hardening |
-| Complete package checksum | See `BENCHCAD-v0.36.1-complete.zip.sha256` distributed beside the ZIP |
+| Complete package checksum | See `BENCHCAD-v0.36.2-complete.zip.sha256` distributed beside the ZIP |
 
 ## What BENCHCAD does
 
@@ -49,15 +49,19 @@ The application runs entirely in the browser. It requires no account, backend, c
 
 ### Viewport rendering and inspection
 
-- Uses **Shaded + edges** by default so silhouettes, shell lips, bores, pockets, and internal wall intersections remain readable.
-- Offers **Shaded**, **Technical**, **X-ray inspect**, and **Wireframe** display styles from the eye menu in the viewport toolbar.
-- Uses physically based materials, ACES tone mapping, balanced key/fill/rim lighting, and contact shadows for stronger depth cues without changing model geometry.
-- Draws geometry-derived feature edges rather than decorative screen-space outlines. Edge extraction is capped for very dense unselected meshes so a display preference cannot freeze the workspace.
-- Gives selected bodies a distinct cyan outline and makes hidden feature edges visible in X-ray mode.
-- Stores the chosen viewport style as a browser-local interface preference; it is not written into or allowed to alter the project model.
+- Uses **Shaded + edges** by default and now draws exact topology-derived concave cavity traces so shell lips, inner floor perimeters, and vertical interior corners remain readable.
+- Offers six display styles from the viewport eye menu: **Shaded + edges**, **Shaded**, **Technical**, **Interior inspect**, **X-ray inspect**, and **Wireframe**.
+- Separates ordinary feature-edge overlays from a dedicated shell-cavity pass. The cavity pass uses the reconstructed mesh topology to identify concave edges, then renders a dark halo and pale core slightly toward the cavity air so the lines are not buried by the depth buffer.
+- Provides **Interior inspect** for hollow parts: exterior faces are ghosted, inner surfaces are emphasized, and dashed through-body cavity traces expose obscured wall and floor boundaries.
+- Uses physically based materials, ACES tone mapping, balanced key/fill/rim lighting, contact shadows, and a distinct cyan selection outline without changing model geometry.
+- Stores the selected style as a browser-local interface preference. Viewport modes never create timeline features, dirty the model, or alter export geometry.
+- Applies safeguards to expensive overlays: ordinary feature-edge extraction is skipped for dense unselected bodies above 180,000 triangles, shell-cavity extraction is skipped above 220,000 triangles, and a maximum of 6,000 cavity-edge segments is displayed.
 
-![BENCHCAD X-ray shell inspection](docs/images/benchcad-viewport-xray.png)
+**Interior inspect is a display aid.** It is not a true section, wall-thickness analysis, screen-space ambient occlusion pass, or manufacturing result.
 
+![BENCHCAD shell in Shaded + edges](docs/images/benchcad-shell-shaded-edges.png)
+
+![BENCHCAD shell in Interior inspect](docs/images/benchcad-shell-interior.png)
 ### Editable construction history
 
 - Records meaningful modeling actions as persistent timeline features.
@@ -297,40 +301,37 @@ After one successful hosted load, the application can reopen from cache. The web
 
 ## Browser support
 
-The v0.36.1 production workflow was exercised in Chromium with the actual Three.js renderer, geometry worker, import worker, and packaged Manifold WebAssembly kernel.
+The v0.36.2 focused viewport workflow and retained Technical Drawings 2.0 workflow were exercised in Chromium with the actual Three.js renderer, geometry worker, import worker, and packaged Manifold WebAssembly kernel. The shell fixture reconstructed through the production geometry worker and produced eight topology-derived cavity traces.
 
-Firefox and Safari/WebKit are design targets, but real-runtime qualification was not available in the v0.36.1 release environment and remains scheduled for the public-beta hardening stage. Report browser-specific behavior with the exact browser version and operating system.
-
+Firefox and Safari/WebKit are design targets, but real-runtime qualification was not available in the v0.36.2 release environment and remains scheduled for the public-beta hardening stage. Report browser-specific behavior with the exact browser version and operating system.
 ## Release validation
 
-The v0.36.1 package includes machine-readable validation evidence:
+The v0.36.2 package includes current machine-readable evidence rather than relying on feature-presence checks alone:
 
 | Report | Coverage |
 |---|---|
-| `VIEWPORT-RENDERING-TESTS.json` | Five viewport styles, shelled-body reconstruction, distinct rendered frames, responsive controls, and console cleanliness |
-| `V0.36.1-PACKAGE-TESTS.json` | Current release identity, schemas, syntax, service-worker coverage, screenshots, nested hosting, and runtime assets |
-| `UIUX-CONSOLIDATION-TESTS.json` | Responsive layout, command consolidation, drawers, Canvas Focus, and interaction checks |
-| `ACTUAL-WORKER-TESTS.json` | Production bundle, Three.js viewport, geometry worker, and Manifold WebAssembly checks |
-| `V0.36.0-DRAWING-REGRESSION.json` | Technical Drawings 2.0 regression and cross-format primitive parity |
-| `STATIC-PACKAGE-TESTS.json` | Retained v0.36.0 static-shell, relative-path, schema, syntax, service-worker, and asset checks |
-| `BATCH28D-TESTS.json` | Retained Detail-view and drawing-output qualification |
-| `SHA256SUMS.txt` | Release-file checksums |
+| `V0.36.2-INTERIOR-VISIBILITY-TESTS.json` | Real Three.js and Manifold shell reconstruction; six display modes; topology-derived cavity traces; visible-frame differences; preference path; page and console cleanliness |
+| `V0.36.2-DRAWING-REGRESSION.json` | Retained Technical Drawings 2.0 workflow, exact mesh source, Detail views, layout diagnostics, and SVG/DXF/PDF parity |
+| `V0.36.2-PACKAGE-TESTS.json` | Release identity, schemas, JavaScript syntax, WebAssembly sanity, runtime assets, service-worker coverage, documentation, nested hosting, screenshots, and package structure |
+| `V0.36.2-BUILD-REPORT.json` | Static-bundle build summary: 210 transformed modules and no compatibility stubs |
+| `SHA256SUMS.txt` | SHA-256 for every packaged file except the checksum list itself |
 
 Release summary:
 
-- **30/30** viewport-rendering and shell-inspection checks passed.
-- **72/72** current v0.36.1 package and nested-hosting checks passed.
-- **33/33** responsive UI/UX checks passed.
-- **7/7** production worker/WebAssembly checks passed.
-- **28/28** retained drawing-browser regressions passed.
-- **28/28** static-package checks passed before final archive verification.
-- SVG, DXF, and PDF received the same deterministic drawing primitive signature in the qualification fixture.
+- **30/30** focused shell-interior and viewport checks passed.
+- **28/28** retained production-browser drawing regressions passed.
+- The tested 30 × 30 × 20 mm open-top shell produced **8 exact topology-derived cavity edges**.
+- All six display styles produced distinct rendered frame hashes.
+- The drawing fixture retained matching SVG, DXF, and PDF primitive signature `4dd91b27`.
+- No page errors, console errors, or console warnings were observed in either production-browser workflow.
+- Final package-gate totals are recorded in `V0.36.2-PACKAGE-TESTS.json`.
 
-See `RELEASE-NOTES.md` for the release history and `KNOWN-LIMITATIONS.md` for the complete current limitation set.
+The browser test used an in-memory local-storage adapter because the release environment blocked navigation to local and synthetic persistent origins. The packaged preference read/write code path and service-worker/static deployment paths are checked separately by the package gate.
 
+See `RELEASE-NOTES.md` for the cumulative release history and `KNOWN-LIMITATIONS.md` for the current limitation set.
 ## Repository layout
 
-This complete v0.36.1 static distribution and GitHub documentation package is organized as follows:
+The v0.36.2 package is organized as follows:
 
 ```text
 .
@@ -339,28 +340,29 @@ This complete v0.36.1 static distribution and GitHub documentation package is or
 ├── manifest.webmanifest
 ├── favicon.svg
 ├── assets/
-│   ├── benchcad-v0.36.1.js
-│   ├── benchcad-v0.36.1.css
+│   ├── benchcad-v0.36.2.js
+│   ├── benchcad-v0.36.2.css
 │   ├── geometry.worker-*.js
 │   ├── import.worker-*.js
 │   └── manifold-*.wasm
-├── README.md
-├── RELEASE-README.md
 ├── docs/
 │   └── images/
 │       ├── benchcad-model-workspace.png
 │       ├── benchcad-drawing-workspace.png
-│       ├── benchcad-viewport-shaded-edges.png
-│       └── benchcad-viewport-xray.png
+│       ├── benchcad-shell-shaded-edges.png
+│       ├── benchcad-shell-interior.png
+│       └── benchcad-shell-xray.png
+├── README.md
+├── RELEASE-README.md
 ├── RELEASE-NOTES.md
 ├── KNOWN-LIMITATIONS.md
+├── PACKAGE-CONTENTS.md
 ├── VERSION.txt
 ├── SHA256SUMS.txt
-└── *-TESTS.json / *-TESTS.txt
+└── V0.36.2-*.json / V0.36.2-*.txt
 ```
 
-The hashed bundle filenames are release artifacts and may change between builds. `index.html` and `sw.js` are the authoritative references for the files used by a particular release.
-
+The hashed worker and WebAssembly filenames are release artifacts and may change between builds. `index.html` and `sw.js` are the authoritative runtime references for a release.
 ## Development note
 
 This repository package is the **prebuilt static distribution**, not a complete TypeScript source checkout. It intentionally requires no Node.js toolchain to run. Do not treat the bundled JavaScript or generated source maps as the primary development source.
@@ -379,6 +381,8 @@ The most important current limits are:
 - Sections are currently global-axis full sections; offset, aligned, revolved, and broken-out sections are not implemented.
 - Drawing layout diagnostics report conflicts but do not automatically arrange a sheet.
 - Large or very dense models and drawings can become computationally expensive.
+- Shell-cavity lines are derived from concavity in the tessellated reconstructed mesh, not persistent analytic boundary-representation edges.
+- Interior inspect is a display aid rather than a clipped section or wall-thickness analysis.
 - No STEP export, finite-element analysis, computational fluid dynamics, or manufacturing toolpath generation is provided.
 - There is no cloud collaboration or multi-user editing.
 - Firefox and Safari/WebKit still require real-device public-beta qualification.
@@ -422,7 +426,7 @@ Changes to BENCHCAD should preserve these constraints:
 
 ## License
 
-The v0.36.1 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
+The v0.36.2 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
 
 Bundled third-party software remains subject to its respective licenses and notices. Major technologies represented in the distribution include React, Three.js, Manifold, Lucide, Radix UI, JSZip, and related supporting packages. A formal public release should include a reviewed `THIRD_PARTY_NOTICES.md` generated from the actual dependency manifest.
 

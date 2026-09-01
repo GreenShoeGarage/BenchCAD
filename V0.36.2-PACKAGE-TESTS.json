@@ -1,0 +1,732 @@
+{
+  "suite": "BENCHCAD v0.36.2 static release and shell-interior package validation",
+  "applicationVersion": "0.36.2",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "checks": [
+    {
+      "name": "root/package file exists: index.html",
+      "pass": true,
+      "detail": 870
+    },
+    {
+      "name": "root/package file exists: sw.js",
+      "pass": true,
+      "detail": 1744
+    },
+    {
+      "name": "root/package file exists: manifest.webmanifest",
+      "pass": true,
+      "detail": 518
+    },
+    {
+      "name": "root/package file exists: favicon.svg",
+      "pass": true,
+      "detail": 712
+    },
+    {
+      "name": "root/package file exists: file.svg",
+      "pass": true,
+      "detail": 392
+    },
+    {
+      "name": "root/package file exists: globe.svg",
+      "pass": true,
+      "detail": 1036
+    },
+    {
+      "name": "root/package file exists: window.svg",
+      "pass": true,
+      "detail": 386
+    },
+    {
+      "name": "root/package file exists: README.md",
+      "pass": true,
+      "detail": 23722
+    },
+    {
+      "name": "root/package file exists: RELEASE-README.md",
+      "pass": true,
+      "detail": 7054
+    },
+    {
+      "name": "root/package file exists: RELEASE-NOTES.md",
+      "pass": true,
+      "detail": 16399
+    },
+    {
+      "name": "root/package file exists: KNOWN-LIMITATIONS.md",
+      "pass": true,
+      "detail": 8716
+    },
+    {
+      "name": "root/package file exists: PACKAGE-CONTENTS.md",
+      "pass": true,
+      "detail": 2374
+    },
+    {
+      "name": "root/package file exists: VERSION.txt",
+      "pass": true,
+      "detail": 115
+    },
+    {
+      "name": "root/package file exists: SHA256SUMS.txt",
+      "pass": true,
+      "detail": 3864
+    },
+    {
+      "name": "root/package file exists: V0.36.2-INTERIOR-VISIBILITY-TESTS.json",
+      "pass": true,
+      "detail": 6347
+    },
+    {
+      "name": "root/package file exists: V0.36.2-INTERIOR-VISIBILITY-TESTS.txt",
+      "pass": true,
+      "detail": 2073
+    },
+    {
+      "name": "root/package file exists: V0.36.2-DRAWING-REGRESSION.json",
+      "pass": true,
+      "detail": 2488
+    },
+    {
+      "name": "root/package file exists: V0.36.2-BUILD-REPORT.json",
+      "pass": true,
+      "detail": 152
+    },
+    {
+      "name": "index.html is directly at package root",
+      "pass": true
+    },
+    {
+      "name": "index references current JavaScript",
+      "pass": true
+    },
+    {
+      "name": "index references current CSS",
+      "pass": true
+    },
+    {
+      "name": "index has root mount",
+      "pass": true
+    },
+    {
+      "name": "index runtime paths are relative",
+      "pass": true
+    },
+    {
+      "name": "index has current shell-interior description",
+      "pass": true
+    },
+    {
+      "name": "index does not reference v0.36.1 runtime assets",
+      "pass": true
+    },
+    {
+      "name": "index references resolve under nested deployment",
+      "pass": true,
+      "detail": [
+        "https://example.com/projects/benchcad/favicon.svg",
+        "https://example.com/projects/benchcad/manifest.webmanifest",
+        "https://example.com/projects/benchcad/assets/benchcad-v0.36.2.js",
+        "https://example.com/projects/benchcad/assets/benchcad-v0.36.2.css"
+      ]
+    },
+    {
+      "name": "packaged runtime asset: assets/benchcad-v0.36.2.js",
+      "pass": true,
+      "detail": 5515528
+    },
+    {
+      "name": "packaged runtime asset: assets/benchcad-v0.36.2.css",
+      "pass": true,
+      "detail": 290091
+    },
+    {
+      "name": "packaged runtime asset: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": 61583
+    },
+    {
+      "name": "packaged runtime asset: assets/geometry.worker-BwAX3YFX.js.map",
+      "pass": true,
+      "detail": 201888
+    },
+    {
+      "name": "packaged runtime asset: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": 103713
+    },
+    {
+      "name": "packaged runtime asset: assets/import.worker-4ZIJcZ3b.js.map",
+      "pass": true,
+      "detail": 243340
+    },
+    {
+      "name": "packaged runtime asset: assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": 541470
+    },
+    {
+      "name": "current application bundle is substantial",
+      "pass": true,
+      "detail": 5515528
+    },
+    {
+      "name": "current CSS bundle is substantial",
+      "pass": true,
+      "detail": 290091
+    },
+    {
+      "name": "bundle exposes v0.36.2 identity",
+      "pass": true
+    },
+    {
+      "name": "project schema remains 9",
+      "pass": true
+    },
+    {
+      "name": "drawing schema remains 5",
+      "pass": true
+    },
+    {
+      "name": "default viewport mode is Shaded + edges",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: Shaded + edges",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: Shaded",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: Technical",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: Interior inspect",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: X-ray inspect",
+      "pass": true
+    },
+    {
+      "name": "viewport mode label bundled: Wireframe",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Best everyday shape and cavity readability",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Clean surfaces without feature-edge overlays",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Neutral material with high-contrast edges",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Ghost outer walls and emphasize cavity corners",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Ghosted surfaces with through-body edges",
+      "pass": true
+    },
+    {
+      "name": "viewport mode description bundled: Triangle mesh inspection",
+      "pass": true
+    },
+    {
+      "name": "browser-local viewport preference bundled",
+      "pass": true
+    },
+    {
+      "name": "shell cavity extraction helper bundled",
+      "pass": true
+    },
+    {
+      "name": "cavity edge count metadata bundled",
+      "pass": true
+    },
+    {
+      "name": "Interior inspect status bundled",
+      "pass": true
+    },
+    {
+      "name": "cavity segment cap bundled",
+      "pass": true
+    },
+    {
+      "name": "cavity triangle guard bundled",
+      "pass": true
+    },
+    {
+      "name": "ordinary edge triangle guard bundled",
+      "pass": true
+    },
+    {
+      "name": "concavity threshold bundled",
+      "pass": true
+    },
+    {
+      "name": "physically based material bundled",
+      "pass": true
+    },
+    {
+      "name": "ACES filmic tone mapping enabled",
+      "pass": true
+    },
+    {
+      "name": "sRGB output enabled",
+      "pass": true
+    },
+    {
+      "name": "renderer uses PCFShadowMap",
+      "pass": true
+    },
+    {
+      "name": "interior viewport CSS bundled",
+      "pass": true
+    },
+    {
+      "name": "X-ray viewport CSS bundled",
+      "pass": true
+    },
+    {
+      "name": "bundle uses relative geometry worker",
+      "pass": true
+    },
+    {
+      "name": "bundle uses relative import worker",
+      "pass": true
+    },
+    {
+      "name": "bundle build transformed 210 modules",
+      "pass": true,
+      "detail": 210
+    },
+    {
+      "name": "bundle build used no compatibility stubs",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "bundle build output byte count matches package",
+      "pass": true,
+      "detail": {
+        "report": 5515528,
+        "actual": 5515528
+      }
+    },
+    {
+      "name": "service worker uses current cache name",
+      "pass": true
+    },
+    {
+      "name": "service worker application shell parsed",
+      "pass": true,
+      "detail": [
+        "./",
+        "./index.html",
+        "./assets/benchcad-v0.36.2.js",
+        "./assets/benchcad-v0.36.2.css",
+        "./assets/geometry.worker-BwAX3YFX.js",
+        "./assets/import.worker-4ZIJcZ3b.js",
+        "./assets/manifold-BE4c7gO-.wasm",
+        "./favicon.svg",
+        "./file.svg",
+        "./globe.svg",
+        "./manifest.webmanifest",
+        "./window.svg"
+      ]
+    },
+    {
+      "name": "service worker caches ./index.html",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./assets/benchcad-v0.36.2.js",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./assets/benchcad-v0.36.2.css",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true
+    },
+    {
+      "name": "service worker caches ./manifest.webmanifest",
+      "pass": true
+    },
+    {
+      "name": "service-worker entry exists: ./index.html",
+      "pass": true,
+      "detail": 870
+    },
+    {
+      "name": "service-worker entry exists: ./assets/benchcad-v0.36.2.js",
+      "pass": true,
+      "detail": 5515528
+    },
+    {
+      "name": "service-worker entry exists: ./assets/benchcad-v0.36.2.css",
+      "pass": true,
+      "detail": 290091
+    },
+    {
+      "name": "service-worker entry exists: ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": 61583
+    },
+    {
+      "name": "service-worker entry exists: ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": 103713
+    },
+    {
+      "name": "service-worker entry exists: ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": 541470
+    },
+    {
+      "name": "service-worker entry exists: ./favicon.svg",
+      "pass": true,
+      "detail": 712
+    },
+    {
+      "name": "service-worker entry exists: ./file.svg",
+      "pass": true,
+      "detail": 392
+    },
+    {
+      "name": "service-worker entry exists: ./globe.svg",
+      "pass": true,
+      "detail": 1036
+    },
+    {
+      "name": "service-worker entry exists: ./manifest.webmanifest",
+      "pass": true,
+      "detail": 518
+    },
+    {
+      "name": "service-worker entry exists: ./window.svg",
+      "pass": true,
+      "detail": 386
+    },
+    {
+      "name": "service worker removes earlier BENCHCAD caches",
+      "pass": true
+    },
+    {
+      "name": "manifest has relative start URL",
+      "pass": true
+    },
+    {
+      "name": "manifest has relative scope",
+      "pass": true
+    },
+    {
+      "name": "manifest has standalone display",
+      "pass": true
+    },
+    {
+      "name": "manifest icon is relative",
+      "pass": true
+    },
+    {
+      "name": "manifest describes Interior inspection",
+      "pass": true
+    },
+    {
+      "name": "version file is current",
+      "pass": true
+    },
+    {
+      "name": "README is current",
+      "pass": true
+    },
+    {
+      "name": "release guide is current",
+      "pass": true
+    },
+    {
+      "name": "release notes begin with current release",
+      "pass": true
+    },
+    {
+      "name": "known limitations are current",
+      "pass": true
+    },
+    {
+      "name": "package contents are current",
+      "pass": true
+    },
+    {
+      "name": "README does not claim Interior inspect is analysis",
+      "pass": true
+    },
+    {
+      "name": "README contains local image references",
+      "pass": true,
+      "detail": [
+        "docs/images/benchcad-model-workspace.png",
+        "docs/images/benchcad-shell-shaded-edges.png",
+        "docs/images/benchcad-shell-interior.png",
+        "docs/images/benchcad-drawing-workspace.png"
+      ]
+    },
+    {
+      "name": "README image exists: docs/images/benchcad-model-workspace.png",
+      "pass": true,
+      "detail": 240305
+    },
+    {
+      "name": "README image exists: docs/images/benchcad-shell-shaded-edges.png",
+      "pass": true,
+      "detail": 114445
+    },
+    {
+      "name": "README image exists: docs/images/benchcad-shell-interior.png",
+      "pass": true,
+      "detail": 66948
+    },
+    {
+      "name": "README image exists: docs/images/benchcad-drawing-workspace.png",
+      "pass": true,
+      "detail": 159711
+    },
+    {
+      "name": "current reference image: docs/images/benchcad-model-workspace.png",
+      "pass": true,
+      "detail": {
+        "bytes": 240305,
+        "dimensions": [
+          1400,
+          900
+        ]
+      }
+    },
+    {
+      "name": "current reference image: docs/images/benchcad-drawing-workspace.png",
+      "pass": true,
+      "detail": {
+        "bytes": 159711,
+        "dimensions": [
+          1720,
+          1050
+        ]
+      }
+    },
+    {
+      "name": "current reference image: docs/images/benchcad-shell-shaded-edges.png",
+      "pass": true,
+      "detail": {
+        "bytes": 114445,
+        "dimensions": [
+          864,
+          614
+        ]
+      }
+    },
+    {
+      "name": "current reference image: docs/images/benchcad-shell-interior.png",
+      "pass": true,
+      "detail": {
+        "bytes": 66948,
+        "dimensions": [
+          864,
+          614
+        ]
+      }
+    },
+    {
+      "name": "current reference image: docs/images/benchcad-shell-xray.png",
+      "pass": true,
+      "detail": {
+        "bytes": 71011,
+        "dimensions": [
+          864,
+          614
+        ]
+      }
+    },
+    {
+      "name": "focused interior report has 30 checks",
+      "pass": true,
+      "detail": {
+        "passed": 30,
+        "total": 30
+      }
+    },
+    {
+      "name": "focused interior report passes all checks",
+      "pass": true
+    },
+    {
+      "name": "focused test reports eight cavity edges",
+      "pass": true,
+      "detail": "INTERIOR INSPECT \u00b7 EXTERIOR GHOSTED \u00b7 8 CAVITY EDGES"
+    },
+    {
+      "name": "drawing regression passes",
+      "pass": true
+    },
+    {
+      "name": "drawing regression has 28 passing checks",
+      "pass": true,
+      "detail": {
+        "passed": 28,
+        "total": 28
+      }
+    },
+    {
+      "name": "drawing primitive signatures match",
+      "pass": true,
+      "detail": {
+        "SVG": "4dd91b27",
+        "DXF": "4dd91b27",
+        "PDF": "4dd91b27"
+      }
+    },
+    {
+      "name": "drawing regression has no browser errors",
+      "pass": true
+    },
+    {
+      "name": "JavaScript syntax: assets/benchcad-v0.36.2.js",
+      "pass": true
+    },
+    {
+      "name": "JavaScript syntax: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true
+    },
+    {
+      "name": "JavaScript syntax: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true
+    },
+    {
+      "name": "JavaScript syntax: sw.js",
+      "pass": true
+    },
+    {
+      "name": "Manifold file has WebAssembly magic",
+      "pass": true,
+      "detail": "0061736d01000000"
+    },
+    {
+      "name": "checksum list covers every staged file",
+      "pass": true,
+      "detail": {
+        "listed": 42,
+        "files": 42
+      }
+    },
+    {
+      "name": "preliminary packaged-file checksums verify",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "nested static HTTP server responds",
+      "pass": true,
+      "detail": "http://127.0.0.1:37767/projects/benchcad/"
+    },
+    {
+      "name": "every service-worker shell asset loads under /projects/benchcad/",
+      "pass": true,
+      "detail": {
+        "./": {
+          "status": 200,
+          "bytes": 870,
+          "contentType": "text/html"
+        },
+        "./index.html": {
+          "status": 200,
+          "bytes": 870,
+          "contentType": "text/html"
+        },
+        "./assets/benchcad-v0.36.2.js": {
+          "status": 200,
+          "bytes": 5515528,
+          "contentType": "text/javascript"
+        },
+        "./assets/benchcad-v0.36.2.css": {
+          "status": 200,
+          "bytes": 290091,
+          "contentType": "text/css"
+        },
+        "./assets/geometry.worker-BwAX3YFX.js": {
+          "status": 200,
+          "bytes": 61583,
+          "contentType": "text/javascript"
+        },
+        "./assets/import.worker-4ZIJcZ3b.js": {
+          "status": 200,
+          "bytes": 103713,
+          "contentType": "text/javascript"
+        },
+        "./assets/manifold-BE4c7gO-.wasm": {
+          "status": 200,
+          "bytes": 541470,
+          "contentType": "application/wasm"
+        },
+        "./favicon.svg": {
+          "status": 200,
+          "bytes": 712,
+          "contentType": "image/svg+xml"
+        },
+        "./file.svg": {
+          "status": 200,
+          "bytes": 392,
+          "contentType": "image/svg+xml"
+        },
+        "./globe.svg": {
+          "status": 200,
+          "bytes": 1036,
+          "contentType": "image/svg+xml"
+        },
+        "./manifest.webmanifest": {
+          "status": 200,
+          "bytes": 518,
+          "contentType": "application/manifest+json"
+        },
+        "./window.svg": {
+          "status": 200,
+          "bytes": 386,
+          "contentType": "image/svg+xml"
+        }
+      }
+    },
+    {
+      "name": "nested server returns WebAssembly MIME type",
+      "pass": true,
+      "detail": {
+        "status": 200,
+        "bytes": 541470,
+        "contentType": "application/wasm"
+      }
+    }
+  ],
+  "summary": {
+    "passed": 130,
+    "failed": 0,
+    "total": 130
+  },
+  "failedChecks": [],
+  "pass": true
+}

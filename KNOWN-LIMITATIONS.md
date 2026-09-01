@@ -1,6 +1,6 @@
-# BENCHCAD v0.36.1 Known Limitations
+# BENCHCAD v0.36.2 Known Limitations
 
-BENCHCAD v0.36.1 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
+BENCHCAD v0.36.2 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
 
 ## Geometry and topology
 
@@ -96,30 +96,32 @@ Dense meshes, many views, hidden-line depth tests, section reconstruction, and r
 
 ## Viewport rendering and inspection
 
-BENCHCAD v0.36.1 improves geometry legibility, but the viewport is still an engineering work view rather than a photorealistic renderer.
+BENCHCAD v0.36.2 improves hollow-part legibility, but the viewport remains an engineering work view rather than a photorealistic or analytic topology renderer.
 
 - There is no path tracing, ray tracing, screen-space ambient occlusion, environment-map library, or texture/material authoring system in this release.
-- **Shaded + edges** derives feature edges from the displayed triangle mesh. Tessellation, smoothing, and edge-angle thresholds can therefore affect which lines appear.
-- Feature-edge extraction is skipped for unselected bodies above 180,000 triangles to prevent a display preference from causing a large-model freeze. Selecting the body still permits its emphasized outline.
-- **X-ray inspect** ghosts surfaces and draws through-body feature edges. It is an inspection aid, not a true clipped section, wall-thickness analysis, or hidden-line engineering drawing.
+- Ordinary **Shaded + edges** linework comes from the displayed triangle mesh. Tessellation, smoothing, and edge-angle thresholds can affect which ordinary crease lines appear.
+- Shell-cavity traces are classified from local concavity at shared edges in the tessellated reconstructed mesh. They are not persistent analytic boundary-representation edge identities.
+- Cavity tracing is intentionally conservative. Some rounded, blended, noisy, non-manifold, imported, or unusual concave topology may not produce the line a user expects.
+- Cavity overlays stop at 6,000 segments and are skipped above 220,000 triangles. Ordinary feature-edge overlays remain guarded above 180,000 triangles for dense unselected bodies.
+- **Interior inspect** ghosts exterior faces, emphasizes inner surfaces, and adds through-body cavity traces. It is not a true clipped section, wall-thickness analysis, screen-space ambient occlusion calculation, or manufacturing result.
+- **X-ray inspect** exposes ordinary through-body feature edges rather than specifically classifying all interior design intent.
 - **Wireframe** displays mesh topology rather than analytic design edges.
-- Transparent bodies and overlapping X-ray bodies can still produce depth-sorting artifacts inherent to real-time transparency.
+- Transparent Interior and X-ray bodies can show depth-sorting artifacts inherent to real-time transparency.
 - Color and contrast depend on the monitor, browser color pipeline, theme, and body color. Technical mode is provided when neutral material contrast is more useful than authored color.
-
 ## Interface and responsive behavior
 
-The v0.36.1 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
+The v0.36.2 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
 
 - At constrained widths, modeling and drawing command groups scroll horizontally inside their own toolbar rather than shrinking or overlapping.
 - Tablet and mobile layouts expose Shapes, Inspect, and History as drawers; not every panel is visible simultaneously.
 - Panel, outline, theme, and workspace-mode preferences are stored in browser-local storage and can be removed by site-data cleanup.
 - Canvas Focus is intentionally session-only so a later visit does not appear to be missing panels.
 - Touch viewing and light editing are supported, but precision topology selection and dense drafting remain best with a mouse, trackpad, or stylus.
-- The v0.36.1 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
+- The v0.36.2 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
 
 ## Browser qualification
 
-The v0.36.1 production workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
+The v0.36.2 production workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
 
 ## Local storage and offline use
 

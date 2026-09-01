@@ -1,4 +1,4 @@
-/* BENCHCAD v0.36.1 · Viewport clarity offline bundle */
+/* BENCHCAD v0.36.2 · Interior visibility offline bundle */
 (()=>{
 'use strict';
 const process={env:{NODE_ENV:'production'}};
@@ -80934,7 +80934,7 @@ exports.migrateProject = migrateProject;
 exports.canReorderFeature = canReorderFeature;
 exports.reorderFeature = reorderFeature;
 const benchcad_kernel_1 = require("./benchcad-kernel");
-exports.APP_VERSION = "0.36.1";
+exports.APP_VERSION = "0.36.2";
 exports.SCHEMA_VERSION = 9;
 exports.ORIGIN_WORKPLANE_ID = "origin-workplane-XY";
 exports.ORIGIN_WORKPLANE_IDS = [
@@ -85052,13 +85052,221 @@ function exportGroupFor(bodyGroup, ids) {
     group.updateMatrixWorld(true);
     return { group, meshData };
 }
+const MAX_SHELL_INTERIOR_TRIANGLES = 220000;
+const MAX_CAVITY_EDGE_SEGMENTS = 6000;
+const CAVITY_CONCAVITY_THRESHOLD = 0.08;
+/**
+ * Extract inward-facing triangles from the exact shell mesh. The resulting
+ * display-only overlay darkens cavity surfaces without changing model data,
+ * export geometry, topology identifiers, or selection behavior.
+ */
+function shellInteriorGeometry(source) {
+    const position = source.getAttribute("position");
+    const indices = source.index?.array;
+    const triangleCount = Math.floor((indices?.length ?? position?.count ?? 0) / 3);
+    if (!position ||
+        triangleCount <= 0 ||
+        triangleCount > MAX_SHELL_INTERIOR_TRIANGLES)
+        return null;
+    source.computeBoundingBox();
+    const bounds = source.boundingBox;
+    if (!bounds)
+        return null;
+    const center = bounds.getCenter(new THREE.Vector3());
+    const diagonal = Math.max(1e-6, bounds.getSize(new THREE.Vector3()).length());
+    const epsilon = diagonal * 1e-7;
+    const output = [];
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    const ab = new THREE.Vector3();
+    const ac = new THREE.Vector3();
+    const normal = new THREE.Vector3();
+    const centroid = new THREE.Vector3();
+    const radial = new THREE.Vector3();
+    for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+        const base = triangle * 3;
+        const ia = indices ? Number(indices[base]) : base;
+        const ib = indices ? Number(indices[base + 1]) : base + 1;
+        const ic = indices ? Number(indices[base + 2]) : base + 2;
+        a.fromBufferAttribute(position, ia);
+        b.fromBufferAttribute(position, ib);
+        c.fromBufferAttribute(position, ic);
+        normal.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a));
+        centroid.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+        radial.subVectors(centroid, center);
+        if (normal.dot(radial) >= -epsilon)
+            continue;
+        output.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    }
+    if (!output.length)
+        return null;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(output), 3));
+    return geometry;
+}
+function topologyVector(value) {
+    return new THREE.Vector3(value[0], value[1], value[2]);
+}
+/**
+ * Positive values identify a concave material corner. The symmetric test does
+ * not depend on arbitrary edge direction or adjacent-face ordering.
+ */
+function topologyEdgeConcavity(edge, facesById) {
+    if (edge.faceIds.length !== 2)
+        return null;
+    const first = facesById.get(edge.faceIds[0]);
+    const second = facesById.get(edge.faceIds[1]);
+    if (!first?.normal || !second?.normal)
+        return null;
+    const midpoint = topologyVector(edge.centroid);
+    const firstNormal = topologyVector(first.normal).normalize();
+    const secondNormal = topologyVector(second.normal).normalize();
+    const towardSecond = topologyVector(second.centroid).sub(midpoint);
+    const towardFirst = topologyVector(first.centroid).sub(midpoint);
+    if (towardSecond.lengthSq() <= 1e-16 || towardFirst.lengthSq() <= 1e-16)
+        return null;
+    towardSecond.normalize();
+    towardFirst.normalize();
+    return firstNormal.dot(towardSecond) + secondNormal.dot(towardFirst);
+}
+function shellCavitySegments(topology, offsetDistance) {
+    const segments = [];
+    const facesById = new Map(topology.faces.map((face) => [face.id, face]));
+    for (const edge of topology.edges) {
+        const score = topologyEdgeConcavity(edge, facesById);
+        if (score === null || score <= CAVITY_CONCAVITY_THRESHOLD)
+            continue;
+        const firstFace = facesById.get(edge.faceIds[0]);
+        const secondFace = facesById.get(edge.faceIds[1]);
+        if (!firstFace?.normal || !secondFace?.normal)
+            continue;
+        // A mathematically exact line on the surface intersection is easily buried
+        // by the depth buffer. At a concave shell corner the sum of the adjacent
+        // outward normals points into cavity air, so this tiny display-only offset
+        // preserves line visibility without modifying model geometry.
+        const cavityOffset = topologyVector(firstFace.normal)
+            .normalize()
+            .add(topologyVector(secondFace.normal).normalize());
+        if (cavityOffset.lengthSq() <= 1e-12)
+            continue;
+        cavityOffset.normalize().multiplyScalar(offsetDistance);
+        for (const [first, second] of edge.points) {
+            if (segments.length >= MAX_CAVITY_EDGE_SEGMENTS)
+                return segments;
+            segments.push([
+                topologyVector(first).add(cavityOffset),
+                topologyVector(second).add(cavityOffset),
+            ]);
+        }
+    }
+    return segments;
+}
+function lineGeometryForSegments(segments) {
+    const positions = new Float32Array(segments.length * 6);
+    segments.forEach(([first, second], index) => {
+        positions[index * 6] = first.x;
+        positions[index * 6 + 1] = first.y;
+        positions[index * 6 + 2] = first.z;
+        positions[index * 6 + 3] = second.x;
+        positions[index * 6 + 4] = second.y;
+        positions[index * 6 + 5] = second.z;
+    });
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return geometry;
+}
+function cavityEdgeInstances(segments, radius, color, opacity, selectionId, renderOrder) {
+    const geometry = new THREE.CylinderGeometry(radius, radius, 1, 6, 1, true);
+    const material = new THREE.MeshBasicMaterial({
+        color,
+        transparent: opacity < 0.999,
+        opacity,
+        depthTest: true,
+        depthWrite: false,
+        toneMapped: false,
+    });
+    const instances = new THREE.InstancedMesh(geometry, material, segments.length);
+    const up = new THREE.Vector3(0, 1, 0);
+    const direction = new THREE.Vector3();
+    const midpoint = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const matrix = new THREE.Matrix4();
+    const scale = new THREE.Vector3();
+    segments.forEach(([first, second], index) => {
+        direction.subVectors(second, first);
+        const length = Math.max(1e-8, direction.length());
+        quaternion.setFromUnitVectors(up, direction.multiplyScalar(1 / length));
+        midpoint.copy(first).add(second).multiplyScalar(0.5);
+        scale.set(1, length, 1);
+        matrix.compose(midpoint, quaternion, scale);
+        instances.setMatrixAt(index, matrix);
+    });
+    instances.instanceMatrix.needsUpdate = true;
+    instances.frustumCulled = false;
+    instances.name = `shell-cavity-edge-instances-${selectionId}`;
+    instances.userData.selectionId = selectionId;
+    instances.userData.viewportCavityEdges = true;
+    instances.userData.cavityEdgeSegmentCount = segments.length;
+    instances.renderOrder = renderOrder;
+    return instances;
+}
+/**
+ * Concave shell corners receive a two-tone physical trace. A dark halo keeps
+ * the line distinct from bright materials and dark cavity walls, while the
+ * fine light core remains readable through orbit and zoom changes.
+ */
+function shellCavityEdgeObject(topology, selectionId, displayMode, selected) {
+    const bounds = new THREE.Box3();
+    topology.vertices.forEach((vertex) => bounds.expandByPoint(topologyVector(vertex)));
+    const diagonal = Math.max(1e-6, bounds.getSize(new THREE.Vector3()).length());
+    const haloRadius = Math.max(0.045, Math.min(0.19, diagonal * 0.0032));
+    const cavityOffset = Math.max(haloRadius * 0.92, Math.min(0.22, diagonal * 0.0036));
+    const segments = shellCavitySegments(topology, cavityOffset);
+    if (!segments.length)
+        return null;
+    const group = new THREE.Group();
+    group.name = `shell-cavity-edges-${selectionId}`;
+    group.userData.selectionId = selectionId;
+    group.userData.viewportCavityEdges = true;
+    group.userData.cavityEdgeSegmentCount = segments.length;
+    if (displayMode === "interior") {
+        const hidden = new THREE.LineSegments(lineGeometryForSegments(segments), new THREE.LineDashedMaterial({
+            color: selected ? "#8defff" : "#8bc8d2",
+            transparent: true,
+            opacity: selected ? 0.38 : 0.25,
+            depthTest: false,
+            depthWrite: false,
+            dashSize: Math.max(0.22, diagonal * 0.008),
+            gapSize: Math.max(0.14, diagonal * 0.005),
+            toneMapped: false,
+        }));
+        hidden.computeLineDistances();
+        hidden.name = `shell-cavity-hidden-${selectionId}`;
+        hidden.userData.selectionId = selectionId;
+        hidden.userData.viewportHiddenCavityEdges = true;
+        hidden.renderOrder = 5;
+        group.add(hidden);
+    }
+    group.add(cavityEdgeInstances(segments, haloRadius, "#071014", displayMode === "interior" ? 0.96 : 0.88, selectionId, 6));
+    group.add(cavityEdgeInstances(segments, haloRadius * 0.42, selected
+        ? "#a7f7ff"
+        : displayMode === "technical"
+            ? "#dce9eb"
+            : displayMode === "interior"
+                ? "#ffd69a"
+                : "#fff0d8", 1, selectionId, 7));
+    return group;
+}
 const EDGE_TRIANGLE_LIMIT = 180000;
-function bodyDisplayOpacity(body, displayMode) {
+function bodyDisplayOpacity(body, displayMode, selected) {
     const authored = Math.max(0.05, Math.min(1, body.opacity ?? 1));
     if (body.role === "hole")
-        return Math.min(authored, displayMode === "xray" ? 0.16 : 0.22);
+        return Math.min(authored, displayMode === "xray" ? 0.16 : displayMode === "interior" ? 0.18 : 0.22);
     if (displayMode === "xray")
-        return Math.min(authored, 0.2);
+        return Math.min(authored, selected ? 0.3 : 0.2);
+    if (displayMode === "interior")
+        return Math.min(authored, body.shell ? (selected ? 0.34 : 0.25) : selected ? 0.58 : 0.46);
     return authored;
 }
 function bodyDisplayColor(body, displayMode, selected) {
@@ -85068,15 +85276,22 @@ function bodyDisplayColor(body, displayMode, selected) {
     if (displayMode === "technical") {
         return color.lerp(new THREE.Color("#c9d4d5"), selected ? 0.58 : 0.72);
     }
+    if (displayMode === "interior") {
+        return color.lerp(new THREE.Color("#80939a"), selected ? 0.24 : 0.34);
+    }
     if (displayMode === "xray") {
         return color.lerp(new THREE.Color("#8de7ef"), selected ? 0.38 : 0.55);
     }
     return color;
 }
 function bodyMaterial(body, displayMode, selected) {
-    const opacity = bodyDisplayOpacity(body, displayMode);
+    const opacity = bodyDisplayOpacity(body, displayMode, selected);
     const color = bodyDisplayColor(body, displayMode, selected);
-    const doubleSided = body.shape === "Imported mesh" || displayMode === "xray" || body.role === "hole";
+    const doubleSided = body.shape === "Imported mesh" ||
+        Boolean(body.shell) ||
+        displayMode === "interior" ||
+        displayMode === "xray" ||
+        body.role === "hole";
     if (displayMode === "wireframe") {
         return new THREE.MeshBasicMaterial({
             color: body.role === "hole" ? "#77e7f2" : color,
@@ -85089,14 +85304,32 @@ function bodyMaterial(body, displayMode, selected) {
     }
     return new THREE.MeshPhysicalMaterial({
         color,
-        roughness: displayMode === "technical" ? 0.68 : displayMode === "xray" ? 0.58 : 0.48,
-        metalness: 0.015,
-        clearcoat: displayMode === "technical" || displayMode === "xray" ? 0.03 : 0.16,
+        roughness: displayMode === "technical" || displayMode === "interior"
+            ? 0.82
+            : displayMode === "xray"
+                ? 0.58
+                : 0.48,
+        metalness: displayMode === "interior" ? 0 : 0.015,
+        clearcoat: displayMode === "technical" ||
+            displayMode === "interior" ||
+            displayMode === "xray"
+            ? 0.03
+            : 0.16,
         clearcoatRoughness: 0.72,
-        transparent: opacity < 0.999,
+        transparent: opacity < 0.999 || displayMode === "interior",
         opacity,
-        depthWrite: opacity >= 0.999 && displayMode !== "xray" && body.role !== "hole",
+        depthWrite: opacity >= 0.999 &&
+            displayMode !== "interior" &&
+            displayMode !== "xray" &&
+            body.role !== "hole",
         side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+        polygonOffset: displayMode === "shadedEdges" ||
+            displayMode === "technical" ||
+            displayMode === "interior" ||
+            displayMode === "xray",
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1,
+        flatShading: Boolean(body.shell),
         dithering: true,
     });
 }
@@ -85105,6 +85338,8 @@ function readableEdgeColor(body, displayMode) {
         return "#8debf3";
     if (displayMode === "technical")
         return "#18252a";
+    if (displayMode === "interior")
+        return "#d6ecef";
     if (displayMode === "xray")
         return "#c1f8ff";
     const color = new THREE.Color(body.color);
@@ -85136,6 +85371,7 @@ function featureEdgeObjects(geometry, body, displayMode, selectionId, selected) 
         : geometry.getAttribute("position").count / 3;
     const edgeMode = displayMode === "shadedEdges" ||
         displayMode === "technical" ||
+        displayMode === "interior" ||
         displayMode === "xray" ||
         body.role === "hole";
     if (!edgeMode || (!selected && triangleCount > EDGE_TRIANGLE_LIMIT))
@@ -85144,21 +85380,35 @@ function featureEdgeObjects(geometry, body, displayMode, selectionId, selected) 
     const visible = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({
         color: readableEdgeColor(body, displayMode),
         transparent: true,
-        opacity: selected ? 0.94 : displayMode === "xray" ? 0.78 : 0.7,
+        opacity: selected
+            ? 0.94
+            : displayMode === "xray"
+                ? 0.78
+                : displayMode === "interior"
+                    ? 0.7
+                    : 0.7,
         depthTest: true,
         depthWrite: false,
+        toneMapped: false,
     }));
     visible.userData.selectionId = selectionId;
     visible.userData.viewportFeatureEdges = true;
     visible.renderOrder = 3;
     objects.push(visible);
-    if (displayMode === "xray") {
+    if (displayMode === "xray" || displayMode === "interior") {
         const hidden = new THREE.LineSegments(edgeGeometry.clone(), new THREE.LineBasicMaterial({
-            color: "#72dce8",
+            color: displayMode === "interior" ? "#6faeb8" : "#72dce8",
             transparent: true,
-            opacity: selected ? 0.28 : 0.17,
+            opacity: displayMode === "interior"
+                ? selected
+                    ? 0.28
+                    : 0.13
+                : selected
+                    ? 0.28
+                    : 0.17,
             depthTest: false,
             depthWrite: false,
+            toneMapped: false,
         }));
         hidden.userData.selectionId = selectionId;
         hidden.userData.viewportHiddenEdges = true;
@@ -85196,6 +85446,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
     const uniformGuardRef = (0, react_1.useRef)(false);
     const [live, setLive] = (0, react_1.useState)(null);
     const [boxDrag, setBoxDrag] = (0, react_1.useState)(null);
+    const [cavityEdgeCount, setCavityEdgeCount] = (0, react_1.useState)(0);
     (0, react_1.useEffect)(() => {
         onSelectRef.current = onSelect;
     }, [onSelect]);
@@ -85463,9 +85714,14 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         transform.setSize(0.84);
         scene.add(transform.getHelper());
         stateRef.current = { camera, controls, renderer, scene, transform };
-        scene.add(new THREE.HemisphereLight("#dbeef2", "#172024", 0.92));
-        scene.add(new THREE.AmbientLight("#b9ccd0", 0.16));
+        const hemisphere = new THREE.HemisphereLight("#dbeef2", "#172024", 0.92);
+        hemisphere.name = "viewport-hemisphere";
+        scene.add(hemisphere);
+        const ambient = new THREE.AmbientLight("#b9ccd0", 0.16);
+        ambient.name = "viewport-ambient";
+        scene.add(ambient);
         const key = new THREE.DirectionalLight("#fff0d5", 3.05);
+        key.name = "viewport-key";
         key.position.set(75, 110, 55);
         key.target.position.set(0, 8, 0);
         key.castShadow = true;
@@ -85474,10 +85730,12 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         key.shadow.bias = -0.00012;
         scene.add(key, key.target);
         const fill = new THREE.DirectionalLight("#bce9f3", 1.15);
+        fill.name = "viewport-fill";
         fill.position.set(-90, 55, -65);
         fill.target.position.set(0, 10, 0);
         scene.add(fill, fill.target);
         const rim = new THREE.DirectionalLight("#ffd6a0", 1.35);
+        rim.name = "viewport-rim";
         rim.position.set(-30, 85, 110);
         rim.target.position.set(0, 12, 0);
         scene.add(rim, rim.target);
@@ -85813,6 +86071,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         }
         const group = new THREE.Group();
         group.name = "bodies";
+        let nextCavityEdgeCount = 0;
         const consumedIds = new Set(booleanMeshes.flatMap((mesh) => mesh.consumedIds));
         const meshByTarget = new Map(booleanMeshes.map((mesh) => [mesh.targetId, mesh]));
         const addBody = (body, parent, selectionId, selected) => {
@@ -85853,14 +86112,62 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
             mesh.userData.topologyMesh = true;
             mesh.castShadow =
                 body.role === "solid" &&
+                    displayMode !== "interior" &&
                     displayMode !== "xray" &&
                     displayMode !== "wireframe";
-            mesh.receiveShadow = displayMode !== "xray" && displayMode !== "wireframe";
+            // Avoid shadow-map acne on exact CAD surfaces. Bodies still cast a
+            // contact shadow onto the workplane in normal shaded modes.
+            mesh.receiveShadow = false;
             holder.add(mesh);
+            if (body.shell &&
+                displayMode !== "xray" &&
+                displayMode !== "wireframe") {
+                const interiorGeometry = shellInteriorGeometry(geometry);
+                if (interiorGeometry) {
+                    const baseColor = bodyDisplayColor(body, displayMode, selected);
+                    const interiorColor = displayMode === "interior"
+                        ? new THREE.Color("#27383e")
+                        : displayMode === "technical"
+                            ? new THREE.Color("#28383e")
+                            : baseColor.clone().multiplyScalar(0.2);
+                    const interior = new THREE.Mesh(interiorGeometry, new THREE.MeshBasicMaterial({
+                        color: interiorColor,
+                        transparent: displayMode !== "interior",
+                        opacity: displayMode === "interior"
+                            ? 0.94
+                            : displayMode === "technical"
+                                ? 0.62
+                                : 0.56,
+                        depthTest: true,
+                        depthWrite: displayMode === "interior",
+                        side: THREE.DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1,
+                        polygonOffsetUnits: -1,
+                        toneMapped: false,
+                    }));
+                    interior.name = `shell-interior-${selectionId}`;
+                    interior.userData.selectionId = selectionId;
+                    interior.userData.viewportShellInterior = true;
+                    interior.renderOrder = displayMode === "interior" ? 4 : 2;
+                    holder.add(interior);
+                }
+            }
             const threadAnnotations = threadAnnotationObject(body);
             if (threadAnnotations)
                 holder.add(threadAnnotations);
             featureEdgeObjects(geometry, body, displayMode, selectionId, selected).forEach((object) => mesh.add(object));
+            if (body.shell &&
+                (displayMode === "shadedEdges" ||
+                    displayMode === "technical" ||
+                    displayMode === "interior" ||
+                    selected)) {
+                const cavityEdges = shellCavityEdgeObject(topology, selectionId, displayMode, selected);
+                if (cavityEdges) {
+                    nextCavityEdgeCount += Number(cavityEdges.userData.cavityEdgeSegmentCount ?? 0);
+                    holder.add(cavityEdges);
+                }
+            }
             if (selected) {
                 const outline = new THREE.Mesh(expandedOutlineGeometry(geometry), new THREE.MeshBasicMaterial({
                     color: "#78efff",
@@ -85989,6 +86296,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         };
         (childrenByParent.get(null) ?? []).forEach((occurrence) => addOccurrence(occurrence, group, new Set()));
         state.scene.add(group);
+        setCavityEdgeCount(nextCavityEdgeCount);
         if (selectedIds.length === 1 && transformMode !== "select") {
             const selected = group.getObjectByName(`selection-${selectedIds[0]}`);
             const body = bodies.find((item) => item.id === selectedIds[0]);
@@ -86022,11 +86330,28 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         const grid = state.scene.getObjectByName("bench-grid");
         if (grid)
             grid.visible = showGrid;
+        const inspection = displayMode === "interior" ||
+            displayMode === "xray" ||
+            displayMode === "wireframe";
         const shadowPlane = state.scene.getObjectByName("shadow-plane");
-        const shadowsEnabled = displayMode !== "xray" && displayMode !== "wireframe";
         if (shadowPlane)
-            shadowPlane.visible = shadowsEnabled;
-        state.renderer.shadowMap.enabled = shadowsEnabled;
+            shadowPlane.visible = !inspection;
+        state.renderer.shadowMap.enabled = !inspection;
+        const hemisphere = state.scene.getObjectByName("viewport-hemisphere");
+        const ambient = state.scene.getObjectByName("viewport-ambient");
+        const key = state.scene.getObjectByName("viewport-key");
+        const fill = state.scene.getObjectByName("viewport-fill");
+        const rim = state.scene.getObjectByName("viewport-rim");
+        if (hemisphere)
+            hemisphere.intensity = displayMode === "interior" ? 0.62 : 0.92;
+        if (ambient)
+            ambient.intensity = displayMode === "interior" ? 0.08 : 0.16;
+        if (key)
+            key.intensity = displayMode === "interior" ? 2.1 : 3.05;
+        if (fill)
+            fill.intensity = displayMode === "interior" ? 0.38 : 1.15;
+        if (rim)
+            rim.intensity = displayMode === "interior" ? 0.55 : 1.35;
         state.camera.fov = perspective ? 42 : 9;
         state.camera.updateProjectionMatrix();
     }, [displayMode, perspective, showGrid]);
@@ -86035,7 +86360,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
             const shape = event.dataTransfer.getData("application/x-benchcad-shape");
             if (shape)
                 onDropShape(shape);
-        }, children: [topologyMode !== "body" && ((0, jsx_runtime_1.jsxs)("div", { className: "topology-select-hint", children: [topologyMode.toUpperCase(), " SELECT \u00B7 SHIFT / COMMAND TO ADD"] })), boxSelectMode && !boxDrag && ((0, jsx_runtime_1.jsx)("div", { className: "box-select-hint", children: "BOX SELECT \u00B7 LEFT\u2192RIGHT WINDOW \u00B7 RIGHT\u2192LEFT CROSSING" })), boxDrag && ((0, jsx_runtime_1.jsx)("div", { className: `selection-marquee-3d ${boxDrag.currentX < boxDrag.startX ? "crossing" : "window"}`, style: {
+        }, children: [displayMode === "interior" && ((0, jsx_runtime_1.jsxs)("div", { className: "interior-inspect-hint", role: "status", children: ["INTERIOR INSPECT \u00B7 EXTERIOR GHOSTED \u00B7 ", cavityEdgeCount, " CAVITY EDGE", cavityEdgeCount === 1 ? "" : "S"] })), topologyMode !== "body" && ((0, jsx_runtime_1.jsxs)("div", { className: "topology-select-hint", children: [topologyMode.toUpperCase(), " SELECT \u00B7 SHIFT / COMMAND TO ADD"] })), boxSelectMode && !boxDrag && ((0, jsx_runtime_1.jsx)("div", { className: "box-select-hint", children: "BOX SELECT \u00B7 LEFT\u2192RIGHT WINDOW \u00B7 RIGHT\u2192LEFT CROSSING" })), boxDrag && ((0, jsx_runtime_1.jsx)("div", { className: `selection-marquee-3d ${boxDrag.currentX < boxDrag.startX ? "crossing" : "window"}`, style: {
                     left: Math.min(boxDrag.startX, boxDrag.currentX),
                     top: Math.min(boxDrag.startY, boxDrag.currentY),
                     width: Math.abs(boxDrag.currentX - boxDrag.startX),
@@ -108088,6 +108413,7 @@ exports.VIEWPORT_DISPLAY_LABELS = {
     shadedEdges: "Shaded + edges",
     shaded: "Shaded",
     technical: "Technical",
+    interior: "Interior inspect",
     xray: "X-ray inspect",
     wireframe: "Wireframe",
 };
@@ -108635,7 +108961,7 @@ function BenchCadApp() {
                     setTheme(preferences.theme);
                 if (["maker", "advanced"].includes(preferences.mode ?? ""))
                     setMode(preferences.mode);
-                if (["shadedEdges", "shaded", "technical", "xray", "wireframe"].includes(preferences.viewportDisplay ?? ""))
+                if (["shadedEdges", "shaded", "technical", "interior", "xray", "wireframe"].includes(preferences.viewportDisplay ?? ""))
                     setViewportDisplay(preferences.viewportDisplay);
             }
         }
@@ -111900,7 +112226,7 @@ function BenchCadApp() {
                                                                 return ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !canAlign, children: ["Align / distribute ", axisName] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubContent, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "min"), children: "Align minimum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "center"), children: "Align centers" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "max"), children: "Align maximum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: selectedBodies.length < 3, onClick: () => alignSelection(axis, "distribute"), children: "Distribute equal gaps" })] })] }, axisName));
                                                             }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("linear"), children: "Linear pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("circular"), children: "Circular pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("grid"), children: "Grid pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), [0, 1, 2].map((axis) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createMirror(axis), children: ["Mirror across ", ["X", "Y", "Z"][axis], " = 0"] }, axis)))] })] }), (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedOccurrenceJoint ? "active" : ""}`, onClick: openJointDialog, disabled: !atEnd || !selectedOccurrence, title: selectedOccurrenceJoint
                                                     ? "Inspect the joint controlling this occurrence"
-                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-display-trigger ${viewportDisplay !== "shadedEdges" ? "is-active" : ""}`, title: `Viewport style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, "aria-label": `Viewport display style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shadedEdges"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded + edges" }), (0, jsx_runtime_1.jsx)("small", { children: "Best everyday shape and cavity readability" })] }), viewportDisplay === "shadedEdges" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shaded"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded" }), (0, jsx_runtime_1.jsx)("small", { children: "Clean surfaces without feature-edge overlays" })] }), viewportDisplay === "shaded" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral material with high-contrast edges" })] }), viewportDisplay === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("xray"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "X-ray inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghosted surfaces with through-body edges" })] }), viewportDisplay === "xray" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("wireframe"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Wireframe" }), (0, jsx_runtime_1.jsx)("small", { children: "Triangle mesh inspection" })] }), viewportDisplay === "wireframe" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] })] })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, displayMode: viewportDisplay, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
+                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-display-trigger ${viewportDisplay !== "shadedEdges" ? "is-active" : ""}`, title: `Viewport style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, "aria-label": `Viewport display style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shadedEdges"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded + edges" }), (0, jsx_runtime_1.jsx)("small", { children: "Best everyday shape and cavity readability" })] }), viewportDisplay === "shadedEdges" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shaded"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded" }), (0, jsx_runtime_1.jsx)("small", { children: "Clean surfaces without feature-edge overlays" })] }), viewportDisplay === "shaded" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral material with high-contrast edges" })] }), viewportDisplay === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("interior"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Interior inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghost outer walls and emphasize cavity corners" })] }), viewportDisplay === "interior" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("xray"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "X-ray inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghosted surfaces with through-body edges" })] }), viewportDisplay === "xray" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("wireframe"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Wireframe" }), (0, jsx_runtime_1.jsx)("small", { children: "Triangle mesh inspection" })] }), viewportDisplay === "wireframe" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] })] })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, displayMode: viewportDisplay, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
                                                     ? setLeftOpen(true)
                                                     : selectBody(activeWorkplane.id, false), title: "Active placement and sketch workplane", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", (0, jsx_runtime_1.jsx)("span", { children: "WORKPLANE" }), " ", activeWorkplane.name] }), midpointSplitActive && ((0, jsx_runtime_1.jsxs)("div", { className: "split-pick-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["SPLIT BODY \u00B7 ", topologySelections.length + 1, "/2"] }), topologySelections.length
                                                                 ? "Click a parallel face on the same body"

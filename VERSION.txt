@@ -1,4 +1,4 @@
-BENCHCAD 0.36.1
-Project schema 9
-Drawing schema 5
-Release: Viewport clarity and shell inspection
+BENCHCAD v0.36.2
+Project schema: 9
+Drawing schema: 5
+Release: shell interior visibility and cavity-edge inspection

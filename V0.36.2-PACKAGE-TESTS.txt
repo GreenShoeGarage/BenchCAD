@@ -1,0 +1,21 @@
+# BENCHCAD v0.36.2 — Static Package Validation
+
+Result: 130/130 checks passed.
+
+## Coverage
+
+- Root-level static application structure
+- Relative root and nested-subdirectory runtime paths
+- Current application and schema identity
+- Six viewport display modes
+- Topology-derived shell-cavity implementation and safeguards
+- Service Worker application-shell coverage
+- Manifest and documentation integrity
+- Current screenshots and behavioral reports
+- JavaScript syntax and WebAssembly sanity
+- Staged checksum coverage
+- Actual HTTP loading under `/projects/benchcad/`
+
+## Failed checks
+
+None.

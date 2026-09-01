@@ -1,0 +1,32 @@
+# BENCHCAD v0.36.2 — Shell Interior Visibility Validation
+
+- Application: 0.36.2
+- Project schema: 9
+- Drawing schema: 5
+- Result: 30/30 checks passed
+
+## Verified behavior
+
+- Production application shell rendered.
+- Actual geometry worker and packaged Manifold WebAssembly kernel reached READY.
+- A 30 × 30 × 20 mm box was shelled successfully with no reconstruction failure.
+- Shaded + edges remained the default.
+- All six viewport styles rendered and produced distinct frame hashes.
+- The shell produced 8 topology-derived cavity traces.
+- Shaded + edges produced a measurable overlay beyond plain Shaded.
+- Interior inspect was visibly distinct from the default and exposed interior boundaries.
+- The viewport preference read/write path preserved `viewportDisplay: interior`.
+- No page errors, console errors, or console warnings were observed.
+
+## Environment note
+
+The production browser workflow used an in-memory local-storage adapter because navigation to local and synthetic persistent origins was blocked by the release environment. Static inspection separately validates the packaged browser-local preference implementation.
+
+## Rendered fixtures
+
+- shadedEdges: benchcad-v0.36.2-shell-shaded-edges-release.png — 114445 bytes — SHA-256 `d1701a334b0055c3f72d49df1f73b06702d9b81512019d32d2b6726566608300`
+- shaded: benchcad-v0.36.2-shell-shaded-release.png — 115496 bytes — SHA-256 `3635299b008d6ff392c14084fbe554cae79291bcf48eef6f6f788d5eff2c43ff`
+- technical: benchcad-v0.36.2-shell-technical-release.png — 100056 bytes — SHA-256 `99d606fb90a029c6fa896d72d7740356ed8d72b04d31163b7d83f3c41ecf05bc`
+- interior: benchcad-v0.36.2-shell-interior-release.png — 66948 bytes — SHA-256 `100795adae99d3419f0b3e51b60b791e6f9a0b74d1c0fe152fe6f42da8984d43`
+- xray: benchcad-v0.36.2-shell-xray-release.png — 71011 bytes — SHA-256 `7d269f7696459c67488562cc257e87376d6b2eaa0e3db6a097d1f148be2c571b`
+- wireframe: benchcad-v0.36.2-shell-wireframe-release.png — 86002 bytes — SHA-256 `c84684c76e59aee8aed85f67f21495edeb43fe4b0650fe1af44abc30b3cdec24`

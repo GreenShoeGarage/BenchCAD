@@ -1,0 +1,247 @@
+{
+  "suite": "BENCHCAD v0.36.2 shell interior visibility and inspection",
+  "applicationVersion": "0.36.2",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "checks": [
+    {
+      "name": "application shell rendered",
+      "pass": true
+    },
+    {
+      "name": "actual geometry worker started",
+      "pass": true,
+      "detail": [
+        "geometry"
+      ]
+    },
+    {
+      "name": "Manifold worker reports ready",
+      "pass": true
+    },
+    {
+      "name": "project dashboard dismissed",
+      "pass": true
+    },
+    {
+      "name": "shell feature created",
+      "pass": true
+    },
+    {
+      "name": "shell reconstruction has no failure",
+      "pass": true
+    },
+    {
+      "name": "Shaded + edges remains the default",
+      "pass": true
+    },
+    {
+      "name": "display menu includes Shaded + edges",
+      "pass": true
+    },
+    {
+      "name": "display menu includes Shaded",
+      "pass": true
+    },
+    {
+      "name": "display menu includes Technical",
+      "pass": true
+    },
+    {
+      "name": "display menu includes Interior inspect",
+      "pass": true
+    },
+    {
+      "name": "display menu includes X-ray inspect",
+      "pass": true
+    },
+    {
+      "name": "display menu includes Wireframe",
+      "pass": true
+    },
+    {
+      "name": "shadedEdges display mode applied",
+      "pass": true
+    },
+    {
+      "name": "shaded display mode applied",
+      "pass": true
+    },
+    {
+      "name": "technical display mode applied",
+      "pass": true
+    },
+    {
+      "name": "interior display mode applied",
+      "pass": true
+    },
+    {
+      "name": "xray display mode applied",
+      "pass": true
+    },
+    {
+      "name": "wireframe display mode applied",
+      "pass": true
+    },
+    {
+      "name": "Interior inspect status is visible",
+      "pass": true,
+      "detail": "INTERIOR INSPECT \u00b7 EXTERIOR GHOSTED \u00b7 8 CAVITY EDGES"
+    },
+    {
+      "name": "exact shell topology produced cavity traces",
+      "pass": true,
+      "detail": 8
+    },
+    {
+      "name": "Interior inspect preference persists locally",
+      "pass": true,
+      "detail": {
+        "leftOpen": true,
+        "rightOpen": true,
+        "timelineOpen": true,
+        "outlineOpen": true,
+        "theme": "dark",
+        "mode": "maker",
+        "viewportDisplay": "interior"
+      }
+    },
+    {
+      "name": "default view adds a substantial edge overlay",
+      "pass": true,
+      "detail": 5838
+    },
+    {
+      "name": "Interior inspect is visibly distinct from the default",
+      "pass": true,
+      "detail": 133570
+    },
+    {
+      "name": "all six display styles produce distinct rendered frames",
+      "pass": true,
+      "detail": [
+        "d1701a334b0055c3f72d49df1f73b06702d9b81512019d32d2b6726566608300",
+        "3635299b008d6ff392c14084fbe554cae79291bcf48eef6f6f788d5eff2c43ff",
+        "99d606fb90a029c6fa896d72d7740356ed8d72b04d31163b7d83f3c41ecf05bc",
+        "100795adae99d3419f0b3e51b60b791e6f9a0b74d1c0fe152fe6f42da8984d43",
+        "7d269f7696459c67488562cc257e87376d6b2eaa0e3db6a097d1f148be2c571b",
+        "c84684c76e59aee8aed85f67f21495edeb43fe4b0650fe1af44abc30b3cdec24"
+      ]
+    },
+    {
+      "name": "default shell preview image is nontrivial",
+      "pass": true,
+      "detail": 114445
+    },
+    {
+      "name": "Interior inspect preview image is nontrivial",
+      "pass": true,
+      "detail": 66948
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "no console warnings",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "screenshots": {
+    "shadedEdges": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-shaded-edges-release.png",
+      "bytes": 114445,
+      "sha256": "d1701a334b0055c3f72d49df1f73b06702d9b81512019d32d2b6726566608300",
+      "luma": {
+        "minimum": 12,
+        "maximum": 246,
+        "mean": 50.479
+      }
+    },
+    "shaded": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-shaded-release.png",
+      "bytes": 115496,
+      "sha256": "3635299b008d6ff392c14084fbe554cae79291bcf48eef6f6f788d5eff2c43ff",
+      "luma": {
+        "minimum": 12,
+        "maximum": 246,
+        "mean": 51.225
+      }
+    },
+    "technical": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-technical-release.png",
+      "bytes": 100056,
+      "sha256": "99d606fb90a029c6fa896d72d7740356ed8d72b04d31163b7d83f3c41ecf05bc",
+      "luma": {
+        "minimum": 8,
+        "maximum": 246,
+        "mean": 46.16
+      }
+    },
+    "interior": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-interior-release.png",
+      "bytes": 66948,
+      "sha256": "100795adae99d3419f0b3e51b60b791e6f9a0b74d1c0fe152fe6f42da8984d43",
+      "luma": {
+        "minimum": 9,
+        "maximum": 246,
+        "mean": 36.608
+      }
+    },
+    "xray": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-xray-release.png",
+      "bytes": 71011,
+      "sha256": "7d269f7696459c67488562cc257e87376d6b2eaa0e3db6a097d1f148be2c571b",
+      "luma": {
+        "minimum": 9,
+        "maximum": 246,
+        "mean": 64.774
+      }
+    },
+    "wireframe": {
+      "path": "/mnt/data/benchcad-v0.36.2-shell-wireframe-release.png",
+      "bytes": 86002,
+      "sha256": "c84684c76e59aee8aed85f67f21495edeb43fe4b0650fe1af44abc30b3cdec24",
+      "luma": {
+        "minimum": 12,
+        "maximum": 246,
+        "mean": 61.1
+      }
+    }
+  },
+  "displayMenuText": "Shaded + edges\nBest everyday shape and cavity readability\nShaded\nClean surfaces without feature-edge overlays\nTechnical\nNeutral material with high-contrast edges\nInterior inspect\nGhost outer walls and emphasize cavity corners\nX-ray inspect\nGhosted surfaces with through-body edges\nWireframe\nTriangle mesh inspection",
+  "cavityEdgeCount": 8,
+  "storedPreferences": {
+    "leftOpen": true,
+    "rightOpen": true,
+    "timelineOpen": true,
+    "outlineOpen": true,
+    "theme": "dark",
+    "mode": "maker",
+    "viewportDisplay": "interior"
+  },
+  "changedPixels": {
+    "shadedToDefaultEdges": 5838,
+    "defaultEdgesToInterior": 133570
+  },
+  "workerKinds": [
+    "geometry"
+  ],
+  "summary": {
+    "passed": 30,
+    "failed": 0,
+    "total": 30
+  },
+  "failedChecks": [],
+  "pass": true
+}
