@@ -48,3 +48,1012 @@
 .parameter-manager-dialog{width:min(1180px,calc(100vw - 2rem))!important;max-width:none!important;max-height:min(860px,calc(100vh - 2rem));overflow:hidden}.parameter-binding-dialog{width:min(620px,calc(100vw - 2rem))!important;max-width:none!important}.parameter-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}.parameter-summary section{display:flex;min-height:78px;flex-direction:column;gap:.15rem;padding:.7rem .8rem;border:1px solid var(--border);border-radius:.35rem;background:color-mix(in srgb,var(--card) 95%,transparent)}.parameter-summary section.healthy{border-left:3px solid #61c98d}.parameter-summary section.warning{border-left:3px solid #e7aa55}.parameter-summary section.neutral{border-left:3px solid var(--primary)}.parameter-summary small{color:var(--muted-foreground);font:700 .62rem/1.2 var(--font-mono);letter-spacing:.08em}.parameter-summary strong{font:800 1.35rem/1.15 var(--font-mono)}.parameter-summary span{color:var(--muted-foreground);font-size:.74rem}.parameter-help-line{display:flex;flex-wrap:wrap;gap:.4rem}.parameter-help-line code{padding:.3rem .45rem;border:1px solid var(--border);border-radius:.25rem;background:color-mix(in srgb,var(--muted) 70%,transparent);color:var(--muted-foreground);font-size:.68rem}.parameter-table{min-height:150px;max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:.4rem;background:color-mix(in srgb,var(--card) 96%,transparent)}.parameter-table-head,.parameter-row{display:grid;grid-template-columns:minmax(110px,.85fr) minmax(180px,1.5fr) 110px minmax(105px,.8fr) minmax(150px,1.15fr) 34px;gap:.45rem;align-items:start;padding:.48rem .55rem}.parameter-table-head{position:sticky;z-index:2;top:0;border-bottom:1px solid var(--border);background:var(--card);color:var(--muted-foreground);font:700 .65rem/1.2 var(--font-mono);letter-spacing:.06em;text-transform:uppercase}.parameter-row{border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}.parameter-row:last-child{border-bottom:0}.parameter-row.status-error{background:color-mix(in srgb,var(--destructive) 7%,transparent)}.parameter-row input,.parameter-row select,.binding-expression-input input{width:100%;height:2rem;padding:.35rem .48rem;border:1px solid var(--border);border-radius:.28rem;background:var(--background);color:var(--foreground);font-size:.78rem;outline:none}.parameter-row input:focus,.parameter-row select:focus,.binding-expression-input input:focus{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 18%,transparent)}.parameter-row input.invalid{border-color:var(--destructive)}.parameter-row label small{display:block;margin-top:.2rem;color:var(--destructive);font-size:.62rem;line-height:1.2}.parameter-row output{display:flex;min-height:2rem;flex-direction:column;justify-content:center;padding:.25rem .4rem;border:1px solid var(--border);border-radius:.28rem;background:color-mix(in srgb,var(--muted) 70%,transparent);font:700 .76rem/1.15 var(--font-mono)}.parameter-row output.resolved{color:#67d39a}.parameter-row output.error{color:var(--destructive)}.parameter-row output small{margin-top:.14rem;color:var(--muted-foreground);font-size:.58rem}.parameter-delete{display:grid;place-items:center;width:2rem;height:2rem;border:1px solid var(--border);border-radius:.28rem;background:transparent;color:var(--muted-foreground);cursor:pointer}.parameter-delete svg{width:.85rem}.parameter-delete:hover:not(:disabled){border-color:var(--destructive);color:var(--destructive)}.parameter-delete:disabled{opacity:.28;cursor:not-allowed}.parameter-empty{display:flex;min-height:145px;align-items:center;justify-content:center;gap:.75rem;color:var(--muted-foreground)}.parameter-empty svg{width:2rem;height:2rem}.parameter-empty span{display:flex;flex-direction:column;font-size:.78rem}.parameter-empty strong{color:var(--foreground)}.add-parameter-button,.create-parameter-inline{display:flex;align-items:center;justify-content:center;gap:.4rem;width:max-content;padding:.48rem .72rem;border:1px dashed var(--primary);border-radius:.32rem;background:color-mix(in srgb,var(--primary) 7%,transparent);color:var(--primary);font-weight:700;cursor:pointer}.add-parameter-button svg,.create-parameter-inline svg{width:.9rem;height:.9rem}
 .binding-target-card{display:flex;align-items:center;justify-content:space-between;padding:.75rem .85rem;border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:.35rem;background:color-mix(in srgb,var(--card) 96%,transparent)}.binding-target-card span{display:flex;flex-direction:column}.binding-target-card small{color:var(--muted-foreground);font:700 .62rem/1.2 var(--font-mono);letter-spacing:.08em}.binding-target-card strong{font-size:.85rem}.binding-target-card code{color:var(--primary);font-weight:800}.binding-expression-input{display:flex;flex-direction:column;gap:.3rem;color:var(--muted-foreground);font:700 .68rem/1.2 var(--font-mono);letter-spacing:.05em;text-transform:uppercase}.binding-expression-input input{height:2.65rem;font:700 .93rem/1.2 var(--font-mono);text-transform:none;letter-spacing:0}.parameter-chip-list{display:flex;flex-wrap:wrap;gap:.35rem}.parameter-chip-list button{display:flex;align-items:center;gap:.35rem;padding:.3rem .45rem;border:1px solid var(--border);border-radius:999px;background:color-mix(in srgb,var(--muted) 65%,transparent);color:var(--foreground);font:700 .7rem/1 var(--font-mono);cursor:pointer}.parameter-chip-list button:hover:not(:disabled){border-color:var(--primary);color:var(--primary)}.parameter-chip-list button:disabled{opacity:.35}.parameter-chip-list small{color:var(--muted-foreground);font-size:.58rem}.binding-preview{display:flex;align-items:center;gap:.65rem;padding:.65rem .75rem;border:1px solid var(--border);border-radius:.35rem}.binding-preview.valid{border-color:color-mix(in srgb,#61c98d 55%,var(--border));background:color-mix(in srgb,#61c98d 7%,transparent)}.binding-preview.error{border-color:color-mix(in srgb,var(--destructive) 55%,var(--border));background:color-mix(in srgb,var(--destructive) 7%,transparent)}.binding-preview svg{width:1.05rem}.binding-preview.valid svg{color:#61c98d}.binding-preview.error svg{color:var(--destructive)}.binding-preview span{display:flex;flex-direction:column;color:var(--muted-foreground);font-size:.74rem}.binding-preview strong{color:var(--foreground)}
 @media(max-width:900px){.parameter-manager-dialog{max-height:calc(100vh - 1rem)}.parameter-summary{grid-template-columns:1fr}.parameter-table-head{display:none}.parameter-row{grid-template-columns:1fr 1fr;gap:.4rem}.parameter-row>label:nth-child(2),.parameter-row>input:nth-last-child(2){grid-column:1/-1}.parameter-row output{min-height:2rem}.parameter-delete{justify-self:end}.parameter-help-line{display:none}}@media(max-width:560px){.parameter-row{grid-template-columns:1fr}.parameter-row>*{grid-column:1!important}.parameter-delete{justify-self:stretch;width:100%}.parameter-command span{display:none}}
+
+/* BENCHCAD v0.33.0 · Batch 28B depth-aware projection engine */
+.drawing-warning{stroke:#e46559!important;stroke-width:.55!important;stroke-dasharray:2 1!important;fill:none}.drawing-warning-text{fill:#bb241a!important;font-weight:800}.drawing-caution{border-left:3px solid #b98235;background:#302719;padding:8px!important;color:#ffd48d!important}.drawing-integrity-banner{display:flex;align-items:flex-start;gap:9px;padding:8px 12px;border-bottom:1px solid var(--bench-border);background:#2b261a;color:#f5d38d;font-size:9px;line-height:1.45}.drawing-integrity-banner.error{background:#301b1d;color:#ffacb0;border-color:#7e4346}.drawing-integrity-banner svg{width:16px;height:16px;flex:0 0 auto}.drawing-integrity-banner span{display:flex;min-width:0;flex-direction:column}.drawing-integrity-banner strong{letter-spacing:.05em;text-transform:uppercase}.drawing-canvas-meta em{display:flex;align-items:center;gap:5px}.drawing-canvas-meta em svg{width:13px;height:13px}.drawing-integrity-error{color:#ff949a!important}.drawing-integrity-warning{color:#ffd081!important}.drawing-integrity-ready{color:#9edc9b!important}.drawing-source-status{display:grid;gap:3px;padding:9px;border:1px solid var(--bench-border);border-left-width:4px;background:#172023}.drawing-source-status.resolved{border-left-color:#65a96c}.drawing-source-status.partial{border-left-color:#d29b45}.drawing-source-status.unresolved{border-left-color:#cf6268;background:#291b1d}.drawing-source-status strong{font-size:10px}.drawing-source-status span,.drawing-source-status small{color:var(--bench-muted);font:8px/1.4 ui-monospace,monospace}.drawing-source-status.unresolved small,.drawing-source-status.partial small{color:#f5b1a9}.drawing-repair-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.drawing-repair-actions button,.drawing-unsupported-card button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:30px;border:1px solid var(--bench-border);background:#1b272a;padding:5px;color:var(--bench-text);font-size:8px;cursor:pointer}.drawing-repair-actions button:hover,.drawing-unsupported-card button:hover{border-color:var(--bench-cyan);color:var(--bench-cyan)}.drawing-repair-actions svg{width:13px}.drawing-unsupported-card{display:grid;gap:7px;padding:10px;border:1px solid #87643a;border-left:4px solid #d29b45;background:#2e2519}.drawing-unsupported-card>svg{width:18px;color:#ffd081}.drawing-unsupported-card>strong{color:#ffd081;text-transform:uppercase;letter-spacing:.08em;font-size:9px}.drawing-unsupported-card p{font-size:9px;line-height:1.45}.drawing-unsupported-card small{color:var(--bench-muted);font:8px ui-monospace,monospace}.drawing-unsupported-card>div{display:grid;gap:6px}.drawing-schema-card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 10px;padding:9px;border:1px solid var(--bench-border);border-left:4px solid var(--bench-cyan);background:#172225}.drawing-schema-card span{color:var(--bench-muted);letter-spacing:.1em;font:800 8px ui-monospace,monospace}.drawing-schema-card strong{grid-row:1/3;grid-column:2;font:800 22px ui-monospace,monospace;color:var(--bench-cyan)}.drawing-schema-card small{color:var(--bench-muted);font:8px ui-monospace,monospace}.drawing-outline button svg:last-child{flex:0 0 auto}.drawing-outline button:has(>svg:last-child:first-child){color:#ffd081}.drawing-fit:disabled{opacity:.35;cursor:not-allowed}.drawing-paper .drawing-warning-text{paint-order:stroke;stroke:#fff;stroke-width:.7px}.theme-light .drawing-integrity-banner{background:#fff2d8;color:#6f4b12}.theme-light .drawing-integrity-banner.error{background:#ffe4e4;color:#8f1e25}.theme-light .drawing-source-status{background:#f5f0e6}.theme-light .drawing-source-status.unresolved{background:#ffe8e8}.theme-light .drawing-caution,.theme-light .drawing-unsupported-card{background:#fff1d7;color:#654617!important}.theme-light .drawing-repair-actions button,.theme-light .drawing-unsupported-card button,.theme-light .drawing-schema-card{background:#f5f0e6}
+@media(width<=920px){.drawing-repair-actions{grid-template-columns:1fr}.drawing-integrity-banner{font-size:8px}}
+
+/* Batch 28B projected-line conventions */
+.drawing-tangent{stroke:#4d555d!important;stroke-width:.2px!important}.drawing-cutting{stroke:#0b1115!important;stroke-width:.65px!important;stroke-dasharray:8 2 1.5 2!important}.theme-light .drawing-tangent{stroke:#6c747b!important}.theme-light .drawing-cutting{stroke:#111820!important}
+
+/* Batch 28B projection diagnostics and relationship controls */
+.drawing-section{stroke:#111820!important;stroke-width:.72px!important}
+.drawing-hatch{stroke:#6f777d!important;stroke-width:.18px!important}
+.drawing-projection-stats{display:grid;grid-template-columns:1fr 1fr;gap:5px 8px;padding:9px;border:1px solid var(--bench-border);border-left:4px solid #5ba3b6;background:#162225;color:var(--bench-muted);font:8px/1.35 ui-monospace,monospace}
+.drawing-projection-stats span{display:flex;justify-content:space-between;gap:7px;border-bottom:1px dotted color-mix(in srgb,var(--bench-border) 72%,transparent);padding-bottom:3px}
+.drawing-projection-stats b{color:var(--bench-text);font-size:9px}
+.drawing-projection-stats small{grid-column:1/-1;color:#75b7c7;text-align:right}
+.drawing-toolbar-select select:disabled,.drawing-inspector input:disabled,.drawing-inspector select:disabled{opacity:.46;cursor:not-allowed;background:color-mix(in srgb,var(--bench-panel) 80%,#000)}
+.drawing-inspector option:disabled{color:#6f7476}
+.theme-light .drawing-section{stroke:#111820!important}
+.theme-light .drawing-hatch{stroke:#6a7278!important}
+.theme-light .drawing-projection-stats{background:#f2eee5;color:#5d666b}
+.theme-light .drawing-projection-stats b{color:#172024}
+.theme-light .drawing-projection-stats small{color:#327487}
+@media(width<=920px){.drawing-projection-stats{grid-template-columns:1fr}}
+
+/* BENCHCAD v0.35.0 — Batch 28D associative Detail views */
+.drawing-reference-tools {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding: 0.32rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--panel-soft) 86%, transparent);
+}
+
+.drawing-reference-tools label {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 9rem;
+  color: var(--muted-strong);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.drawing-reference-tools select {
+  min-height: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 0.42rem;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.25rem 0.42rem;
+  font: inherit;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.drawing-reference-status {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.65rem;
+  padding: 0.62rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--panel-soft);
+}
+
+.drawing-reference-status strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+
+.drawing-reference-status span {
+  color: var(--muted-strong);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.drawing-reference-status--valid {
+  border-color: color-mix(in srgb, var(--success) 55%, var(--line));
+}
+
+.drawing-reference-status--repairable {
+  border-color: color-mix(in srgb, var(--warning) 70%, var(--line));
+  background: color-mix(in srgb, var(--warning) 10%, var(--panel-soft));
+}
+
+.drawing-reference-status--unresolved,
+.drawing-reference-status--unsupported {
+  border-color: color-mix(in srgb, var(--danger) 64%, var(--line));
+  background: color-mix(in srgb, var(--danger) 9%, var(--panel-soft));
+}
+
+.drawing-reference-list {
+  display: grid;
+  gap: 0.38rem;
+  margin-bottom: 0.7rem;
+}
+
+.drawing-reference-list__row {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.46rem 0.52rem;
+  border: 1px solid var(--line);
+  border-radius: 0.42rem;
+  background: var(--panel);
+}
+
+.drawing-reference-list__row span {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.drawing-reference-list__row small {
+  color: var(--muted-strong);
+  font-size: 0.68rem;
+}
+
+.drawing-entity-overlays {
+  pointer-events: all;
+}
+
+@media (max-width: 1100px) {
+  .drawing-reference-tools {
+    width: 100%;
+  }
+}
+
+/* Batch 28C — associative projected-geometry references */
+.drawing-reference-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid rgba(151, 171, 179, 0.22);
+  border-radius: 7px;
+  background: rgba(7, 17, 21, 0.72);
+}
+
+.drawing-reference-tools label {
+  display: grid;
+  gap: 2px;
+}
+
+.drawing-reference-tools label > span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+  color: var(--text-3);
+}
+
+.drawing-reference-tools select {
+  min-width: 104px;
+  height: 28px;
+  padding: 2px 24px 2px 7px;
+  border: 1px solid rgba(151, 171, 179, 0.32);
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text-1);
+  font-size: 10px;
+}
+
+.drawing-reference-tools label:nth-child(2) select {
+  min-width: 142px;
+}
+
+.drawing-entity-overlays {
+  pointer-events: none;
+}
+
+.drawing-entity-hit {
+  pointer-events: all;
+  cursor: crosshair;
+  vector-effect: non-scaling-stroke;
+  transition: stroke-width 100ms ease, opacity 100ms ease, fill 100ms ease;
+}
+
+line.drawing-entity-hit {
+  stroke: rgba(55, 205, 153, 0.62);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  fill: none;
+}
+
+circle.drawing-entity-hit,
+.drawing-entity-hit circle {
+  stroke: rgba(55, 205, 153, 0.82);
+  stroke-width: 0.9;
+  fill: rgba(55, 205, 153, 0.12);
+}
+
+.drawing-entity-hit line {
+  stroke: rgba(55, 205, 153, 0.82);
+  stroke-width: 0.9;
+}
+
+.drawing-entity-hit:hover,
+.drawing-entity-hit.selected {
+  stroke: #ffe98e;
+  opacity: 1;
+}
+
+line.drawing-entity-hit:hover,
+line.drawing-entity-hit.selected {
+  stroke-width: 3.5;
+}
+
+circle.drawing-entity-hit:hover,
+circle.drawing-entity-hit.selected,
+.drawing-entity-hit:hover circle,
+.drawing-entity-hit.selected circle {
+  stroke: #ffe98e;
+  fill: rgba(255, 233, 142, 0.26);
+}
+
+.drawing-entity-hit:hover line,
+.drawing-entity-hit.selected line {
+  stroke: #ffe98e;
+}
+
+.drawing-reference-status {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(151, 171, 179, 0.23);
+  border-radius: 7px;
+  background: rgba(10, 20, 24, 0.74);
+}
+
+.drawing-reference-status > strong {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--text-2);
+}
+
+.drawing-reference-status p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.drawing-reference-status.valid {
+  border-color: rgba(65, 194, 129, 0.52);
+}
+
+.drawing-reference-status.repairable {
+  border-color: rgba(244, 184, 76, 0.62);
+  background: rgba(62, 43, 10, 0.22);
+}
+
+.drawing-reference-status.unresolved,
+.drawing-reference-status.unsupported {
+  border-color: rgba(235, 105, 92, 0.58);
+  background: rgba(65, 20, 18, 0.22);
+}
+
+.drawing-reference-list {
+  display: grid;
+  gap: 5px;
+}
+
+.drawing-reference-list button,
+.drawing-reference-list.static > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid rgba(151, 171, 179, 0.2);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+}
+
+.drawing-reference-list button:hover {
+  border-color: rgba(255, 233, 142, 0.58);
+}
+
+.drawing-reference-list span {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.drawing-reference-list small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+@media (max-width: 980px) {
+  .drawing-reference-tools {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .drawing-reference-tools label {
+    flex: 1 1 120px;
+  }
+
+  .drawing-reference-tools select,
+  .drawing-reference-tools label:nth-child(2) select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+
+/* BENCHCAD v0.35.0 — Batch 28D true Detail views and drawing-output qualification */
+.drawing-detail{
+  stroke:#315c78!important;
+  stroke-width:.4px!important;
+  stroke-dasharray:6 1.5!important;
+  stroke-linecap:round;
+  fill:none;
+}
+.drawing-paper .drawing-detail{vector-effect:non-scaling-stroke}
+.drawing-layout-warning{
+  display:grid;
+  gap:3px;
+  padding:8px 9px;
+  border:1px solid color-mix(in srgb,#d29b45 65%,var(--bench-border));
+  border-left:4px solid #d29b45;
+  background:color-mix(in srgb,#d29b45 10%,var(--bench-panel));
+  color:var(--bench-text);
+  font:8px/1.45 ui-monospace,monospace;
+}
+.drawing-layout-warning strong{color:#ffd081;letter-spacing:.08em;text-transform:uppercase}
+.drawing-detail-summary{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:3px 10px;
+  padding:9px;
+  border:1px solid var(--bench-border);
+  border-left:4px solid #315c78;
+  background:#172225;
+  font:8px/1.4 ui-monospace,monospace;
+}
+.drawing-detail-summary strong{color:#86c4d7}
+.drawing-detail-summary small{grid-column:1/-1;color:var(--bench-muted)}
+.theme-light .drawing-detail{stroke:#315c78!important}
+.theme-light .drawing-layout-warning{background:#fff4df;color:#604816}
+.theme-light .drawing-layout-warning strong{color:#7a5313}
+.theme-light .drawing-detail-summary{background:#eef5f6}
+.theme-light .drawing-detail-summary strong{color:#245f70}
+
+
+/* BENCHCAD v0.35.0 — Batch 28D Detail views and drawing qualification */
+.drawing-detail {
+  stroke: #315d78 !important;
+  stroke-width: .34px !important;
+  stroke-dasharray: 7 1.5 1 1.5 !important;
+  fill: none;
+}
+.drawing-layout-summary {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--bench-border, rgba(151,171,179,.28));
+  border-left: 4px solid #d29b45;
+  background: #262116;
+  color: #f3d594;
+  font: 8px/1.45 ui-monospace, monospace;
+}
+.drawing-layout-summary.ready { border-left-color: #65a96c; background: #17231b; color: #a9dfad; }
+.drawing-layout-summary strong { text-transform: uppercase; letter-spacing: .08em; }
+.theme-light .drawing-detail { stroke: #234d67 !important; }
+.theme-light .drawing-layout-summary { background: #fff4dc; color: #6a4a17; }
+.theme-light .drawing-layout-summary.ready { background: #edf7ee; color: #285b30; }
+
+/* BENCHCAD v0.35.0 · Batch 28D Detail and drawing-release diagnostics */
+.drawing-issue-list{display:grid;gap:6px;padding:9px;border:1px solid var(--bench-border);border-left:4px solid #d29b45;background:#211f1a}.drawing-issue-list>strong{color:#ffd081;font:800 8px/1.25 ui-monospace,monospace;letter-spacing:.1em}.drawing-issue-list>div{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;padding:6px;border:1px solid color-mix(in srgb,var(--bench-border) 78%,transparent);background:#172023}.drawing-issue-list>div span{grid-row:1/3;align-self:start;padding:2px 4px;border-radius:2px;background:#5f481f;color:#ffe3aa;font:800 7px/1.2 ui-monospace,monospace}.drawing-issue-list>div.blocking span{background:#742d34;color:#ffd5d7}.drawing-issue-list>div b{color:var(--bench-text);font:800 8px/1.25 ui-monospace,monospace;letter-spacing:.04em}.drawing-issue-list>div small{color:var(--bench-muted);font:8px/1.35 ui-monospace,monospace}.drawing-issue-list.ready{border-left-color:#65a96c;background:#17231d}.drawing-issue-list.ready>strong{color:#a8e1aa}.drawing-issue-list.ready p{color:var(--bench-muted);font:8px/1.4 ui-monospace,monospace}.theme-light .drawing-issue-list{background:#fff4df}.theme-light .drawing-issue-list>div{background:#f7f2e8}.theme-light .drawing-issue-list.ready{background:#eaf6eb}
+
+/* BENCHCAD v0.35.1 — lower-left assembly summary and timeline alignment repair */
+.timeline-topline{
+  grid-template-columns:var(--left-w) minmax(0,1fr) auto;
+}
+.object-outline{
+  flex:0 0 var(--left-w);
+  width:var(--left-w);
+  min-width:0;
+}
+.timeline-title{min-width:0;overflow:hidden;}
+.timeline-title .eyebrow,
+.timeline-title strong{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.playback-controls{min-width:max-content;}
+.outline-toggle.assembly-summary-toggle{
+  display:grid;
+  grid-template-columns:20px repeat(3,minmax(0,1fr));
+  align-items:stretch;
+  gap:0;
+  min-width:0;
+  padding:0 5px 0 3px;
+  overflow:hidden;
+  color:var(--bench-text);
+  font-size:inherit;
+  letter-spacing:normal;
+  text-align:center;
+}
+.outline-toggle.assembly-summary-toggle:hover{
+  background:color-mix(in srgb,var(--bench-cyan) 6%,transparent);
+}
+.outline-toggle.assembly-summary-toggle:focus-visible{
+  outline:2px solid var(--bench-cyan);
+  outline-offset:-2px;
+}
+.outline-toggle.assembly-summary-toggle>svg{
+  align-self:center;
+  justify-self:center;
+  width:13px;
+  height:13px;
+  margin:0;
+}
+.outline-toggle.assembly-summary-toggle .assembly-summary-stat{
+  align-self:stretch;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  min-width:0;
+  margin-left:0;
+  border-left:1px solid color-mix(in srgb,var(--bench-border) 78%,transparent);
+  line-height:1;
+}
+.outline-toggle.assembly-summary-toggle .assembly-summary-stat small{
+  max-width:100%;
+  overflow:hidden;
+  color:var(--bench-muted);
+  font:700 6.5px/1 ui-monospace,monospace;
+  letter-spacing:.035em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.outline-toggle.assembly-summary-toggle .assembly-summary-stat strong{
+  color:var(--bench-text);
+  font:800 11px/1 ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:0;
+}
+.theme-light .outline-toggle.assembly-summary-toggle:hover{
+  background:color-mix(in srgb,var(--bench-cyan) 10%,transparent);
+}
+
+/* BENCHCAD v0.36.0 — overall interface consolidation */
+.benchcad{
+  --command-h:54px;
+  --timeline-h:186px;
+  --left-w:244px;
+  --right-w:292px;
+}
+
+/* Top command bar: retain the primary workflow and consolidate utilities. */
+.command-bar{
+  gap:3px;
+  padding:0 8px;
+  background:linear-gradient(180deg,#232c2f 0%,#192124 100%);
+  box-shadow:0 2px 12px #0007;
+}
+.brand{
+  min-width:190px;
+  gap:8px;
+  padding-right:7px;
+}
+.brand-mark{width:29px;height:29px;}
+.brand>span:last-child{font-size:15px;}
+.brand small{margin-top:3px;font-size:7px;letter-spacing:.12em;}
+.command{
+  min-width:42px;
+  height:38px;
+  border-radius:5px;
+  padding:3px 6px;
+}
+.command.labeled{min-width:72px;}
+.command.icon-command{width:34px;min-width:34px;height:34px;}
+.command-divider{height:26px;margin:0 3px;}
+.workspace-switch{height:34px;padding:2px;}
+.workspace-switch button{height:28px;padding:0 7px;}
+.mode-switch{height:31px;margin-left:2px;}
+.mode-switch button{padding:0 8px;font-size:8px;}
+.units-select{height:31px!important;min-width:58px;}
+.active-component-chip{height:33px;max-width:156px;padding:0 8px;}
+.active-component-chip>span{font-size:8.5px;}
+.parameter-command{min-width:74px!important;}
+.save-state{gap:6px;padding:0 6px;font-size:8px;}
+.version{padding:0 3px;font-size:8px;}
+.utility-command.is-on{
+  color:var(--bench-cyan);
+  border-color:color-mix(in srgb,var(--bench-cyan) 65%,var(--bench-border));
+  background:color-mix(in srgb,var(--bench-cyan) 12%,transparent);
+}
+.utility-menu{min-width:228px!important;}
+.utility-menu [data-slot=dropdown-menu-item]{
+  min-height:34px;
+  gap:9px;
+  font-size:10px;
+}
+.utility-menu [data-slot=dropdown-menu-item] svg{
+  width:14px;
+  height:14px;
+  color:var(--bench-cyan);
+  flex:0 0 auto;
+}
+
+/* Side panels: clearer hierarchy and larger, calmer controls. */
+.panel-heading{
+  position:sticky;
+  top:0;
+  z-index:3;
+  flex-basis:52px;
+  height:52px;
+  padding:8px 10px 7px 13px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--bench-panel-2) 82%,transparent),var(--bench-panel));
+}
+.panel-heading h2{font-size:14px;line-height:1.15;}
+.eyebrow{letter-spacing:.095em;}
+.panel-heading .tiny-button{width:30px;height:30px;}
+.shape-search{height:36px;margin:9px 10px 8px;}
+.shape-search input{height:36px;border-radius:4px;font-size:11px;}
+.shape-search>svg{top:10px;}
+.shape-scroll{
+  display:flex;
+  flex-direction:column;
+  padding:0 10px 8px;
+  scrollbar-gutter:stable;
+}
+.compact-groups{
+  order:-1;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:7px;
+  padding:2px 0 9px;
+  border-bottom:1px solid color-mix(in srgb,var(--bench-border) 70%,transparent);
+}
+.compact-groups button{
+  position:relative;
+  width:auto;
+  min-width:0;
+  height:52px;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+  border:1px solid color-mix(in srgb,var(--bench-border) 70%,transparent);
+  border-radius:4px;
+  padding:5px 3px;
+  text-align:center;
+  font-size:7px;
+  line-height:1.15;
+}
+.compact-groups button svg{width:15px;height:15px;}
+.compact-groups button span{
+  position:absolute;
+  top:4px;
+  right:5px;
+  margin:0;
+  color:var(--bench-muted);
+  font:700 7px/1 ui-monospace,monospace;
+}
+.compact-groups button.active{box-shadow:inset 0 2px var(--bench-cyan);}
+.shape-group{padding:5px 0 12px;}
+.shape-group h3{margin:4px 0 8px;font-size:8px;}
+.shape-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.shape-card{
+  height:79px;
+  gap:7px;
+  border-radius:5px;
+  padding:8px 4px 5px;
+  font-size:8.5px;
+}
+.shape-card:hover{transform:translateY(-1px);}
+.shape-glyph{width:34px;height:34px;}
+.shape-glyph svg{width:28px;height:28px;}
+.panel-tools{height:42px;}
+.panel-tools button{font-size:8px;}
+
+/* Modeling toolbar: grouped controls with an explicit, visible horizontal scroll path. */
+.model-toolbar{
+  flex-basis:46px;
+  height:46px;
+  gap:6px;
+  padding:6px 9px 5px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:#58777d #11191b;
+  scroll-snap-type:x proximity;
+}
+.model-toolbar::-webkit-scrollbar,
+.drawing-toolbar::-webkit-scrollbar{height:6px;}
+.model-toolbar::-webkit-scrollbar-track,
+.drawing-toolbar::-webkit-scrollbar-track{background:#11191b;}
+.model-toolbar::-webkit-scrollbar-thumb,
+.drawing-toolbar::-webkit-scrollbar-thumb{background:#58777d;border-radius:999px;}
+.model-toolbar>*{scroll-snap-align:start;}
+.tool-cluster,.topology-filter,.snap-control{height:32px;}
+.tool-cluster .tiny-button,.snap-control .tiny-button{height:30px;width:30px;}
+.tiny-button{width:30px;height:30px;}
+.tiny-button svg{width:14px;height:14px;}
+.model-tool{height:32px;min-height:32px;padding:0 8px;font-size:8px;}
+.snap-control select{height:30px;width:51px;}
+.topology-filter button{min-width:39px;}
+.view-tool-cluster{box-shadow:0 0 0 1px color-mix(in srgb,var(--bench-cyan) 9%,transparent);}
+.toolbar-flex{min-width:8px;}
+
+/* Viewport overlays show essential state first; deep counts remain in the tooltip. */
+.viewport-badge{
+  top:10px;
+  left:10px;
+  padding:6px 8px;
+  border-radius:4px;
+  background:color-mix(in srgb,#10181b 90%,transparent);
+}
+.viewport-stats{
+  right:10px;
+  bottom:10px;
+  padding:5px 7px;
+  border:1px solid color-mix(in srgb,var(--bench-border) 58%,transparent);
+  border-radius:3px;
+  background:color-mix(in srgb,#10181b 88%,transparent);
+}
+.workplane-readout{
+  top:42px;
+  left:10px;
+  height:29px;
+  max-width:210px;
+  padding:0 8px;
+}
+.workplane-readout span{font-size:6px;}
+
+/* Inspector: reduce visual noise while improving scanability. */
+.inspector-scroll{scrollbar-gutter:stable;}
+.property-section{
+  padding:12px 13px;
+  border-bottom-color:color-mix(in srgb,var(--bench-border) 72%,transparent);
+}
+.section-title{min-height:24px;margin-bottom:9px;}
+.section-title h3{font-size:9.5px;letter-spacing:.065em;}
+.section-title>span{font-size:7.5px;}
+.number-field>span:first-child{font-size:8.5px;margin-bottom:5px;}
+.numeric-wrap{height:33px;border-radius:3px;}
+.numeric-wrap input{padding:0 6px;font-size:10.5px;}
+.role-toggle button{height:32px;}
+.property-section select,
+.property-section input:not([type=checkbox]),
+.property-section textarea{border-radius:3px;}
+.history-edit-notice{line-height:1.4;}
+
+/* Timeline: smaller default footprint, clearer title row, preserved component summary. */
+.timeline-topline{height:44px;}
+.timeline-title{padding-left:12px;}
+.timeline-title strong{font-size:11.5px;}
+.playback-controls{gap:3px;padding:0 6px;}
+.playback-controls .tiny-button{width:29px;height:29px;}
+.speed-select{width:56px;height:29px!important;}
+.checkpoint-button{height:29px;padding:0 7px;}
+.timeline-content{height:calc(100% - 44px);}
+.timeline-ruler{height:19px;}
+.timeline-track{height:86px;padding:8px 26px 7px 10px;}
+.origin-feature,.feature-tile{height:61px;flex-basis:82px;}
+.feature-shell{height:61px;flex-basis:82px;}
+.origin-feature{flex-basis:58px;}
+.origin-feature span,.feature-label{width:70px;}
+.marker-slider{height:24px;padding-top:7px;}
+.outline-header{height:30px;}
+.outline-list{height:calc(100% - 30px);}
+
+/* Focus mode is deliberately reversible and never mutates the model or project schema. */
+.focus-mode.workspace-model .workspace,
+.focus-mode.workspace-model.left-collapsed .workspace,
+.focus-mode.workspace-model.right-collapsed .workspace,
+.focus-mode.workspace-model.timeline-collapsed .workspace{
+  grid-template:minmax(0,1fr)/minmax(0,1fr);
+}
+.focus-mode.workspace-model .model-area{grid-area:1/1;}
+.focus-mode.workspace-model .shape-panel,
+.focus-mode.workspace-model .inspector,
+.focus-mode.workspace-model .timeline,
+.focus-mode.workspace-model .panel-reopen,
+.focus-mode.workspace-model .timeline-reopen{display:none!important;}
+.focus-mode.workspace-drawings .drawing-workspace{
+  grid-template:"toolbar" 44px "canvas" minmax(0,1fr)/minmax(0,1fr);
+}
+.focus-mode.workspace-drawings .drawing-browser,
+.focus-mode.workspace-drawings .drawing-inspector{display:none!important;}
+.focus-mode.workspace-drawings .drawing-canvas-wrap{grid-area:canvas;}
+.focus-mode .viewport-badge{opacity:.82;}
+
+/* Drawing workspace receives the same calmer hierarchy and scroll affordances. */
+.drawing-workspace{
+  grid-template:"toolbar toolbar toolbar"44px "browser canvas inspector"minmax(0,1fr)/224px minmax(0,1fr) 288px;
+}
+.drawing-toolbar{
+  gap:5px;
+  padding:5px 8px 4px;
+  scrollbar-gutter:stable;
+  scrollbar-width:thin;
+  scrollbar-color:#58777d #11191b;
+}
+.drawing-toolbar button,.drawing-back,.drawing-fit,.drawing-danger,.drawing-primary{
+  min-height:32px;
+  border-radius:4px;
+  padding:0 8px;
+}
+.drawing-toolbar-select{height:32px;border-radius:4px;}
+.drawing-toolbar-select select{height:30px;}
+.drawing-panel-heading{height:42px;padding:0 11px;font-size:8.5px;}
+.drawing-sheet-list,.drawing-outline{padding:8px;}
+.drawing-sheet-list>button{min-height:58px;border-radius:4px;}
+.drawing-inspector-scroll{height:calc(100% - 42px);padding:12px 13px;scrollbar-gutter:stable;}
+.drawing-inspector input:not([type=checkbox]),
+.drawing-inspector select,
+.drawing-inspector textarea{min-height:35px;border-radius:3px;font-size:10px;}
+.drawing-canvas-meta{height:32px;font-size:8px;}
+.drawing-canvas-wrap{grid-template-rows:32px minmax(0,1fr);}
+.drawing-paper-stage{padding:20px;}
+
+/* Light theme equivalents for newly consolidated surfaces. */
+.theme-light .command-bar{background:linear-gradient(#eeeadf,#ddd9d0);box-shadow:0 2px 10px #4f55533b;}
+.theme-light .model-toolbar,
+.theme-light .drawing-toolbar{background:#ddd9d0;}
+.theme-light .compact-groups button{background:color-mix(in srgb,var(--bench-panel-2) 68%,transparent);}
+.theme-light .viewport-badge,
+.theme-light .viewport-stats,
+.theme-light .workplane-readout{background:#f1eee7e8;color:#344244;}
+
+@media(width<=1280px){
+  .benchcad{--left-w:226px;--right-w:278px;--timeline-h:176px;}
+  .brand{min-width:172px;}
+  .brand small{display:none;}
+  .parameter-command{min-width:36px!important;width:36px;padding:0;}
+  .parameter-command span{display:none;}
+  .active-component-chip{max-width:128px;}
+  .command-divider{margin:0 2px;}
+  .shape-card{height:75px;}
+  .checkpoint-button{font-size:0;width:31px;padding:0;justify-content:center;}
+}
+
+@media(width<=1050px){
+  .benchcad{--left-w:210px;--right-w:258px;--timeline-h:166px;}
+  .brand{min-width:160px;}
+  .active-component-chip{max-width:104px;}
+  .shape-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .shape-card{height:72px;}
+  .topology-filter>span{display:none;}
+  .topology-filter button{min-width:34px;padding:0 4px;}
+  .timeline-track{height:78px;}
+  .origin-feature,.feature-tile,.feature-shell{height:56px;}
+  .drawing-workspace{grid-template-columns:206px minmax(0,1fr) 264px;}
+}
+
+@media(width<=900px) and (width>760px){
+  .benchcad{--left-w:188px;--right-w:228px;--timeline-h:154px;}
+  .command-bar{padding:0 5px;}
+  .brand{min-width:142px;}
+  .brand-mark{width:25px;height:25px;}
+  .brand>span:last-child{font-size:13px;}
+  .mode-switch{display:none;}
+  .active-component-chip{display:none;}
+  .save-state{max-width:18px;padding:0 4px;overflow:hidden;}
+  .shape-card{height:68px;font-size:8px;}
+  .compact-groups{gap:4px;}
+  .compact-groups button{height:48px;font-size:6.5px;}
+  .section-title h3{font-size:9px;}
+  .timeline-topline{height:41px;}
+  .timeline-content{height:calc(100% - 41px);}
+  .timeline-title{padding-left:9px;}
+  .timeline-title .eyebrow{display:none;}
+  .timeline-track{height:71px;padding-top:7px;}
+  .origin-feature,.feature-tile,.feature-shell{height:52px;}
+  .playback-controls .tiny-button:nth-of-type(2),
+  .playback-controls .tiny-button:nth-of-type(4){display:none;}
+  .drawing-workspace{grid-template-columns:190px minmax(0,1fr) 230px;}
+}
+
+@media(width<=760px){
+  .benchcad{--command-h:50px;--timeline-h:0px;}
+  .command-bar{gap:2px;padding:0 4px;}
+  .brand{flex:0 0 116px;min-width:116px;padding-right:3px;}
+  .brand-mark{width:25px;height:25px;}
+  .brand>span:last-child{font-size:12px;}
+  .command-bar .parameter-command,
+  .command-bar .mode-switch,
+  .command-bar .units-select,
+  .command-bar .active-component-chip,
+  .command-bar .save-state,
+  .command-bar .version,
+  .command-bar .command-divider,
+  .command-bar button[title^="Undo"],
+  .command-bar button[title^="Redo"]{display:none!important;}
+  .command-bar .utility-command{display:flex!important;}
+  .command-bar .workspace-switch{display:inline-flex!important;}
+  .workspace-switch button{width:30px;padding:0;font-size:0;}
+  .workspace-switch button svg{width:15px;height:15px;}
+  .command{width:32px;min-width:32px;height:34px;padding:0;}
+  .command.labeled,.command.file-command{width:34px;min-width:34px;font-size:0;}
+  .command.labeled svg,.command.file-command svg{width:16px;height:16px;}
+  .mobile-tabs{height:44px;}
+  .mobile-tabs button{font-size:8.5px;}
+  .workspace,.left-collapsed .workspace,.right-collapsed .workspace,.left-collapsed.right-collapsed .workspace{
+    height:calc(100dvh - var(--command-h) - 44px);
+    margin-top:44px;
+  }
+  .model-toolbar{
+    height:46px;
+    gap:5px;
+    padding:6px 8px 5px;
+    scroll-padding-left:8px;
+  }
+  .model-toolbar .toolbar-menu,.primary-create-tools .model-tool{width:31px;height:32px;}
+  .viewport-badge{top:8px;left:8px;padding:5px 6px;font-size:7px;}
+  .workplane-readout{top:37px;left:8px;max-width:175px;height:27px;}
+  .viewport-stats{right:8px;bottom:8px;font-size:7px;}
+  .mobile-shapes .shape-panel,.mobile-inspect .inspector{width:min(330px,91vw);}
+  .mobile-timeline .timeline{height:min(286px,55vh);}
+  .mobile-timeline .timeline-topline{grid-template-columns:0 minmax(0,1fr) auto;}
+  .mobile-timeline .outline-toggle.assembly-summary-toggle{display:none;}
+  .mobile-timeline .timeline-title .eyebrow{display:block;}
+  .focus-mode .mobile-tabs{display:none;}
+  .focus-mode.workspace-model .workspace,
+  .focus-mode.workspace-model.left-collapsed .workspace,
+  .focus-mode.workspace-model.right-collapsed .workspace{
+    height:calc(100dvh - var(--command-h));
+    margin-top:0;
+  }
+  .drawing-workspace{
+    grid-template:"toolbar"44px "canvas"minmax(0,1fr)/minmax(0,1fr);
+  }
+  .drawing-browser,.drawing-inspector{display:none;}
+  .drawing-canvas-wrap{grid-area:canvas;}
+  .drawing-toolbar{padding-inline:6px;}
+  .drawing-paper-stage{padding:12px;}
+}
+
+@media(width<=430px){
+  .brand{flex-basis:108px;min-width:108px;}
+  .brand-mark{width:23px;height:23px;}
+  .brand>span:last-child{font-size:11px;}
+  .viewport-stats{max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .view-orient{transform:scale(.72);}
+}
+
+/* Tablet workspace: preserve the canvas and move editing panels into deliberate drawers. */
+@media(width<=900px){
+  .mobile-tabs{
+    display:grid;
+    position:absolute;
+    z-index:35;
+    top:var(--command-h);
+    left:0;
+    right:0;
+    height:44px;
+    grid-template-columns:repeat(3,1fr);
+    border-bottom:1px solid var(--bench-border);
+    background:#1b2326;
+  }
+  .mobile-tabs button{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:0;
+    border-right:1px solid var(--bench-border);
+    background:transparent;
+    color:var(--bench-muted);
+    font-size:8.5px;
+    text-transform:uppercase;
+  }
+  .mobile-tabs button.active{
+    color:var(--bench-cyan);
+    background:#203b41;
+    box-shadow:inset 0 -2px var(--bench-cyan);
+  }
+  .mobile-tabs svg{width:14px;height:14px;}
+  .workspace,
+  .left-collapsed .workspace,
+  .right-collapsed .workspace,
+  .left-collapsed.right-collapsed .workspace,
+  .timeline-collapsed .workspace{
+    height:calc(100dvh - var(--command-h) - 44px);
+    grid-template:minmax(0,1fr)/minmax(0,1fr);
+    margin-top:44px;
+  }
+  .model-area{grid-area:1/1;}
+  .shape-panel,.inspector,.timeline{display:none;}
+  .panel-reopen,.timeline-reopen{display:none!important;}
+  .mobile-panel-scrim{
+    display:block;
+    position:absolute;
+    z-index:39;
+    inset:0;
+    border:0;
+    background:#071013b8;
+  }
+  .mobile-shapes .shape-panel,
+  .mobile-inspect .inspector{
+    display:flex;
+    position:absolute;
+    z-index:40;
+    inset:0 auto 0 0;
+    width:min(330px,91vw);
+    background:var(--bench-panel);
+    opacity:1;
+    box-shadow:15px 0 40px #000b;
+  }
+  .mobile-inspect .inspector{
+    right:0;
+    left:auto;
+    box-shadow:-15px 0 40px #000b;
+  }
+  .mobile-timeline .timeline{
+    display:block;
+    position:absolute;
+    z-index:45;
+    right:0;
+    bottom:0;
+    left:0;
+    height:min(292px,56vh);
+    background:var(--bench-panel);
+    opacity:1;
+  }
+  .mobile-timeline .timeline-topline{grid-template-columns:0 minmax(0,1fr) auto;}
+  .mobile-timeline .outline-toggle.assembly-summary-toggle{display:none;}
+  .mobile-timeline .object-outline{display:none;}
+  .mobile-timeline .timeline-title .eyebrow{display:block;}
+  .focus-mode .mobile-tabs{display:none;}
+  .focus-mode.workspace-model .workspace,
+  .focus-mode.workspace-model.left-collapsed .workspace,
+  .focus-mode.workspace-model.right-collapsed .workspace{
+    height:calc(100dvh - var(--command-h));
+    margin-top:0;
+  }
+
+  .drawing-workspace{
+    grid-template:"toolbar"44px "canvas"minmax(0,1fr) "inspector"230px/minmax(0,1fr);
+  }
+  .drawing-browser{display:none;}
+  .drawing-inspector{
+    display:block;
+    grid-area:inspector;
+    border-top:1px solid var(--bench-border);
+    border-left:0;
+  }
+  .drawing-inspector-scroll{height:calc(100% - 42px);}
+  .drawing-canvas-wrap{grid-area:canvas;}
+  .drawing-canvas-meta em{display:none;}
+  .focus-mode.workspace-drawings .drawing-workspace{
+    grid-template:"toolbar"44px "canvas"minmax(0,1fr)/minmax(0,1fr);
+  }
+  .focus-mode.workspace-drawings .drawing-inspector{display:none!important;}
+}
+
+/* Final consolidation refinements: compact status, legible narrow inspectors, and menu-based drawing commands. */
+@media(width<=1280px){
+  .save-state{
+    width:16px;
+    max-width:16px;
+    min-width:16px;
+    justify-content:center;
+    gap:0;
+    padding:0;
+    overflow:visible;
+    font-size:0;
+  }
+  .save-state .status-dot{margin:0;}
+}
+@media(width<=1180px){
+  .axis-field-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+.drawing-toolbar-menu.active{
+  color:var(--bench-cyan)!important;
+  border-color:var(--bench-cyan)!important;
+  background:color-mix(in srgb,var(--bench-cyan) 12%,#283236)!important;
+}
+.drawing-toolbar-menu svg:last-child{width:11px;height:11px;opacity:.72;}
+.drawing-command-menu{min-width:224px!important;}
+.drawing-command-menu [data-slot=dropdown-menu-item],
+.drawing-command-menu [data-slot=dropdown-menu-sub-trigger]{
+  min-height:34px;
+  gap:8px;
+  font-size:10px;
+}
+.drawing-command-menu [data-slot=dropdown-menu-item] svg,
+.drawing-command-menu [data-slot=dropdown-menu-sub-trigger] svg{
+  width:14px;
+  height:14px;
+  flex:0 0 auto;
+}
+.drawing-annotation-kinds{
+  max-height:min(430px,calc(100dvh - 24px));
+  overflow-y:auto;
+}

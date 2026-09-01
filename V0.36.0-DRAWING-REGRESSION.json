@@ -1,0 +1,83 @@
+{
+  "errors": [],
+  "console_errors": [],
+  "console_warnings": [],
+  "checks": {
+    "bundle_rendered": true,
+    "version_visible": true,
+    "wasm_geometry_ready": true,
+    "nested_geometry_worker_path": true,
+    "real_exact_mesh_reconstructed": true,
+    "toolbar_consolidated": true,
+    "first_sheet_rendered": true,
+    "drawing_schema_5": true,
+    "front_view_exact_sources": true,
+    "detail_button_enabled": true,
+    "detail_inspector_visible": true,
+    "detail_parent_linked": true,
+    "detail_default_circle": true,
+    "detail_independent_scale": true,
+    "parent_source_callout_rendered": true,
+    "detail_caption_rendered": true,
+    "detail_export_ready": true,
+    "rectangular_crop_control_operates": true,
+    "rectangular_detail_remains_resolved": true,
+    "layout_overflow_diagnostic_visible": true,
+    "layout_warning_is_advisory": true,
+    "layout_warning_clears_after_reposition": true,
+    "final_detail_integrity_ready": true,
+    "svg_download_valid": true,
+    "dxf_download_valid": true,
+    "pdf_download_valid": true,
+    "cross_format_signatures_match": true,
+    "screenshot_created": true
+  },
+  "worker_urls": [
+    "https://benchcad.local/projects/benchcad/assets/geometry.worker-BwAX3YFX.js"
+  ],
+  "geometry": {
+    "issues": [],
+    "results": [
+      {
+        "targetId": "body-aas1kvnvao8",
+        "vertexLength": 504,
+        "indexLength": 1020,
+        "triangles": 340,
+        "consumedIds": [
+          "body-b6dbi02giy4",
+          "body-rkxtgjbgjd"
+        ]
+      }
+    ]
+  },
+  "downloads": {
+    "SVG": {
+      "filename": "mounting-plate-sheet-1.svg",
+      "bytes": 22483,
+      "path": "/mnt/data/benchcad-v0.36.0-regression.svg",
+      "sha256": "9b3a924fdfd4c3b74046093cd41cf6e1b44c6a9900850e5f815aa41b58c86111",
+      "signature": "4dd91b27"
+    },
+    "DXF": {
+      "filename": "mounting-plate-sheet-1.dxf",
+      "bytes": 19682,
+      "path": "/mnt/data/benchcad-v0.36.0-regression.dxf",
+      "sha256": "77d7715eac9a73c0ca262569ca8c4c9e91ab2a5c607238bf5f6724be0ab26061",
+      "signature": "4dd91b27"
+    },
+    "PDF": {
+      "filename": "mounting-plate-sheet-1.pdf",
+      "bytes": 13408,
+      "path": "/mnt/data/benchcad-v0.36.0-regression.pdf",
+      "sha256": "ee3ea403ef6c126c8fd7a55e1c0d1ee987423dc3ae28aadd625d0eb422a93912",
+      "signature": "4dd91b27"
+    }
+  },
+  "signatures": {
+    "SVG": "4dd91b27",
+    "DXF": "4dd91b27",
+    "PDF": "4dd91b27"
+  },
+  "hard_console_errors": [],
+  "pass": true
+}

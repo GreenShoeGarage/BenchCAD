@@ -1,4 +1,4 @@
-BENCHCAD 0.31.0
-Batch 27
-Project schema 5
-Static release
+BENCHCAD 0.36.0
+Project schema 9
+Drawing schema 5
+Release: UI/UX consolidation

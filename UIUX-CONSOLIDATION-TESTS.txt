@@ -1,0 +1,43 @@
+BENCHCAD v0.36.0 UI/UX CONSOLIDATION VALIDATION
+
+RESULT: PASS
+
+Responsive UI/UX browser smoke: 33 / 33 passed
+- Command-bar consolidation
+- Viewport grid command relocation
+- Shape shelf and two-column primitive layout
+- Three-cell assembly summary containment
+- Reduced timeline height
+- Canvas Focus and Shift+F exit
+- Contained tool scrolling and no page overflow at 1280, 1024, 820, and 390 px
+- Consolidated Views / Annotate / Export drawing menus
+- Model and drawing focus layouts
+- Browser-local preference serialization
+- No application or console errors
+
+Actual geometry worker smoke: 7 / 7 passed
+- Production bundle rendered
+- Real geometry worker started
+- Manifold WebAssembly reached READY
+- Reconstructed model meshes reached the Three.js viewport
+- Manufacturing Readiness opened against reconstructed geometry
+
+Static application-shell validation: 28 / 28 passed
+- Root-level entry and relative runtime paths
+- Nested /projects/benchcad/ URL resolution
+- Complete service-worker shell and manifest coverage
+- Application, worker, and service-worker syntax
+- Project schema 9 and drawing schema 5
+
+Technical Drawings 2.0 regression: 28 / 28 passed
+- Exact mesh view generation
+- Parent-linked Detail views
+- Circular and rectangular crops
+- Layout diagnostics
+- SVG, DXF, and PDF downloads
+- Matching primitive signature across all three formats: 4dd91b27
+
+Known non-blocking warning:
+- Three.js maps deprecated PCFSoftShadowMap to PCFShadowMap.
+
+The release environment blocks direct navigation to local HTTP and file URLs. Nested static deployment is therefore verified structurally through relative URL resolution, service-worker application-shell coverage, syntax checks, archive inspection, and production browser runs using the same packaged bundle, workers, and WebAssembly bytes.

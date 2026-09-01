@@ -1,0 +1,220 @@
+{
+  "suite": "BENCHCAD v0.36.0 UI/UX consolidation browser smoke",
+  "checks": [
+    {
+      "name": "version visible",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "workspace root version class ready",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no top-level grid command",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "grid moved into modeling toolbar",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "single consolidated utility menu",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "workspace preferences are written locally",
+      "pass": true,
+      "detail": "{\"leftOpen\": true, \"rightOpen\": true, \"timelineOpen\": true, \"outlineOpen\": true, \"theme\": \"dark\", \"mode\": \"maker\"}"
+    },
+    {
+      "name": "assembly summary has three cells",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "assembly summary cells do not overlap",
+      "pass": true,
+      "detail": "{\"toggle\": {\"x\": 0, \"y\": 715, \"width\": 244, \"height\": 43}, \"stats\": [{\"x\": 23, \"y\": 715, \"width\": 71.65625, \"height\": 43}, {\"x\": 94.65625, \"y\": 715, \"width\": 71.671875, \"height\": 43}, {\"x\": 166.328125, \"y\": 715, \"width\": 71.65625, \"height\": 43}]}"
+    },
+    {
+      "name": "shape shelves promoted above primitives",
+      "pass": true,
+      "detail": "{\"shelves\": {\"x\": 10, \"y\": 159, \"width\": 213, \"height\": 70}, \"basic\": {\"x\": 10, \"y\": 236, \"width\": 213, \"height\": 391}}"
+    },
+    {
+      "name": "shape library uses readable two-column cards",
+      "pass": true,
+      "detail": "103px 103px"
+    },
+    {
+      "name": "timeline default height reduced",
+      "pass": true,
+      "detail": "{'x': 0, 'y': 714, 'width': 1440, 'height': 186}"
+    },
+    {
+      "name": "utility menu exposes focus and recovery",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "focus mode enabled",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "focus mode hides non-canvas panels",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "focus mode expands model canvas",
+      "pass": true,
+      "detail": "{'x': 0, 'y': 54, 'width': 1440, 'height': 846}"
+    },
+    {
+      "name": "Shift+F exits focus mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "1280x800 has no document horizontal overflow",
+      "pass": true,
+      "detail": "1280/1280"
+    },
+    {
+      "name": "1024x768 has no document horizontal overflow",
+      "pass": true,
+      "detail": "1024/1024"
+    },
+    {
+      "name": "820x720 has no document horizontal overflow",
+      "pass": true,
+      "detail": "820/820"
+    },
+    {
+      "name": "820x720 modeling toolbar is horizontally scrollable",
+      "pass": true,
+      "detail": "{\"clientWidth\": 810, \"scrollWidth\": 1203, \"overflowX\": \"auto\"}"
+    },
+    {
+      "name": "390x844 has no document horizontal overflow",
+      "pass": true,
+      "detail": "390/390"
+    },
+    {
+      "name": "390x844 modeling toolbar is horizontally scrollable",
+      "pass": true,
+      "detail": "{\"clientWidth\": 380, \"scrollWidth\": 891, \"overflowX\": \"auto\"}"
+    },
+    {
+      "name": "drawing workspace renders",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing toolbar renders after first sheet",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing toolbar is consolidated",
+      "pass": true,
+      "detail": "5"
+    },
+    {
+      "name": "views menu exposes projection commands",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "annotate menu exposes grouped commands",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "export menu exposes sheet and set outputs",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing toolbar remains horizontally scrollable",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing focus hides browser and inspector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing focus expands sheet canvas",
+      "pass": true,
+      "detail": "{'x': 0, 'y': 98, 'width': 1440, 'height': 802}"
+    },
+    {
+      "name": "no application page errors",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "no console errors",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "summary": {
+    "passed": 33,
+    "failed": 0,
+    "total": 33
+  },
+  "errors": [],
+  "console": [
+    {
+      "type": "warning",
+      "text": "THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead."
+    }
+  ],
+  "responsive": {
+    "1280x800": {
+      "bodyScrollWidth": 1280,
+      "innerWidth": 1280,
+      "toolbar": {
+        "clientWidth": 766,
+        "scrollWidth": 1266,
+        "overflowX": "auto"
+      }
+    },
+    "1024x768": {
+      "bodyScrollWidth": 1024,
+      "innerWidth": 1024,
+      "toolbar": {
+        "clientWidth": 546,
+        "scrollWidth": 1203,
+        "overflowX": "auto"
+      }
+    },
+    "820x720": {
+      "bodyScrollWidth": 820,
+      "innerWidth": 820,
+      "toolbar": {
+        "clientWidth": 810,
+        "scrollWidth": 1203,
+        "overflowX": "auto"
+      }
+    },
+    "390x844": {
+      "bodyScrollWidth": 390,
+      "innerWidth": 390,
+      "toolbar": {
+        "clientWidth": 380,
+        "scrollWidth": 891,
+        "overflowX": "auto"
+      }
+    }
+  }
+}

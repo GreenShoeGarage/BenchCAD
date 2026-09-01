@@ -1,7 +1,7 @@
 {
   "name": "BENCHCAD",
   "short_name": "BENCHCAD",
-  "description": "Local-first CAD with editable history, named parameters, manufacturing readiness, and DXF workflows.",
+  "description": "Streamlined local-first CAD with editable history, responsive modeling workspaces, manufacturing screening, DXF workflows, and associative technical drawings.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

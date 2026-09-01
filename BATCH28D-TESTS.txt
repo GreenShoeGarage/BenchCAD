@@ -1,0 +1,85 @@
+BENCHCAD v0.35.0 - BATCH 28D RELEASE QUALIFICATION
+=================================================
+
+Overall status: PASS
+Application version: 0.35.0
+Project schema: 9
+Drawing schema: 5
+Batch 28 Technical Drawings 2.0: COMPLETE
+
+CANONICAL TEST COUNTS
+---------------------
+- Batch 28D independent assertions: 59/59
+- Retained Batch 28C assertions: 70/70
+- Retained Batch 28B assertions: 65/65
+- Retained Batch 27 tests: 18/18
+- Deterministic and regression total: 212/212
+- Production Chromium workflow checks: 27/27
+
+The canonical Batch 28D count is 59. A temporary wrapper reported 71 by repeating 12 checks; duplicate checks are excluded from this release record.
+
+BATCH 28D COVERAGE
+------------------
+- Circular Detail crop clipping.
+- Rectangular Detail crop clipping.
+- Parent crop boundary, leader, bubble, and label.
+- Independent child Detail scale.
+- Optional child crop frame.
+- Fixed and projected-entity-linked crop centers.
+- Missing, invalid, mismatched, and unresolved parent blocking.
+- Invalid and non-overlapping crop-region blocking.
+- Printable-area and title-block warnings.
+- View, note, and annotation collision warnings.
+- Layout warnings remain advisory rather than silently moving content.
+- Save/reopen of schema-9 Detail records.
+- Schema-8 placeholder Detail migration to honest Enlarged views.
+- Shared drawing primitive signatures across SVG, DXF, and PDF.
+
+PRODUCTION BROWSER
+------------------
+- Chromium: PASS.
+- Real Three.js workspace rendering: PASS.
+- Real Manifold WebAssembly geometry reconstruction: PASS.
+- Geometry worker loaded from nested /projects/benchcad/ path: PASS.
+- Exact-mesh front view and Detail creation: PASS.
+- Circular/rectangular crop controls: PASS.
+- Layout warning appears, remains advisory, and clears after reposition: PASS.
+- SVG, DXF, and PDF downloads: PASS.
+- Browser console/page errors: none.
+
+RELEASE FIXTURE OUTPUT
+----------------------
+- SVG: 22483 bytes, signature 4dd91b27, SHA-256 9b3a924fdfd4c3b74046093cd41cf6e1b44c6a9900850e5f815aa41b58c86111
+- DXF: 19682 bytes, signature 4dd91b27, SHA-256 77d7715eac9a73c0ca262569ca8c4c9e91ab2a5c607238bf5f6724be0ab26061
+- PDF: 13408 bytes, signature 4dd91b27, SHA-256 ee3ea403ef6c126c8fd7a55e1c0d1ee987423dc3ae28aadd625d0eb422a93912
+- Cross-format signature match: PASS.
+
+PDF QUALIFICATION
+-----------------
+- Openable: True.
+- Pages: 1.
+- Encrypted: False.
+- Preflight warnings: 0.
+- Rendered with both Poppler and PDFium.
+- Renderer differences are limited to minor rasterization/antialiasing variation.
+- Visual review found no clipped content, broken glyphs, or unintended overlaps.
+
+STATIC DEPLOYMENT AND OFFLINE SHELL
+-----------------------------------
+- index.html is at the package root.
+- JavaScript, CSS, manifest, workers, and WebAssembly URLs are relative.
+- Manifest start_url and scope are ./ .
+- All 12 service-worker shell entries exist.
+- All shell assets load successfully under /projects/benchcad/.
+- Packaged JavaScript and worker syntax checks pass.
+
+CROSS-BROWSER SCOPE
+-------------------
+- Chromium live runtime qualification: PASS.
+- Firefox live runtime qualification: not executed; runtime unavailable in the release container.
+- Safari/WebKit live runtime qualification: not executed; runtime unavailable in the release container.
+- Gecko and WebKit real-device qualification remains scheduled for Batch 30.
+
+NEXT ROADMAP STAGE
+------------------
+Batch 29 - Large-Model Performance.

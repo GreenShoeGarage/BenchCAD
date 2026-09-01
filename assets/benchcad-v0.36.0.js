@@ -1,4 +1,4 @@
-/* BENCHCAD v0.31.0 · Batch 27 offline bundle */
+/* BENCHCAD v0.35.0 · Batch 28D offline bundle */
 (()=>{
 'use strict';
 const process={env:{NODE_ENV:'production'}};
@@ -80852,6 +80852,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SAMPLE_PROJECTS = exports.defaultPatternParameters = exports.uid = exports.ORIGIN_WORKPLANE_IDS = exports.ORIGIN_WORKPLANE_ID = exports.SCHEMA_VERSION = exports.APP_VERSION = void 0;
 exports.drawingSheetDimensions = drawingSheetDimensions;
 exports.makeDrawingSheet = makeDrawingSheet;
+exports.normalizeDrawingSheetRecord = normalizeDrawingSheetRecord;
 exports.makeBody = makeBody;
 exports.makeSketch = makeSketch;
 exports.originWorkplanes = originWorkplanes;
@@ -80933,8 +80934,8 @@ exports.migrateProject = migrateProject;
 exports.canReorderFeature = canReorderFeature;
 exports.reorderFeature = reorderFeature;
 const benchcad_kernel_1 = require("./benchcad-kernel");
-exports.APP_VERSION = "0.31.0";
-exports.SCHEMA_VERSION = 5;
+exports.APP_VERSION = "0.36.0";
+exports.SCHEMA_VERSION = 9;
 exports.ORIGIN_WORKPLANE_ID = "origin-workplane-XY";
 exports.ORIGIN_WORKPLANE_IDS = [
     "origin-workplane-XY",
@@ -80960,6 +80961,7 @@ function makeDrawingSheet(projectName, overrides = {}) {
     const [width, height] = drawingSheetDimensions(size, orientation);
     return {
         id: (0, exports.uid)("drawing-sheet"),
+        drawingSchemaVersion: 5,
         name: "Sheet 1",
         size,
         orientation,
@@ -80968,6 +80970,7 @@ function makeDrawingSheet(projectName, overrides = {}) {
         views: [],
         dimensions: [],
         notes: [],
+        projectionMethod: "third-angle",
         titleBlock: {
             title: projectName,
             drawingNumber: "DWG-001",
@@ -80979,6 +80982,220 @@ function makeDrawingSheet(projectName, overrides = {}) {
         createdAt: now,
         updatedAt: now,
         ...overrides,
+    };
+}
+function normalizeDrawingViewRecord(value) {
+    const now = new Date().toISOString();
+    const raw = value && typeof value === "object" ? value : {};
+    const rawType = typeof raw.type === "string" ? raw.type : "orthographic";
+    const type = rawType === "section"
+        ? "section"
+        : rawType === "detail"
+            ? "detail"
+            : rawType === "enlarged"
+                ? "enlarged"
+                : "orthographic";
+    const orientation = ["front", "back", "top", "bottom", "left", "right", "iso"].includes(String(raw.orientation))
+        ? raw.orientation
+        : "front";
+    return {
+        id: typeof raw.id === "string" ? raw.id : (0, exports.uid)("drawing-view"),
+        name: typeof raw.name === "string" && raw.name.trim()
+            ? raw.name
+            : type === "section" ? "Section preview" : type === "detail" ? "Detail A" : type === "enlarged" ? "Enlarged preview" : "Front view",
+        type,
+        orientation,
+        sourceBodyIds: Array.isArray(raw.sourceBodyIds)
+            ? raw.sourceBodyIds.filter((id) => typeof id === "string")
+            : [],
+        sourceBodyLabels: raw.sourceBodyLabels && typeof raw.sourceBodyLabels === "object"
+            ? Object.fromEntries(Object.entries(raw.sourceBodyLabels)
+                .filter((entry) => typeof entry[1] === "string"))
+            : undefined,
+        sourcePolicy: "exact-mesh",
+        x: Number.isFinite(Number(raw.x)) ? Number(raw.x) : 70,
+        y: Number.isFinite(Number(raw.y)) ? Number(raw.y) : 70,
+        scale: Number.isFinite(Number(raw.scale)) && Number(raw.scale) > 0 ? Number(raw.scale) : 1,
+        showHiddenLines: Boolean(raw.showHiddenLines),
+        showSilhouetteEdges: raw.showSilhouetteEdges !== false,
+        showTangentEdges: Boolean(raw.showTangentEdges),
+        creaseAngle: Number.isFinite(Number(raw.creaseAngle))
+            ? Math.max(0.1, Math.min(179, Number(raw.creaseAngle)))
+            : 30,
+        projectionParentId: typeof raw.projectionParentId === "string" ? raw.projectionParentId : undefined,
+        projectionAlignment: ["free", "horizontal", "vertical"].includes(String(raw.projectionAlignment))
+            ? raw.projectionAlignment
+            : "free",
+        sectionAxis: ["X", "Y", "Z"].includes(String(raw.sectionAxis))
+            ? raw.sectionAxis
+            : "Y",
+        sectionOffset: Number.isFinite(Number(raw.sectionOffset)) ? Number(raw.sectionOffset) : 0,
+        sectionKeepSide: raw.sectionKeepSide === "negative" || raw.sectionKeepSide === "positive"
+            ? raw.sectionKeepSide
+            : (() => {
+                const base = orientation === "front" || orientation === "left" || orientation === "bottom"
+                    ? "positive"
+                    : "negative";
+                return Boolean(raw.sectionFlip) ? (base === "positive" ? "negative" : "positive") : base;
+            })(),
+        sectionFlip: undefined,
+        sectionLabel: typeof raw.sectionLabel === "string" && raw.sectionLabel.trim()
+            ? raw.sectionLabel.trim().toUpperCase().slice(0, 3)
+            : "A",
+        sectionHatchSpacing: Number.isFinite(Number(raw.sectionHatchSpacing)) && Number(raw.sectionHatchSpacing) > 0
+            ? Math.max(0.25, Number(raw.sectionHatchSpacing))
+            : 3,
+        sectionParentId: typeof raw.sectionParentId === "string" ? raw.sectionParentId : undefined,
+        detailParentId: typeof raw.detailParentId === "string" ? raw.detailParentId : undefined,
+        detailLabel: typeof raw.detailLabel === "string" && raw.detailLabel.trim()
+            ? raw.detailLabel.trim().toUpperCase().slice(0, 3)
+            : "A",
+        detailShape: raw.detailShape === "rectangle" ? "rectangle" : "circle",
+        detailCenter: Array.isArray(raw.detailCenter) && raw.detailCenter.length >= 2
+            && Number.isFinite(Number(raw.detailCenter[0])) && Number.isFinite(Number(raw.detailCenter[1]))
+            ? [Number(raw.detailCenter[0]), Number(raw.detailCenter[1])]
+            : [0, 0],
+        detailCenterReference: raw.detailCenterReference
+            ? normalizeDrawingEntityReference(raw.detailCenterReference) ?? undefined
+            : undefined,
+        detailWidth: Number.isFinite(Number(raw.detailWidth)) && Number(raw.detailWidth) > 0
+            ? Math.max(0.001, Number(raw.detailWidth)) : 20,
+        detailHeight: Number.isFinite(Number(raw.detailHeight)) && Number(raw.detailHeight) > 0
+            ? Math.max(0.001, Number(raw.detailHeight)) : 20,
+        detailShowBoundary: raw.detailShowBoundary !== false,
+        legacyType: typeof raw.legacyType === "string" ? raw.legacyType : undefined,
+        createdAt: typeof raw.createdAt === "string" ? raw.createdAt : now,
+        updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now,
+    };
+}
+function normalizeDrawingEntityReference(value) {
+    const raw = value && typeof value === "object" ? value : {};
+    const entityType = ["edge", "vertex", "circle", "hole", "thread"].includes(String(raw.entityType))
+        ? raw.entityType
+        : null;
+    if (!entityType || typeof raw.entityId !== "string" || typeof raw.sourceBodyId !== "string")
+        return null;
+    const signatureRaw = raw.signature && typeof raw.signature === "object"
+        ? raw.signature
+        : {};
+    const vec2 = (input) => Array.isArray(input)
+        && input.length >= 2
+        && Number.isFinite(Number(input[0]))
+        && Number.isFinite(Number(input[1]))
+        ? [Number(input[0]), Number(input[1])]
+        : undefined;
+    const finite = (input) => Number.isFinite(Number(input)) ? Number(input) : undefined;
+    const signature = {
+        point: vec2(signatureRaw.point),
+        midpoint: vec2(signatureRaw.midpoint),
+        length: finite(signatureRaw.length),
+        angle: finite(signatureRaw.angle),
+        center: vec2(signatureRaw.center),
+        radius: finite(signatureRaw.radius),
+        direction: vec2(signatureRaw.direction),
+        metadataId: typeof signatureRaw.metadataId === "string" ? signatureRaw.metadataId : undefined,
+    };
+    return {
+        entityId: raw.entityId,
+        entityType,
+        sourceBodyId: raw.sourceBodyId,
+        signature,
+        role: ["primary", "secondary", "origin"].includes(String(raw.role))
+            ? raw.role
+            : undefined,
+        label: typeof raw.label === "string" ? raw.label : undefined,
+    };
+}
+function normalizeDrawingDimensionRecord(value) {
+    const now = new Date().toISOString();
+    const raw = value && typeof value === "object" ? value : {};
+    const rawKind = typeof raw.kind === "string" ? raw.kind : "horizontal";
+    const supportedKinds = [
+        "horizontal", "vertical", "aligned", "angular", "diameter", "radius",
+        "ordinate-x", "ordinate-y", "center-mark", "centerline", "hole-callout", "thread-callout",
+    ];
+    const kind = supportedKinds.includes(rawKind)
+        ? rawKind
+        : "unsupported";
+    const preservedLegacyKind = typeof raw.legacyKind === "string" ? raw.legacyKind : undefined;
+    const legacyKind = kind === "unsupported"
+        ? rawKind === "unsupported" ? preservedLegacyKind ?? "legacy" : rawKind
+        : preservedLegacyKind;
+    const references = Array.isArray(raw.references)
+        ? raw.references.map(normalizeDrawingEntityReference).filter((item) => Boolean(item))
+        : [];
+    const entityKind = !["horizontal", "vertical"].includes(kind) || references.length > 0;
+    const referenceMode = raw.referenceMode === "entities" || entityKind ? "entities" : "envelope";
+    const defaultStatus = kind === "unsupported"
+        ? "unsupported"
+        : referenceMode === "entities" && !references.length
+            ? "unresolved"
+            : "valid";
+    const rawStatus = ["valid", "repairable", "unresolved", "unsupported"].includes(String(raw.status))
+        ? raw.status
+        : defaultStatus;
+    const datum = Array.isArray(raw.datum) && raw.datum.length >= 2
+        && Number.isFinite(Number(raw.datum[0])) && Number.isFinite(Number(raw.datum[1]))
+        ? [Number(raw.datum[0]), Number(raw.datum[1])]
+        : undefined;
+    const message = kind === "unsupported"
+        ? typeof raw.message === "string" && raw.message.trim()
+            ? raw.message
+            : `The ${legacyKind || "legacy"} annotation was created by an older preview engine and was preserved without displaying a fabricated value.`
+        : typeof raw.message === "string" ? raw.message : undefined;
+    return {
+        id: typeof raw.id === "string" ? raw.id : (0, exports.uid)("drawing-dimension"),
+        viewId: typeof raw.viewId === "string" ? raw.viewId : "",
+        kind,
+        offset: Number.isFinite(Number(raw.offset)) ? Number(raw.offset) : 12,
+        precision: Number.isFinite(Number(raw.precision)) ? Math.max(0, Math.min(6, Number(raw.precision))) : 2,
+        prefix: typeof raw.prefix === "string" ? raw.prefix : "",
+        suffix: typeof raw.suffix === "string" ? raw.suffix : "",
+        toleranceUpper: raw.toleranceUpper === null || raw.toleranceUpper === undefined || raw.toleranceUpper === ""
+            ? null : Number.isFinite(Number(raw.toleranceUpper)) ? Number(raw.toleranceUpper) : null,
+        toleranceLower: raw.toleranceLower === null || raw.toleranceLower === undefined || raw.toleranceLower === ""
+            ? null : Number.isFinite(Number(raw.toleranceLower)) ? Number(raw.toleranceLower) : null,
+        status: kind === "unsupported" ? "unsupported" : rawStatus,
+        referenceMode,
+        references,
+        datum,
+        legacyKind,
+        message,
+        createdAt: typeof raw.createdAt === "string" ? raw.createdAt : now,
+        updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now,
+    };
+}
+function normalizeDrawingSheetRecord(value, projectName = "BENCHCAD Project") {
+    const raw = value && typeof value === "object" ? value : {};
+    const size = ["A4", "Letter", "A3", "Tabloid"].includes(String(raw.size))
+        ? raw.size : "A4";
+    const orientation = raw.orientation === "portrait" ? "portrait" : "landscape";
+    const [defaultWidth, defaultHeight] = drawingSheetDimensions(size, orientation);
+    const titleRaw = raw.titleBlock && typeof raw.titleBlock === "object"
+        ? raw.titleBlock : {};
+    const now = new Date().toISOString();
+    return {
+        id: typeof raw.id === "string" ? raw.id : (0, exports.uid)("drawing-sheet"),
+        drawingSchemaVersion: 5,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : "Sheet 1",
+        size,
+        orientation,
+        width: Number.isFinite(Number(raw.width)) ? Number(raw.width) : defaultWidth,
+        height: Number.isFinite(Number(raw.height)) ? Number(raw.height) : defaultHeight,
+        views: Array.isArray(raw.views) ? raw.views.map(normalizeDrawingViewRecord) : [],
+        dimensions: Array.isArray(raw.dimensions) ? raw.dimensions.map(normalizeDrawingDimensionRecord) : [],
+        notes: Array.isArray(raw.notes) ? raw.notes.map((note) => structuredClone(note)) : [],
+        projectionMethod: raw.projectionMethod === "first-angle" ? "first-angle" : "third-angle",
+        titleBlock: {
+            title: typeof titleRaw.title === "string" ? titleRaw.title : projectName,
+            drawingNumber: typeof titleRaw.drawingNumber === "string" ? titleRaw.drawingNumber : "DWG-001",
+            revision: typeof titleRaw.revision === "string" ? titleRaw.revision : "A",
+            drawnBy: typeof titleRaw.drawnBy === "string" ? titleRaw.drawnBy : "",
+            date: typeof titleRaw.date === "string" ? titleRaw.date : now.slice(0, 10),
+            material: typeof titleRaw.material === "string" ? titleRaw.material : "",
+        },
+        createdAt: typeof raw.createdAt === "string" ? raw.createdAt : now,
+        updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : now,
     };
 }
 function makeBody(shape, overrides = {}) {
@@ -81562,7 +81779,7 @@ function makeSketchFeature(type, name, sequence, sketch, inputIds = []) {
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 5,
+        schemaVersion: 9,
     };
 }
 function makeWorkplaneFeature(type, name, sequence, workplane, inputIds = []) {
@@ -81586,7 +81803,7 @@ function makeWorkplaneFeature(type, name, sequence, workplane, inputIds = []) {
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 5,
+        schemaVersion: 9,
     };
 }
 function makeFeature(type, name, sequence, snapshot, parameters = {}, inputIds = []) {
@@ -81605,7 +81822,7 @@ function makeFeature(type, name, sequence, snapshot, parameters = {}, inputIds =
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 5,
+        schemaVersion: 9,
     };
 }
 function propagateDerivedBodyRebuild(features, sourceFeatureId, previousSource, rebuiltSource) {
@@ -81676,7 +81893,7 @@ function makeMultiBodyFeature(type, name, sequence, bodies, parameters = {}, inp
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 5,
+        schemaVersion: 9,
     };
 }
 function splitAxisForPlane(plane) {
@@ -82014,7 +82231,7 @@ function emptyProject(name = "Untitled fixture") {
         migrationHistory: [],
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 5,
+        schemaVersion: 9,
         appVersion: exports.APP_VERSION,
     };
 }
@@ -83079,6 +83296,7 @@ function convertUnit(value, from, to) {
 function normalizeProjectStructure(project) {
     const next = structuredClone(project);
     next.drawings ?? (next.drawings = []);
+    next.drawings = next.drawings.map((sheet) => normalizeDrawingSheetRecord(sheet, next.name));
     next.occurrences ?? (next.occurrences = []);
     next.joints ?? (next.joints = []);
     next.activeOccurrenceId ?? (next.activeOccurrenceId = null);
@@ -83122,7 +83340,7 @@ function normalizeProjectStructure(project) {
             root.id;
         const componentId = componentIds.has(candidate) ? candidate : root.id;
         feature.componentId = componentId;
-        feature.schemaVersion = 5;
+        feature.schemaVersion = exports.SCHEMA_VERSION;
         if (feature.componentSnapshot) {
             (_a = feature.componentSnapshot).occurrenceIds ?? (_a.occurrenceIds = []);
             (_b = feature.componentSnapshot).workplaneIds ?? (_b.workplaneIds = []);
@@ -83250,7 +83468,7 @@ function normalizeProjectStructure(project) {
     if (!exports.ORIGIN_WORKPLANE_IDS.includes(next.activeWorkplaneId) &&
         !currentWorkplaneOwners.has(next.activeWorkplaneId))
         next.activeWorkplaneId = exports.ORIGIN_WORKPLANE_ID;
-    next.schemaVersion = 5;
+    next.schemaVersion = exports.SCHEMA_VERSION;
     next.appVersion = exports.APP_VERSION;
     next.migrationHistory ?? (next.migrationHistory = []);
     return next;
@@ -83430,7 +83648,7 @@ function validateProject(value) {
     if (!value || typeof value !== "object")
         return false;
     const project = value;
-    return (project.schemaVersion === 5 &&
+    return (project.schemaVersion === 9 &&
         typeof project.name === "string" &&
         Array.isArray(project.features) &&
         Array.isArray(project.components) &&
@@ -83448,12 +83666,115 @@ function parseProject(serialized) {
     const value = JSON.parse(serialized);
     return migrateProject(value);
 }
+function preservePreSchema9DetailPlaceholders(project) {
+    project.drawings ?? (project.drawings = []);
+    project.drawings.forEach((sheet) => {
+        sheet.views?.forEach((view) => {
+            if (view.type === "detail") {
+                view.type = "enlarged";
+                view.legacyType = view.legacyType ?? "detail";
+            }
+        });
+    });
+}
 function migrateProject(value) {
     if (validateProject(value))
         return normalizeProjectStructure(value);
     if (value && typeof value === "object") {
         const legacy = value;
         const fromVersion = typeof legacy.schemaVersion === "number" ? legacy.schemaVersion : 0;
+        if (fromVersion === 8 &&
+            typeof legacy.name === "string" &&
+            Array.isArray(legacy.features) &&
+            Array.isArray(legacy.components) &&
+            Array.isArray(legacy.occurrences)) {
+            const migrated = structuredClone(legacy);
+            preservePreSchema9DetailPlaceholders(migrated);
+            migrated.features = migrated.features.map((feature, index) => ({
+                ...feature,
+                sequence: index + 1,
+                schemaVersion: 9,
+            }));
+            migrated.schemaVersion = 9;
+            migrated.appVersion = exports.APP_VERSION;
+            migrated.migrationHistory ?? (migrated.migrationHistory = []);
+            migrated.migrationHistory.push({
+                fromVersion: 8,
+                toVersion: 9,
+                migratedAt: new Date().toISOString(),
+                note: "Added drawing schema 5 with true parent-linked cropped Detail views, printable-area diagnostics, collision review, and qualified cross-format drawing output without changing model geometry or feature order.",
+            });
+            return normalizeProjectStructure(migrated);
+        }
+        if (fromVersion === 7 &&
+            typeof legacy.name === "string" &&
+            Array.isArray(legacy.features) &&
+            Array.isArray(legacy.components) &&
+            Array.isArray(legacy.occurrences)) {
+            const migrated = structuredClone(legacy);
+            preservePreSchema9DetailPlaceholders(migrated);
+            migrated.features = migrated.features.map((feature, index) => ({
+                ...feature,
+                sequence: index + 1,
+                schemaVersion: 9,
+            }));
+            migrated.schemaVersion = 9;
+            migrated.appVersion = exports.APP_VERSION;
+            migrated.migrationHistory ?? (migrated.migrationHistory = []);
+            migrated.migrationHistory.push({
+                fromVersion: 7,
+                toVersion: 9,
+                migratedAt: new Date().toISOString(),
+                note: "Added drawing schema 4, then schema 5 with persistent projected-entity references, associative radial/angular/ordinate dimensions, center annotations, feature callouts, and explicit broken-reference repair without changing model geometry or feature order.",
+            });
+            return normalizeProjectStructure(migrated);
+        }
+        if (fromVersion === 6 &&
+            typeof legacy.name === "string" &&
+            Array.isArray(legacy.features) &&
+            Array.isArray(legacy.components) &&
+            Array.isArray(legacy.occurrences)) {
+            const migrated = structuredClone(legacy);
+            preservePreSchema9DetailPlaceholders(migrated);
+            migrated.features = migrated.features.map((feature, index) => ({
+                ...feature,
+                sequence: index + 1,
+                schemaVersion: 9,
+            }));
+            migrated.schemaVersion = 9;
+            migrated.appVersion = exports.APP_VERSION;
+            migrated.migrationHistory ?? (migrated.migrationHistory = []);
+            migrated.migrationHistory.push({
+                fromVersion: 6,
+                toVersion: 9,
+                migratedAt: new Date().toISOString(),
+                note: "Added drawing schema 3, then schema 5 for depth-aware projections, true clipped sections, material-region hatching, cutting-plane references, and projected-view alignment without changing model geometry or feature order.",
+            });
+            return normalizeProjectStructure(migrated);
+        }
+        if (fromVersion === 5 &&
+            typeof legacy.name === "string" &&
+            Array.isArray(legacy.features) &&
+            Array.isArray(legacy.components) &&
+            Array.isArray(legacy.occurrences)) {
+            const migrated = structuredClone(legacy);
+            preservePreSchema9DetailPlaceholders(migrated);
+            migrated.features = migrated.features.map((feature, index) => ({
+                ...feature,
+                sequence: index + 1,
+                schemaVersion: 9,
+            }));
+            migrated.schemaVersion = 9;
+            migrated.appVersion = exports.APP_VERSION;
+            migrated.migrationHistory ?? (migrated.migrationHistory = []);
+            migrated.migrationHistory.push({
+                fromVersion: 5,
+                toVersion: 9,
+                migratedAt: new Date().toISOString(),
+                note: "Added drawing-schema integrity. Legacy v0.32 Detail placeholders are relabeled as enlarged previews, and bounds-based diameter, radius, center, or unknown annotations are preserved as unsupported records instead of being displayed as fabrication values.",
+            });
+            return normalizeProjectStructure(migrated);
+        }
         if (fromVersion === 4 &&
             typeof legacy.name === "string" &&
             Array.isArray(legacy.features) &&
@@ -83465,16 +83786,16 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 5,
+                schemaVersion: 9,
             }));
-            migrated.schemaVersion = 5;
+            migrated.schemaVersion = 9;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 4,
-                toVersion: 5,
+                toVersion: 9,
                 migratedAt: new Date().toISOString(),
-                note: "Initialized named project parameters and expression bindings without changing existing geometry or feature order.",
+                note: "Initialized named project parameters, expression bindings, and drawing-schema integrity without changing existing geometry or feature order.",
             });
             return normalizeProjectStructure(migrated);
         }
@@ -83494,16 +83815,16 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 5,
+                schemaVersion: 9,
             }));
-            migrated.schemaVersion = 5;
+            migrated.schemaVersion = 9;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 3,
-                toVersion: 5,
+                toVersion: 9,
                 migratedAt: new Date().toISOString(),
-                note: "Added associative workplanes, selected the origin XY plane, and initialized named parameters without changing existing geometry or feature order.",
+                note: "Added associative workplanes, named parameters, and drawing-schema integrity without changing existing geometry or feature order.",
             });
             return normalizeProjectStructure(migrated);
         }
@@ -83525,7 +83846,7 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 5,
+                schemaVersion: 9,
             }));
             migrated.components
                 .filter((component) => component.id !== migrated.rootComponentId)
@@ -83548,14 +83869,14 @@ function migrateProject(value) {
                 if (migrated.activeComponentId === component.id)
                     migrated.activeOccurrenceId = occurrence.id;
             });
-            migrated.schemaVersion = 5;
+            migrated.schemaVersion = 9;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 2,
-                toVersion: 5,
+                toVersion: 9,
                 migratedAt: new Date().toISOString(),
-                note: "Created one zero-transform occurrence for each existing non-root component, added the origin XY workplane, and initialized named parameters while preserving prior geometry and ownership.",
+                note: "Created one zero-transform occurrence for each existing non-root component, added the origin XY workplane, initialized named parameters, and added drawing-schema integrity while preserving prior geometry and ownership.",
             });
             return normalizeProjectStructure(migrated);
         }
@@ -83595,14 +83916,14 @@ function migrateProject(value) {
                             dimensions: feature.sketchSnapshot.dimensions ?? [],
                         }
                         : undefined,
-                    schemaVersion: 5,
+                    schemaVersion: 9,
                 };
             });
             migrated.migrationHistory.push({
                 fromVersion,
-                toVersion: 5,
+                toVersion: 9,
                 migratedAt: new Date().toISOString(),
-                note: "Preserved legacy history, assigned it to the generated root component, selected the origin XY workplane, and initialized named parameters.",
+                note: "Preserved legacy history, assigned it to the generated root component, selected the origin XY workplane, initialized named parameters, and added drawing-schema integrity.",
             });
             return normalizeProjectStructure(migrated);
         }
@@ -87072,59 +87393,52 @@ function DimensionView({ entity, type, value, units, conflict, }) {
 "lib/benchcad-drawing.ts":function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DrawingExportBlockedError = exports.resolveDrawingDimensionReferences = exports.repairDrawingDimensionReferences = exports.makeDrawingEntityReference = exports.drawingAnnotationRequirement = void 0;
 exports.bodyFallbackDrawingMesh = bodyFallbackDrawingMesh;
+exports.resolveDrawingSources = resolveDrawingSources;
 exports.drawingMeshesForBodies = drawingMeshesForBodies;
+exports.drawingDetailRegion = drawingDetailRegion;
 exports.projectDrawingView = projectDrawingView;
 exports.recommendedDrawingScale = recommendedDrawingScale;
 exports.makeDrawingView = makeDrawingView;
 exports.makeDrawingDimension = makeDrawingDimension;
 exports.makeDrawingNote = makeDrawingNote;
+exports.resolveDrawingViewPositions = resolveDrawingViewPositions;
+exports.projectedPlacement = projectedPlacement;
+exports.drawingPointToSheet = drawingPointToSheet;
+exports.drawingPrimitiveSignature = drawingPrimitiveSignature;
 exports.renderDrawingSheet = renderDrawingSheet;
+exports.drawingExportAssessment = drawingExportAssessment;
 exports.drawingSheetToSvg = drawingSheetToSvg;
 exports.drawingSheetsToPdf = drawingSheetsToPdf;
 exports.resizeDrawingSheet = resizeDrawingSheet;
 const benchcad_model_1 = require("./benchcad-model");
+const benchcad_drawing_refs_1 = require("./benchcad-drawing-refs");
+const benchcad_projection_1 = require("./benchcad-projection");
+var benchcad_drawing_refs_2 = require("./benchcad-drawing-refs");
+Object.defineProperty(exports, "drawingAnnotationRequirement", { enumerable: true, get: function () { return benchcad_drawing_refs_2.drawingAnnotationRequirement; } });
+Object.defineProperty(exports, "makeDrawingEntityReference", { enumerable: true, get: function () { return benchcad_drawing_refs_2.makeDrawingEntityReference; } });
+Object.defineProperty(exports, "repairDrawingDimensionReferences", { enumerable: true, get: function () { return benchcad_drawing_refs_2.repairDrawingDimensionReferences; } });
+Object.defineProperty(exports, "resolveDrawingDimensionReferences", { enumerable: true, get: function () { return benchcad_drawing_refs_2.resolveDrawingDimensionReferences; } });
+class DrawingExportBlockedError extends Error {
+    constructor(issues) {
+        const first = issues.find((issue) => issue.blocking);
+        super(first
+            ? `Drawing export locked: ${first.message}`
+            : "Drawing export locked by unresolved drawing integrity checks.");
+        this.name = "DrawingExportBlockedError";
+        this.issues = issues;
+    }
+}
+exports.DrawingExportBlockedError = DrawingExportBlockedError;
 const EPSILON = 1e-7;
-const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-const subtract = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-const scale = (a, amount) => [a[0] * amount, a[1] * amount, a[2] * amount];
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a, b) => [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-];
-const length = (a) => Math.hypot(a[0], a[1], a[2]);
-const normalize = (a) => {
-    const magnitude = length(a) || 1;
-    return scale(a, 1 / magnitude);
-};
-const pointAt = (vertices, index) => [
-    Number(vertices[index * 3]),
-    Number(vertices[index * 3 + 1]),
-    Number(vertices[index * 3 + 2]),
-];
-const pointKey = (point) => point.map((value) => value.toFixed(6)).join(",");
-function viewBasis(orientation) {
-    const bases = {
-        front: { u: [1, 0, 0], v: [0, 0, 1], depth: [0, -1, 0] },
-        back: { u: [-1, 0, 0], v: [0, 0, 1], depth: [0, 1, 0] },
-        top: { u: [1, 0, 0], v: [0, 1, 0], depth: [0, 0, 1] },
-        bottom: { u: [1, 0, 0], v: [0, -1, 0], depth: [0, 0, -1] },
-        left: { u: [0, 1, 0], v: [0, 0, 1], depth: [-1, 0, 0] },
-        right: { u: [0, -1, 0], v: [0, 0, 1], depth: [1, 0, 0] },
-        iso: {
-            u: normalize([1, -1, 0]),
-            v: normalize([-1, -1, 2]),
-            depth: normalize([1, 1, 1]),
-        },
-    };
-    return bases[orientation];
-}
-function projectPoint(point, orientation) {
-    const basis = viewBasis(orientation);
-    return [dot(point, basis.u), dot(point, basis.v)];
-}
+const unitToMillimeters = (units) => ({ mm: 1, cm: 10, in: 25.4, m: 1000 })[units];
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const subtract3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const scale3 = (a, amount) => [a[0] * amount, a[1] * amount, a[2] * amount];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const length3 = (a) => Math.hypot(a[0], a[1], a[2]);
+const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 function emptyBounds() {
     return { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
 }
@@ -87134,19 +87448,25 @@ function includePoint(bounds, point) {
     bounds.maxX = Math.max(bounds.maxX, point[0]);
     bounds.maxY = Math.max(bounds.maxY, point[1]);
 }
+function boundsAreFinite(bounds) {
+    return Number.isFinite(bounds.minX) && Number.isFinite(bounds.minY)
+        && Number.isFinite(bounds.maxX) && Number.isFinite(bounds.maxY);
+}
 function normalizedBounds(bounds) {
-    if (Number.isFinite(bounds.minX))
-        return bounds;
-    return { minX: -10, minY: -10, maxX: 10, maxY: 10 };
+    return boundsAreFinite(bounds) ? bounds : { minX: -10, minY: -10, maxX: 10, maxY: 10 };
+}
+function placeholderBounds(position) {
+    return { minX: position.x - 18, minY: position.y - 12, maxX: position.x + 18, maxY: position.y + 12 };
 }
 function rotatePoint(point, rotation) {
-    const [rx, ry, rz] = rotation.map((value) => (value * Math.PI) / 180);
+    const [rx, ry, rz] = rotation.map((value) => value * Math.PI / 180);
     let [x, y, z] = point;
     [y, z] = [y * Math.cos(rx) - z * Math.sin(rx), y * Math.sin(rx) + z * Math.cos(rx)];
     [x, z] = [x * Math.cos(ry) + z * Math.sin(ry), -x * Math.sin(ry) + z * Math.cos(ry)];
     [x, y] = [x * Math.cos(rz) - y * Math.sin(rz), x * Math.sin(rz) + y * Math.cos(rz)];
     return [x, y, z];
 }
+/** Deterministic test utility. Never used as a technical-drawing source fallback. */
 function bodyFallbackDrawingMesh(body) {
     const half = body.size.map((value) => value / 2);
     const mirror = body.mirrorAxes ?? [1, 1, 1];
@@ -87155,7 +87475,7 @@ function bodyFallbackDrawingMesh(body) {
         [half[0], half[1], -half[2]], [-half[0], half[1], -half[2]],
         [-half[0], -half[1], half[2]], [half[0], -half[1], half[2]],
         [half[0], half[1], half[2]], [-half[0], half[1], half[2]],
-    ].map((point) => add(rotatePoint([point[0] * mirror[0], point[1] * mirror[1], point[2] * mirror[2]], body.rotation), body.position));
+    ].map((point) => add3(rotatePoint([point[0] * mirror[0], point[1] * mirror[1], point[2] * mirror[2]], body.rotation), body.position));
     return {
         targetId: body.id,
         vertices: corners.flat(),
@@ -87166,113 +87486,334 @@ function bodyFallbackDrawingMesh(body) {
         ],
     };
 }
-function drawingMeshesForBodies(bodies, meshes, sourceBodyIds) {
-    const source = new Set(sourceBodyIds.length ? sourceBodyIds : bodies.map((body) => body.id));
-    const exact = new Map(meshes.map((mesh) => [mesh.targetId, mesh]));
-    return bodies
-        .filter((body) => body.visible && source.has(body.id))
-        .map((body) => exact.get(body.id) ?? bodyFallbackDrawingMesh(body));
-}
-function meshProjection(mesh, orientation) {
-    const basis = viewBasis(orientation);
-    const edges = new Map();
-    for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
-        const points = [0, 1, 2].map((slot) => pointAt(mesh.vertices, Number(mesh.indices[index + slot])));
-        const normal = normalize(cross(subtract(points[1], points[0]), subtract(points[2], points[0])));
-        const facing = dot(normal, basis.depth) >= -EPSILON;
-        for (const [first, second] of [[0, 1], [1, 2], [2, 0]]) {
-            const a = points[first];
-            const b = points[second];
-            const keys = [pointKey(a), pointKey(b)].sort();
-            const key = `${keys[0]}|${keys[1]}`;
-            const record = edges.get(key) ?? { a, b, normals: [], facing: [] };
-            record.normals.push(normal);
-            record.facing.push(facing);
-            edges.set(key, record);
-        }
+function meshHasGeometry(mesh) {
+    if (!mesh || mesh.vertices.length < 9 || mesh.indices.length < 3)
+        return false;
+    if (mesh.vertices.length % 3 !== 0 || mesh.indices.length % 3 !== 0)
+        return false;
+    for (let index = 0; index < mesh.vertices.length; index += 1)
+        if (!Number.isFinite(Number(mesh.vertices[index])))
+            return false;
+    const vertexCount = mesh.vertices.length / 3;
+    for (let index = 0; index < mesh.indices.length; index += 1) {
+        const value = Number(mesh.indices[index]);
+        if (!Number.isInteger(value) || value < 0 || value >= vertexCount)
+            return false;
     }
-    return [...edges.values()]
-        .filter((edge) => {
-        if (edge.normals.length < 2)
-            return true;
-        const normalDot = Math.abs(dot(edge.normals[0], edge.normals[1]));
-        const silhouette = edge.facing.some(Boolean) && edge.facing.some((value) => !value);
-        return silhouette || normalDot < 0.9945;
-    })
-        .map((edge) => ({
-        a: projectPoint(edge.a, orientation),
-        b: projectPoint(edge.b, orientation),
-        hidden: !edge.facing.some(Boolean),
-    }))
-        .filter((edge) => Math.hypot(edge.b[0] - edge.a[0], edge.b[1] - edge.a[1]) > EPSILON);
+    return true;
 }
-function triangleSection(points, axis, offset) {
-    const intersections = [];
-    const addUnique = (point) => {
-        if (!intersections.some((candidate) => length(subtract(candidate, point)) < 1e-6))
-            intersections.push(point);
-    };
-    for (const [first, second] of [[0, 1], [1, 2], [2, 0]]) {
-        const a = points[first];
-        const b = points[second];
-        const da = a[axis] - offset;
-        const db = b[axis] - offset;
-        if (Math.abs(da) < EPSILON)
-            addUnique(a);
-        if (Math.abs(db) < EPSILON)
-            addUnique(b);
-        if (da * db < -EPSILON) {
-            const amount = da / (da - db);
-            addUnique(add(a, scale(subtract(b, a), amount)));
-        }
-    }
-    return intersections.length >= 2 ? [intersections[0], intersections[1]] : null;
-}
-function meshSection(mesh, orientation, axis, offset) {
-    const axisIndex = { X: 0, Y: 1, Z: 2 }[axis];
-    const result = [];
-    const dedupe = new Set();
-    for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
-        const points = [0, 1, 2].map((slot) => pointAt(mesh.vertices, Number(mesh.indices[index + slot])));
-        const segment = triangleSection(points, axisIndex, offset);
-        if (!segment)
+function resolveDrawingSources(view, bodies, meshes) {
+    const requestedBodyIds = [...new Set(view.sourceBodyIds)];
+    const bodiesById = new Map(bodies.map((body) => [body.id, body]));
+    const meshesById = new Map(meshes.map((mesh) => [mesh.targetId, mesh]));
+    const missingBodyIds = [];
+    const missingMeshIds = [];
+    const resolvedBodyIds = [];
+    const resolvedMeshes = [];
+    const issues = [];
+    if (!requestedBodyIds.length)
+        issues.push({
+            severity: "error", blocking: true, code: "NO_DRAWING_SOURCES", viewId: view.id,
+            message: "The drawing view has no selected source bodies. Choose at least one exact model body before export.",
+        });
+    for (const bodyId of requestedBodyIds) {
+        const body = bodiesById.get(bodyId);
+        const sourceName = body?.name || view.sourceBodyLabels?.[bodyId] || bodyId;
+        if (!body) {
+            missingBodyIds.push(bodyId);
+            issues.push({
+                severity: "error", blocking: true, code: "MISSING_SOURCE_BODY", viewId: view.id, bodyId,
+                message: `Source body “${sourceName}” no longer exists. Select a replacement source before export.`,
+            });
             continue;
-        const a = projectPoint(segment[0], orientation);
-        const b = projectPoint(segment[1], orientation);
-        const key = [a, b]
-            .map((point) => point.map((value) => value.toFixed(5)).join(","))
-            .sort()
-            .join("|");
-        if (!dedupe.has(key)) {
-            result.push({ a, b });
-            dedupe.add(key);
         }
+        const mesh = meshesById.get(bodyId);
+        if (!meshHasGeometry(mesh)) {
+            missingMeshIds.push(bodyId);
+            issues.push({
+                severity: "error", blocking: true, code: "MISSING_EXACT_MESH", viewId: view.id, bodyId,
+                message: `${sourceName} does not have a valid exact reconstructed mesh. Bounding-box substitution is disabled for technical drawings.`,
+            });
+            continue;
+        }
+        resolvedBodyIds.push(bodyId);
+        resolvedMeshes.push(mesh);
     }
-    return result;
+    const failures = missingBodyIds.length > 0 || missingMeshIds.length > 0;
+    const status = resolvedMeshes.length === 0 ? "unresolved" : failures ? "partial" : "resolved";
+    return { requestedBodyIds, resolvedBodyIds, missingBodyIds, missingMeshIds, meshes: resolvedMeshes, status, issues };
+}
+function drawingMeshesForBodies(bodies, meshes, sourceBodyIds) {
+    return resolveDrawingSources({ id: "drawing-source-resolution", sourceBodyIds }, bodies, meshes).meshes;
+}
+function regionsByBody(regions) {
+    const grouped = new Map();
+    regions.forEach((region) => {
+        const loops = grouped.get(region.bodyId) ?? [];
+        loops.push(region.points);
+        grouped.set(region.bodyId, loops);
+    });
+    return [...grouped].map(([bodyId, loops]) => ({ bodyId, loops }));
+}
+function drawingDetailRegion(view) {
+    if (view.type !== "detail")
+        return null;
+    const center = Array.isArray(view.detailCenter)
+        && Number.isFinite(view.detailCenter[0]) && Number.isFinite(view.detailCenter[1])
+        ? [view.detailCenter[0], view.detailCenter[1]] : [0, 0];
+    const shape = view.detailShape === "rectangle" ? "rectangle" : "circle";
+    const width = Math.max(EPSILON, Number(view.detailWidth) || 20);
+    const height = shape === "circle" ? width : Math.max(EPSILON, Number(view.detailHeight) || width);
+    return {
+        shape,
+        center,
+        width,
+        height,
+        bounds: {
+            minX: center[0] - width / 2,
+            maxX: center[0] + width / 2,
+            minY: center[1] - height / 2,
+            maxY: center[1] + height / 2,
+        },
+    };
+}
+function pointInDetailRegion(point, region, tolerance = 1e-7) {
+    if (region.shape === "rectangle")
+        return point[0] >= region.bounds.minX - tolerance
+            && point[0] <= region.bounds.maxX + tolerance
+            && point[1] >= region.bounds.minY - tolerance
+            && point[1] <= region.bounds.maxY + tolerance;
+    const radius = region.width / 2;
+    return Math.hypot(point[0] - region.center[0], point[1] - region.center[1]) <= radius + tolerance;
+}
+function clipLineToRectangle(a, b, bounds) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    let t0 = 0, t1 = 1;
+    const clip = (p, q) => {
+        if (Math.abs(p) < EPSILON)
+            return q >= 0;
+        const r = q / p;
+        if (p < 0) {
+            if (r > t1)
+                return false;
+            if (r > t0)
+                t0 = r;
+        }
+        else {
+            if (r < t0)
+                return false;
+            if (r < t1)
+                t1 = r;
+        }
+        return true;
+    };
+    if (!clip(-dx, a[0] - bounds.minX) || !clip(dx, bounds.maxX - a[0])
+        || !clip(-dy, a[1] - bounds.minY) || !clip(dy, bounds.maxY - a[1]) || t1 - t0 < EPSILON)
+        return null;
+    return {
+        a: [a[0] + dx * t0, a[1] + dy * t0],
+        b: [a[0] + dx * t1, a[1] + dy * t1],
+        t0, t1,
+    };
+}
+function clipLineToCircle(a, b, center, radius) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const fx = a[0] - center[0], fy = a[1] - center[1];
+    const qa = dx * dx + dy * dy;
+    if (qa < EPSILON)
+        return pointInDetailRegion(a, { shape: "circle", center, width: radius * 2, height: radius * 2,
+            bounds: { minX: center[0] - radius, minY: center[1] - radius, maxX: center[0] + radius, maxY: center[1] + radius } })
+            ? { a, b, t0: 0, t1: 1 } : null;
+    const qb = 2 * (fx * dx + fy * dy);
+    const qc = fx * fx + fy * fy - radius * radius;
+    const discriminant = qb * qb - 4 * qa * qc;
+    const insideA = qc <= 0;
+    const endX = b[0] - center[0], endY = b[1] - center[1];
+    const insideB = endX * endX + endY * endY <= radius * radius;
+    if (discriminant < 0)
+        return insideA && insideB ? { a, b, t0: 0, t1: 1 } : null;
+    const root = Math.sqrt(Math.max(0, discriminant));
+    const first = (-qb - root) / (2 * qa);
+    const second = (-qb + root) / (2 * qa);
+    const t0 = Math.max(0, insideA ? 0 : Math.min(first, second));
+    const t1 = Math.min(1, insideB ? 1 : Math.max(first, second));
+    if (t1 - t0 < EPSILON)
+        return null;
+    return { a: [a[0] + dx * t0, a[1] + dy * t0], b: [a[0] + dx * t1, a[1] + dy * t1], t0, t1 };
+}
+function clipProjectedLinesToDetail(lines, region) {
+    return lines.flatMap((segment) => {
+        const clipped = region.shape === "rectangle"
+            ? clipLineToRectangle(segment.a, segment.b, region.bounds)
+            : clipLineToCircle(segment.a, segment.b, region.center, region.width / 2);
+        if (!clipped)
+            return [];
+        return [{
+                ...segment,
+                a: clipped.a,
+                b: clipped.b,
+                sourceA: clipped.a,
+                sourceB: clipped.b,
+                sourceVertexIdA: clipped.t0 <= 1e-7 ? segment.sourceVertexIdA : undefined,
+                sourceVertexIdB: clipped.t1 >= 1 - 1e-7 ? segment.sourceVertexIdB : undefined,
+            }];
+    });
+}
+function entityInDetailRegion(entity, region) {
+    if (entity.type === "edge")
+        return Boolean(region.shape === "rectangle"
+            ? clipLineToRectangle(entity.a, entity.b, region.bounds)
+            : clipLineToCircle(entity.a, entity.b, region.center, region.width / 2));
+    if (entity.type === "vertex")
+        return pointInDetailRegion(entity.point, region);
+    return pointInDetailRegion(entity.center, region);
 }
 function projectDrawingView(view, bodies, meshes) {
-    const sources = drawingMeshesForBodies(bodies, meshes, view.sourceBodyIds);
-    const lines = sources.flatMap((mesh) => meshProjection(mesh, view.orientation));
-    const sectionLines = view.type === "section"
-        ? sources.flatMap((mesh) => meshSection(mesh, view.orientation, view.sectionAxis ?? "Y", view.sectionOffset ?? 0))
+    const resolution = resolveDrawingSources(view, bodies, meshes);
+    const engine = resolution.status === "resolved"
+        ? (0, benchcad_projection_1.runProjectionEngine)(view, resolution.meshes)
+        : {
+            lines: [], sectionRegions: [], sectionSegments3D: [], issues: [],
+            stats: { sourceTriangles: 0, projectedTriangles: 0, candidateEdges: 0, visibleSegments: 0,
+                hiddenSegments: 0, occlusionTests: 0, sectionLoops: 0, elapsedMs: 0 },
+        };
+    const issues = [
+        ...resolution.issues,
+        ...engine.issues.map((issue) => ({
+            severity: issue.blocking ? "error" : "warning",
+            blocking: issue.blocking,
+            code: issue.code,
+            viewId: view.id,
+            message: issue.message,
+        })),
+    ];
+    const rawLines = engine.lines.map((segment) => ({
+        a: segment.a,
+        b: segment.b,
+        hidden: segment.hidden,
+        style: (segment.kind === "tangent" ? "tangent" : "visible"),
+        sourceBodyId: segment.sourceBodyId,
+        topologyId: segment.topologyId,
+        sourceA: segment.sourceA,
+        sourceB: segment.sourceB,
+        sourceVertexIdA: segment.sourceVertexIdA,
+        sourceVertexIdB: segment.sourceVertexIdB,
+    }));
+    // Resolve an optional associative Detail center against the complete projected
+    // entity set before cropping. A repair candidate is never accepted silently.
+    const fullEntities = resolution.status === "resolved" ? (0, benchcad_drawing_refs_1.deriveDrawingEntities)(view, bodies, rawLines) : [];
+    let effectiveView = view;
+    if (view.type === "detail" && view.detailCenterReference) {
+        const centerResolution = (0, benchcad_drawing_refs_1.resolveDrawingEntityReference)(view.detailCenterReference, fullEntities);
+        if (centerResolution.status === "resolved" && centerResolution.entity) {
+            effectiveView = { ...view, detailCenter: (0, benchcad_drawing_refs_1.entityAnchor)(centerResolution.entity) };
+        }
+        else if (centerResolution.status === "repairable") {
+            issues.push({
+                severity: "error", blocking: true, code: "DETAIL_CENTER_REPAIR_REQUIRED", viewId: view.id,
+                message: `Detail ${(view.detailLabel || "A").toUpperCase()} lost its crop-center entity identity. Review and re-center the Detail before export.`,
+            });
+        }
+        else {
+            issues.push({
+                severity: "error", blocking: true, code: "BROKEN_DETAIL_CENTER_REFERENCE", viewId: view.id,
+                message: `Detail ${(view.detailLabel || "A").toUpperCase()} references crop-center geometry that no longer exists.`,
+            });
+        }
+    }
+    let detailRegion;
+    if (view.type === "detail") {
+        const rawWidth = Number(view.detailWidth);
+        const rawHeight = Number(view.detailHeight);
+        if (!Number.isFinite(rawWidth) || rawWidth <= EPSILON
+            || (view.detailShape === "rectangle" && (!Number.isFinite(rawHeight) || rawHeight <= EPSILON))) {
+            issues.push({
+                severity: "error", blocking: true, code: "INVALID_DETAIL_REGION", viewId: view.id,
+                message: `Detail ${(view.detailLabel || "A").toUpperCase()} needs a positive crop width${view.detailShape === "rectangle" ? " and height" : ""}.`,
+            });
+        }
+        else {
+            detailRegion = drawingDetailRegion(effectiveView) ?? undefined;
+        }
+    }
+    const sourceLines = detailRegion ? clipProjectedLinesToDetail(rawLines, detailRegion) : rawLines;
+    const sourceEntities = resolution.status === "resolved"
+        ? (0, benchcad_drawing_refs_1.deriveDrawingEntities)(effectiveView, bodies, sourceLines)
         : [];
-    const bounds = emptyBounds();
-    lines.forEach((line) => {
-        includePoint(bounds, line.a);
-        includePoint(bounds, line.b);
-    });
-    sectionLines.forEach((line) => {
-        includePoint(bounds, line.a);
-        includePoint(bounds, line.b);
-    });
-    return { viewId: view.id, lines, sectionLines, bounds: normalizedBounds(bounds) };
+    const entities = detailRegion
+        ? sourceEntities.filter((entity) => entityInDetailRegion(entity, detailRegion))
+        : sourceEntities;
+    const edgeIdsByKey = new Map(entities.filter((entity) => entity.type === "edge")
+        .map((entity) => [(0, benchcad_drawing_refs_1.drawingProjectedLineKey)(entity), entity.id]));
+    const projectedLines = sourceLines.map((segment) => ({
+        ...segment,
+        entityId: edgeIdsByKey.get((0, benchcad_drawing_refs_1.drawingProjectedLineKey)(segment)),
+    }));
+    const fullSectionLoopGroups = regionsByBody(engine.sectionRegions);
+    const fullSectionLines = fullSectionLoopGroups.flatMap((group) => group.loops.flatMap((loop) => loop.map((point, index) => ({
+        a: point,
+        b: loop[(index + 1) % loop.length],
+        bodyId: group.bodyId,
+    }))));
+    const sectionLoopGroups = fullSectionLoopGroups;
+    const sectionLines = fullSectionLines;
+    const bounds = detailRegion ? { ...detailRegion.bounds } : emptyBounds();
+    if (!detailRegion) {
+        projectedLines.forEach((segment) => { includePoint(bounds, segment.a); includePoint(bounds, segment.b); });
+        sectionLines.forEach((segment) => { includePoint(bounds, segment.a); includePoint(bounds, segment.b); });
+    }
+    if (resolution.status === "resolved" && !projectedLines.length && !sectionLines.length
+        && !issues.some((issue) => issue.blocking)) {
+        issues.push({
+            severity: "error", blocking: true,
+            code: view.type === "detail" ? "EMPTY_DETAIL_REGION" : "EMPTY_PROJECTED_GEOMETRY",
+            viewId: view.id,
+            message: view.type === "detail"
+                ? `Detail ${(view.detailLabel || "A").toUpperCase()} contains no drawable projected geometry. Move or resize its crop region.`
+                : "Exact source meshes were found, but the view produced no drawable projected geometry.",
+        });
+    }
+    if (engine.stats.projectedTriangles > 50000)
+        issues.push({
+            severity: "warning", blocking: false, code: "DENSE_DRAWING_PROJECTION", viewId: view.id,
+            message: `Depth-aware projection evaluated ${engine.stats.projectedTriangles.toLocaleString()} triangles. Editing may be slower on this sheet.`,
+        });
+    const blocked = issues.some((issue) => issue.blocking);
+    const status = resolution.status === "resolved" && blocked ? "unresolved" : resolution.status;
+    const stats = detailRegion ? {
+        ...engine.stats,
+        visibleSegments: projectedLines.filter((segment) => !segment.hidden).length,
+        hiddenSegments: projectedLines.filter((segment) => segment.hidden).length,
+    } : engine.stats;
+    return {
+        viewId: view.id,
+        lines: projectedLines,
+        entities,
+        sectionLines,
+        sectionLoopGroups,
+        sectionSegments3D: engine.sectionSegments3D,
+        detailRegion,
+        projectionMethod: "depth-aware-triangle-occlusion",
+        triangleCount: engine.stats.projectedTriangles,
+        stats,
+        bounds: normalizedBounds(bounds),
+        status,
+        requestedBodyIds: resolution.requestedBodyIds,
+        resolvedBodyIds: resolution.resolvedBodyIds,
+        missingBodyIds: resolution.missingBodyIds,
+        missingMeshIds: resolution.missingMeshIds,
+        issues,
+        valid: status === "resolved" && !blocked && (projectedLines.length > 0 || sectionLines.length > 0),
+    };
 }
-const unitToMillimeters = (units) => ({ mm: 1, cm: 10, in: 25.4, m: 1000 })[units];
 function recommendedDrawingScale(projection, units, availableWidth = 105, availableHeight = 70) {
+    if (!projection.valid)
+        return 1;
     const width = Math.max(EPSILON, projection.bounds.maxX - projection.bounds.minX);
     const height = Math.max(EPSILON, projection.bounds.maxY - projection.bounds.minY);
     const maximum = Math.min(availableWidth / (width * unitToMillimeters(units)), availableHeight / (height * unitToMillimeters(units)));
-    return [10, 5, 2, 1, 0.5, 0.25, 0.2, 0.1, 0.05, 0.02, 0.01].find((candidate) => candidate <= maximum) ?? 0.01;
+    return [10, 5, 2, 1, 0.5, 0.25, 0.2, 0.1, 0.05, 0.02, 0.01]
+        .find((candidate) => candidate <= maximum) ?? 0.01;
 }
 function makeDrawingView(bodyIds, sheet, overrides = {}) {
     const now = new Date().toISOString();
@@ -87282,12 +87823,26 @@ function makeDrawingView(bodyIds, sheet, overrides = {}) {
         type: "orthographic",
         orientation: "front",
         sourceBodyIds: [...bodyIds],
+        sourcePolicy: "exact-mesh",
         x: sheet.width * 0.38,
         y: sheet.height * 0.42,
         scale: 1,
         showHiddenLines: false,
+        showSilhouetteEdges: true,
+        showTangentEdges: false,
+        creaseAngle: 30,
+        projectionAlignment: "free",
         sectionAxis: "Y",
         sectionOffset: 0,
+        sectionKeepSide: "positive",
+        sectionLabel: "A",
+        sectionHatchSpacing: 3,
+        detailLabel: "A",
+        detailShape: "circle",
+        detailCenter: [0, 0],
+        detailWidth: 20,
+        detailHeight: 20,
+        detailShowBoundary: true,
         createdAt: now,
         updatedAt: now,
         ...overrides,
@@ -87295,6 +87850,10 @@ function makeDrawingView(bodyIds, sheet, overrides = {}) {
 }
 function makeDrawingDimension(viewId, kind, overrides = {}) {
     const now = new Date().toISOString();
+    const references = overrides.references ?? [];
+    const envelope = (kind === "horizontal" || kind === "vertical") && references.length === 0
+        && overrides.referenceMode !== "entities";
+    const supported = kind !== "unsupported";
     return {
         id: (0, benchcad_model_1.uid)("drawing-dimension"),
         viewId,
@@ -87305,63 +87864,447 @@ function makeDrawingDimension(viewId, kind, overrides = {}) {
         suffix: "",
         toleranceUpper: null,
         toleranceLower: null,
+        referenceMode: envelope ? "envelope" : "entities",
+        references,
+        status: supported && (envelope || references.length) ? "valid" : supported ? "unresolved" : "unsupported",
+        message: supported && !envelope && !references.length ? (0, benchcad_drawing_refs_1.drawingAnnotationRequirement)(kind) : undefined,
         createdAt: now,
         updatedAt: now,
         ...overrides,
     };
 }
-function makeDrawingNote(text, sheet, overrides = {}) {
+function makeDrawingNote(noteText, sheet, overrides = {}) {
     const now = new Date().toISOString();
     return {
-        id: (0, benchcad_model_1.uid)("drawing-note"),
-        text,
-        x: sheet.width * 0.08,
-        y: sheet.height * 0.12,
-        fontSize: 3.5,
-        createdAt: now,
-        updatedAt: now,
-        ...overrides,
+        id: (0, benchcad_model_1.uid)("drawing-note"), text: noteText, x: sheet.width * 0.08, y: sheet.height * 0.12,
+        fontSize: 3.5, createdAt: now, updatedAt: now, ...overrides,
     };
 }
-function mappedPoint(point, projection, view, units) {
+function resolveDrawingViewPositions(sheet) {
+    const positions = {};
+    const issues = [];
+    const views = new Map(sheet.views.map((view) => [view.id, view]));
+    const resolving = new Set();
+    const resolved = new Set();
+    const resolve = (view) => {
+        if (resolved.has(view.id))
+            return positions[view.id];
+        if (resolving.has(view.id)) {
+            issues.push({
+                severity: "error", blocking: true, code: "PROJECTION_ALIGNMENT_CYCLE", viewId: view.id,
+                message: `Projected-view alignment for “${view.name}” contains a cycle. Set one view to Free alignment.`,
+            });
+            return { x: view.x, y: view.y };
+        }
+        resolving.add(view.id);
+        let position = { x: view.x, y: view.y };
+        const alignment = view.projectionAlignment ?? "free";
+        if (alignment !== "free") {
+            const parent = view.projectionParentId ? views.get(view.projectionParentId) : undefined;
+            if (!parent || parent.id === view.id) {
+                issues.push({
+                    severity: "error", blocking: true, code: "MISSING_PROJECTION_PARENT", viewId: view.id,
+                    message: `“${view.name}” is ${alignment}-aligned but its parent view is missing. Choose a parent or set alignment to Free.`,
+                });
+            }
+            else {
+                const parentPosition = resolve(parent);
+                if (!(0, benchcad_projection_1.projectedAlignmentIsCompatible)(parent.orientation, view.orientation, alignment)) {
+                    issues.push({
+                        severity: "error", blocking: true, code: "PROJECTION_ALIGNMENT_ORIENTATION_MISMATCH", viewId: view.id,
+                        message: `“${view.name}” cannot use ${alignment} projected alignment with “${parent.name}” because their projected model axes do not match.`,
+                    });
+                }
+                position = alignment === "horizontal"
+                    ? { x: view.x, y: parentPosition.y }
+                    : { x: parentPosition.x, y: view.y };
+            }
+        }
+        resolving.delete(view.id);
+        resolved.add(view.id);
+        positions[view.id] = position;
+        return position;
+    };
+    sheet.views.forEach(resolve);
+    return { positions, issues };
+}
+function projectedPlacement(sheet, parent, orientation, metrics) {
+    const clearance = Math.max(8, metrics?.clearance ?? 18);
+    const factor = metrics ? unitToMillimeters(metrics.units) : 1;
+    const extent = (projection, scale, axis) => {
+        if (!projection?.valid)
+            return 27;
+        const span = axis === "x"
+            ? projection.bounds.maxX - projection.bounds.minX
+            : projection.bounds.maxY - projection.bounds.minY;
+        return Math.max(4, Math.abs(span) * Math.max(0.0001, scale) * factor / 2);
+    };
+    const horizontalGap = metrics
+        ? extent(metrics.parentProjection, metrics.parentScale, "x")
+            + extent(metrics.childProjection, metrics.childScale, "x") + clearance
+        : 72;
+    const verticalGap = metrics
+        ? extent(metrics.parentProjection, metrics.parentScale, "y")
+            + extent(metrics.childProjection, metrics.childScale, "y") + clearance + 6
+        : 72;
+    const firstAngle = sheet.projectionMethod === "first-angle";
+    if (orientation === "top")
+        return {
+            position: { x: parent.x, y: parent.y + (firstAngle ? verticalGap : -verticalGap) }, alignment: "vertical",
+        };
+    if (orientation === "bottom")
+        return {
+            position: { x: parent.x, y: parent.y + (firstAngle ? -verticalGap : verticalGap) }, alignment: "vertical",
+        };
+    if (orientation === "left")
+        return {
+            position: { x: parent.x + (firstAngle ? horizontalGap : -horizontalGap), y: parent.y }, alignment: "horizontal",
+        };
+    if (orientation === "right")
+        return {
+            position: { x: parent.x + (firstAngle ? -horizontalGap : horizontalGap), y: parent.y }, alignment: "horizontal",
+        };
+    return { position: { x: parent.x + horizontalGap, y: parent.y }, alignment: "horizontal" };
+}
+function drawingPointToSheet(point, projection, view, units, position) {
     const centerX = (projection.bounds.minX + projection.bounds.maxX) / 2;
     const centerY = (projection.bounds.minY + projection.bounds.maxY) / 2;
-    const factor = unitToMillimeters(units) * view.scale;
-    return [view.x + (point[0] - centerX) * factor, view.y - (point[1] - centerY) * factor];
+    const factor = view.scale * unitToMillimeters(units);
+    return [position.x + (point[0] - centerX) * factor, position.y - (point[1] - centerY) * factor];
 }
-function line(x1, y1, x2, y2, style, viewId) {
-    return { kind: "line", x1, y1, x2, y2, style, viewId };
+const mappedPoint = drawingPointToSheet;
+function line(x1, y1, x2, y2, style, viewId, entityId) {
+    return { kind: "line", x1, y1, x2, y2, style, viewId, entityId };
 }
 function text(x, y, value, size, options = {}) {
     return { kind: "text", x, y, text: value, size, ...options };
 }
 function toleranceLabel(dimension) {
-    const upper = dimension.toleranceUpper;
-    const lower = dimension.toleranceLower;
-    if (upper === null && lower === null)
+    if (dimension.toleranceUpper === null && dimension.toleranceLower === null)
         return "";
-    if (upper !== null && lower !== null && Math.abs(upper + lower) < EPSILON)
+    const upper = dimension.toleranceUpper ?? 0;
+    const lower = dimension.toleranceLower ?? 0;
+    if (upper === Math.abs(lower))
         return ` ±${Math.abs(upper).toFixed(dimension.precision)}`;
-    const plus = upper === null ? "" : ` +${upper.toFixed(dimension.precision)}`;
-    const minus = lower === null ? "" : ` ${lower.toFixed(dimension.precision)}`;
-    return plus + minus;
+    return ` +${upper.toFixed(dimension.precision)}/${lower.toFixed(dimension.precision)}`;
 }
-function dimensionPrimitives(dimension, view, projection, sheetBounds, units) {
-    const result = [];
-    const modelWidth = projection.bounds.maxX - projection.bounds.minX;
-    const modelHeight = projection.bounds.maxY - projection.bounds.minY;
-    const horizontal = dimension.kind !== "vertical";
-    const value = horizontal ? modelWidth : modelHeight;
-    const formatted = `${dimension.prefix}${value.toFixed(dimension.precision)}${toleranceLabel(dimension)}${dimension.suffix}`;
-    if (horizontal) {
-        const y = sheetBounds.maxY + dimension.offset;
-        result.push(line(sheetBounds.minX, sheetBounds.maxY + 1, sheetBounds.minX, y + 2, "dimension", view.id), line(sheetBounds.maxX, sheetBounds.maxY + 1, sheetBounds.maxX, y + 2, "dimension", view.id), line(sheetBounds.minX, y, sheetBounds.maxX, y, "dimension", view.id), line(sheetBounds.minX, y, sheetBounds.minX + 3, y - 1.3, "dimension", view.id), line(sheetBounds.minX, y, sheetBounds.minX + 3, y + 1.3, "dimension", view.id), line(sheetBounds.maxX, y, sheetBounds.maxX - 3, y - 1.3, "dimension", view.id), line(sheetBounds.maxX, y, sheetBounds.maxX - 3, y + 1.3, "dimension", view.id), text((sheetBounds.minX + sheetBounds.maxX) / 2, y - 1.8, `${formatted} ${units}`, 3.1, { align: "middle", viewId: view.id }));
+function warningBox(bounds, label, viewId) {
+    return [
+        line(bounds.minX - 2, bounds.minY - 2, bounds.maxX + 2, bounds.minY - 2, "warning", viewId),
+        line(bounds.maxX + 2, bounds.minY - 2, bounds.maxX + 2, bounds.maxY + 2, "warning", viewId),
+        line(bounds.maxX + 2, bounds.maxY + 2, bounds.minX - 2, bounds.maxY + 2, "warning", viewId),
+        line(bounds.minX - 2, bounds.maxY + 2, bounds.minX - 2, bounds.minY - 2, "warning", viewId),
+        text((bounds.minX + bounds.maxX) / 2, bounds.minY - 4, label, 2.8, {
+            align: "middle", weight: "bold", style: "warning", viewId,
+        }),
+    ];
+}
+function dimensionText(dimension, value, units, symbol = "") {
+    return `${dimension.prefix}${symbol}${value.toFixed(dimension.precision)}${toleranceLabel(dimension)}${dimension.suffix} ${units}`;
+}
+function arrowHead(point, direction, viewId) {
+    const magnitude = Math.hypot(direction[0], direction[1]) || 1;
+    const along = [direction[0] / magnitude, direction[1] / magnitude];
+    const normal = [-along[1], along[0]];
+    return [
+        line(point[0], point[1], point[0] + along[0] * 3 + normal[0] * 1.2, point[1] + along[1] * 3 + normal[1] * 1.2, "dimension", viewId),
+        line(point[0], point[1], point[0] + along[0] * 3 - normal[0] * 1.2, point[1] + along[1] * 3 - normal[1] * 1.2, "dimension", viewId),
+    ];
+}
+function entityPoint(entity) {
+    return (0, benchcad_drawing_refs_1.entityAnchor)(entity);
+}
+function referencedLinearPoints(entities) {
+    if (entities.length === 1 && entities[0].type === "edge")
+        return { first: entities[0].a, second: entities[0].b };
+    if (entities.length === 2 && entities[0].type === "vertex" && entities[1].type === "vertex")
+        return { first: entities[0].point, second: entities[1].point };
+    return null;
+}
+function linearDimensionPrimitives(dimension, view, projection, entities, units, position) {
+    const points = referencedLinearPoints(entities);
+    if (!points)
+        return null;
+    const firstSheet = mappedPoint(points.first, projection, view, units, position);
+    const secondSheet = mappedPoint(points.second, projection, view, units, position);
+    const deltaModel = [points.second[0] - points.first[0], points.second[1] - points.first[1]];
+    const deltaSheet = [secondSheet[0] - firstSheet[0], secondSheet[1] - firstSheet[1]];
+    let along;
+    let value;
+    if (dimension.kind === "horizontal") {
+        along = [Math.sign(deltaSheet[0]) || 1, 0];
+        value = Math.abs(deltaModel[0]);
+    }
+    else if (dimension.kind === "vertical") {
+        along = [0, Math.sign(deltaSheet[1]) || 1];
+        value = Math.abs(deltaModel[1]);
     }
     else {
-        const x = sheetBounds.maxX + dimension.offset;
-        result.push(line(sheetBounds.maxX + 1, sheetBounds.minY, x + 2, sheetBounds.minY, "dimension", view.id), line(sheetBounds.maxX + 1, sheetBounds.maxY, x + 2, sheetBounds.maxY, "dimension", view.id), line(x, sheetBounds.minY, x, sheetBounds.maxY, "dimension", view.id), line(x, sheetBounds.minY, x - 1.3, sheetBounds.minY + 3, "dimension", view.id), line(x, sheetBounds.minY, x + 1.3, sheetBounds.minY + 3, "dimension", view.id), line(x, sheetBounds.maxY, x - 1.3, sheetBounds.maxY - 3, "dimension", view.id), line(x, sheetBounds.maxY, x + 1.3, sheetBounds.maxY - 3, "dimension", view.id), text(x + 2, (sheetBounds.minY + sheetBounds.maxY) / 2, `${formatted} ${units}`, 3.1, { viewId: view.id }));
+        const magnitude = Math.hypot(deltaSheet[0], deltaSheet[1]) || 1;
+        along = [deltaSheet[0] / magnitude, deltaSheet[1] / magnitude];
+        value = Math.hypot(deltaModel[0], deltaModel[1]);
     }
-    return result;
+    const normal = [-along[1], along[0]];
+    const offset = dimension.offset;
+    const q1 = [firstSheet[0] + normal[0] * offset, firstSheet[1] + normal[1] * offset];
+    const q2 = [secondSheet[0] + normal[0] * offset, secondSheet[1] + normal[1] * offset];
+    const labelPoint = [(q1[0] + q2[0]) / 2 - normal[0] * 1.8, (q1[1] + q2[1]) / 2 - normal[1] * 1.8];
+    return [
+        line(firstSheet[0], firstSheet[1], q1[0] + normal[0] * 2, q1[1] + normal[1] * 2, "dimension", view.id),
+        line(secondSheet[0], secondSheet[1], q2[0] + normal[0] * 2, q2[1] + normal[1] * 2, "dimension", view.id),
+        line(q1[0], q1[1], q2[0], q2[1], "dimension", view.id),
+        ...arrowHead(q1, along, view.id),
+        ...arrowHead(q2, [-along[0], -along[1]], view.id),
+        text(labelPoint[0], labelPoint[1], dimensionText(dimension, value, units), 3.1, { align: "middle", viewId: view.id }),
+    ];
+}
+function lineIntersection(first, second) {
+    const r = [first.b[0] - first.a[0], first.b[1] - first.a[1]];
+    const s = [second.b[0] - second.a[0], second.b[1] - second.a[1]];
+    const cross = r[0] * s[1] - r[1] * s[0];
+    if (Math.abs(cross) < 1e-8)
+        return null;
+    const qmp = [second.a[0] - first.a[0], second.a[1] - first.a[1]];
+    const amount = (qmp[0] * s[1] - qmp[1] * s[0]) / cross;
+    return [first.a[0] + r[0] * amount, first.a[1] + r[1] * amount];
+}
+function angularDimensionPrimitives(dimension, view, projection, edges, units, position) {
+    if (edges.length !== 2)
+        return { primitives: [], issue: "Angular dimensions require two projected edges." };
+    const intersection = lineIntersection(edges[0], edges[1]);
+    if (!intersection)
+        return { primitives: [], issue: "The selected edges are parallel and cannot define an angular dimension." };
+    const center = mappedPoint(intersection, projection, view, units, position);
+    const endpoints = edges.map((edge) => {
+        const first = mappedPoint(edge.a, projection, view, units, position);
+        const second = mappedPoint(edge.b, projection, view, units, position);
+        return Math.hypot(first[0] - center[0], first[1] - center[1]) >= Math.hypot(second[0] - center[0], second[1] - center[1]) ? first : second;
+    });
+    const angles = endpoints.map((point) => Math.atan2(point[1] - center[1], point[0] - center[0]));
+    let delta = angles[1] - angles[0];
+    while (delta <= -Math.PI)
+        delta += Math.PI * 2;
+    while (delta > Math.PI)
+        delta -= Math.PI * 2;
+    const value = Math.abs(delta) * 180 / Math.PI;
+    const radius = Math.max(8, Math.abs(dimension.offset));
+    const primitives = [];
+    const arcPoints = [];
+    for (let index = 0; index <= 18; index += 1) {
+        const angle = angles[0] + delta * index / 18;
+        arcPoints.push([center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius]);
+    }
+    for (let index = 0; index + 1 < arcPoints.length; index += 1)
+        primitives.push(line(arcPoints[index][0], arcPoints[index][1], arcPoints[index + 1][0], arcPoints[index + 1][1], "dimension", view.id));
+    primitives.push(line(center[0], center[1], center[0] + Math.cos(angles[0]) * (radius + 3), center[1] + Math.sin(angles[0]) * (radius + 3), "dimension", view.id), line(center[0], center[1], center[0] + Math.cos(angles[1]) * (radius + 3), center[1] + Math.sin(angles[1]) * (radius + 3), "dimension", view.id), ...arrowHead(arcPoints[0], [arcPoints[1][0] - arcPoints[0][0], arcPoints[1][1] - arcPoints[0][1]], view.id), ...arrowHead(arcPoints.at(-1), [arcPoints.at(-2)[0] - arcPoints.at(-1)[0], arcPoints.at(-2)[1] - arcPoints.at(-1)[1]], view.id));
+    const middleAngle = angles[0] + delta / 2;
+    primitives.push(text(center[0] + Math.cos(middleAngle) * (radius + 4), center[1] + Math.sin(middleAngle) * (radius + 4), `${dimension.prefix}${value.toFixed(dimension.precision)}°${dimension.suffix}`, 3.1, { align: "middle", viewId: view.id }));
+    return { primitives };
+}
+function radialEntity(entity) {
+    return entity.type === "circle" || entity.type === "hole" ? entity : null;
+}
+function radialDimensionPrimitives(dimension, view, projection, entity, units, position) {
+    const center = mappedPoint(entity.center, projection, view, units, position);
+    const factor = view.scale * unitToMillimeters(units);
+    const radius = entity.radius * factor;
+    const angle = -Math.PI / 4;
+    const rim = [center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius];
+    const leader = [rim[0] + Math.cos(angle) * Math.max(8, dimension.offset), rim[1] + Math.sin(angle) * Math.max(8, dimension.offset)];
+    const symbol = dimension.kind === "diameter" ? "Ø" : "R";
+    const value = dimension.kind === "diameter" ? entity.radius * 2 : entity.radius;
+    return [
+        line(center[0], center[1], rim[0], rim[1], "dimension", view.id),
+        line(rim[0], rim[1], leader[0], leader[1], "dimension", view.id),
+        ...arrowHead(rim, [center[0] - rim[0], center[1] - rim[1]], view.id),
+        text(leader[0] + 2, leader[1] - 1, dimensionText(dimension, value, units, symbol), 3.1, { viewId: view.id }),
+    ];
+}
+function centerAnnotationPrimitives(dimension, view, projection, entity, units, position) {
+    const center = mappedPoint(entity.center, projection, view, units, position);
+    const radius = entity.radius * view.scale * unitToMillimeters(units);
+    const reach = dimension.kind === "centerline" ? Math.max(6, radius + 4) : Math.max(3, Math.min(7, radius * 0.35));
+    const gap = dimension.kind === "centerline" ? Math.min(1.5, reach * 0.1) : 0;
+    return [
+        line(center[0] - reach, center[1], center[0] - gap, center[1], "center", view.id),
+        line(center[0] + gap, center[1], center[0] + reach, center[1], "center", view.id),
+        line(center[0], center[1] - reach, center[0], center[1] - gap, "center", view.id),
+        line(center[0], center[1] + gap, center[0], center[1] + reach, "center", view.id),
+    ];
+}
+function ordinateDimensionPrimitives(dimension, view, projection, entity, units, position) {
+    const targetModel = entityPoint(entity);
+    const datumModel = dimension.datum ?? [0, 0];
+    const target = mappedPoint(targetModel, projection, view, units, position);
+    const datum = mappedPoint(datumModel, projection, view, units, position);
+    const xAxis = dimension.kind === "ordinate-x";
+    const value = xAxis ? targetModel[0] - datumModel[0] : targetModel[1] - datumModel[1];
+    const offset = Math.max(8, Math.abs(dimension.offset));
+    const elbow = xAxis ? [target[0], target[1] - offset] : [target[0] + offset, target[1]];
+    const end = xAxis ? [elbow[0] + 14, elbow[1]] : [elbow[0], elbow[1] - 14];
+    return [
+        line(datum[0] - 2, datum[1], datum[0] + 2, datum[1], "center", view.id),
+        line(datum[0], datum[1] - 2, datum[0], datum[1] + 2, "center", view.id),
+        line(target[0], target[1], elbow[0], elbow[1], "dimension", view.id),
+        line(elbow[0], elbow[1], end[0], end[1], "dimension", view.id),
+        ...arrowHead(target, [elbow[0] - target[0], elbow[1] - target[1]], view.id),
+        text(end[0] + (xAxis ? 2 : 0), end[1] - 1, `${xAxis ? "X" : "Y"} ${dimensionText(dimension, value, units)}`, 3.1, { viewId: view.id }),
+    ];
+}
+function calloutPrimitives(dimension, view, projection, entity, units, position) {
+    const anchor = mappedPoint(entity.center, projection, view, units, position);
+    const offset = Math.max(10, Math.abs(dimension.offset));
+    const elbow = [anchor[0] + offset, anchor[1] - offset * 0.55];
+    const end = [elbow[0] + 16, elbow[1]];
+    const label = entity.type === "hole" ? (0, benchcad_drawing_refs_1.drawingHoleCallout)(entity) : (0, benchcad_drawing_refs_1.drawingThreadCallout)(entity);
+    return [
+        line(anchor[0], anchor[1], elbow[0], elbow[1], "dimension", view.id),
+        line(elbow[0], elbow[1], end[0], end[1], "dimension", view.id),
+        ...arrowHead(anchor, [elbow[0] - anchor[0], elbow[1] - anchor[1]], view.id),
+        text(end[0] + 2, end[1] - 1, `${dimension.prefix}${label}${dimension.suffix}`, 3.0, { viewId: view.id }),
+    ];
+}
+function dimensionPrimitives(dimension, view, projection, sheetBounds, units, position) {
+    const primitives = [];
+    const issues = [];
+    if (dimension.kind === "unsupported" || dimension.status === "unsupported") {
+        issues.push({
+            severity: "warning", blocking: true, code: "UNSUPPORTED_DRAWING_ANNOTATION",
+            dimensionId: dimension.id, viewId: view.id,
+            message: dimension.message ?? `The ${dimension.legacyKind ?? dimension.kind} annotation has no trusted projected-geometry reference.`,
+        });
+        primitives.push(text(sheetBounds.maxX + 4, sheetBounds.minY + 3, `${(dimension.legacyKind ?? dimension.kind).toUpperCase()} — UNSUPPORTED`, 2.5, { weight: "bold", style: "warning", viewId: view.id }));
+        return { primitives, issues };
+    }
+    if (!projection.valid) {
+        issues.push({
+            severity: "error", blocking: true, code: "UNRESOLVED_DIMENSION_SOURCE",
+            dimensionId: dimension.id, viewId: view.id,
+            message: "The annotation cannot resolve because its source view is unresolved.",
+        });
+        return { primitives, issues };
+    }
+    const resolution = (0, benchcad_drawing_refs_1.resolveDrawingDimensionReferences)(dimension, projection.entities);
+    if (resolution.status === "repairable") {
+        issues.push({
+            severity: "error", blocking: true, code: "DRAWING_REFERENCE_REPAIR_AVAILABLE",
+            dimensionId: dimension.id, viewId: view.id,
+            message: resolution.message ?? "A projected reference changed identity and has a suggested replacement awaiting review.",
+        });
+        primitives.push(text(sheetBounds.maxX + 4, sheetBounds.minY + 3, "REFERENCE REPAIR REQUIRED", 2.5, { weight: "bold", style: "warning", viewId: view.id }));
+        return { primitives, issues };
+    }
+    if (resolution.status === "unresolved" || !resolution.requirementsMet) {
+        issues.push({
+            severity: "error", blocking: true, code: "BROKEN_DRAWING_REFERENCE",
+            dimensionId: dimension.id, viewId: view.id,
+            message: resolution.message ?? (0, benchcad_drawing_refs_1.drawingAnnotationRequirement)(dimension.kind),
+        });
+        primitives.push(text(sheetBounds.maxX + 4, sheetBounds.minY + 3, "BROKEN REFERENCE", 2.5, { weight: "bold", style: "warning", viewId: view.id }));
+        return { primitives, issues };
+    }
+    if ((dimension.referenceMode ?? "envelope") === "envelope") {
+        const horizontal = dimension.kind === "horizontal";
+        const value = horizontal
+            ? projection.bounds.maxX - projection.bounds.minX
+            : projection.bounds.maxY - projection.bounds.minY;
+        const formatted = dimensionText(dimension, value, units);
+        if (horizontal) {
+            const y = sheetBounds.maxY + dimension.offset;
+            primitives.push(line(sheetBounds.minX, sheetBounds.maxY + 1, sheetBounds.minX, y + 2, "dimension", view.id), line(sheetBounds.maxX, sheetBounds.maxY + 1, sheetBounds.maxX, y + 2, "dimension", view.id), line(sheetBounds.minX, y, sheetBounds.maxX, y, "dimension", view.id), ...arrowHead([sheetBounds.minX, y], [1, 0], view.id), ...arrowHead([sheetBounds.maxX, y], [-1, 0], view.id), text((sheetBounds.minX + sheetBounds.maxX) / 2, y - 1.8, formatted, 3.1, { align: "middle", viewId: view.id }));
+        }
+        else {
+            const x = sheetBounds.maxX + dimension.offset;
+            primitives.push(line(sheetBounds.maxX + 1, sheetBounds.minY, x + 2, sheetBounds.minY, "dimension", view.id), line(sheetBounds.maxX + 1, sheetBounds.maxY, x + 2, sheetBounds.maxY, "dimension", view.id), line(x, sheetBounds.minY, x, sheetBounds.maxY, "dimension", view.id), ...arrowHead([x, sheetBounds.minY], [0, 1], view.id), ...arrowHead([x, sheetBounds.maxY], [0, -1], view.id), text(x + 2, (sheetBounds.minY + sheetBounds.maxY) / 2, formatted, 3.1, { viewId: view.id }));
+        }
+        return { primitives, issues };
+    }
+    if (dimension.kind === "horizontal" || dimension.kind === "vertical" || dimension.kind === "aligned") {
+        const rendered = linearDimensionPrimitives(dimension, view, projection, resolution.entities, units, position);
+        if (rendered)
+            primitives.push(...rendered);
+    }
+    else if (dimension.kind === "angular") {
+        const rendered = angularDimensionPrimitives(dimension, view, projection, resolution.entities.filter((entity) => entity.type === "edge"), units, position);
+        if (rendered.issue)
+            issues.push({ severity: "error", blocking: true, code: "INVALID_ANGULAR_REFERENCE", dimensionId: dimension.id, viewId: view.id, message: rendered.issue });
+        else
+            primitives.push(...rendered.primitives);
+    }
+    else if (dimension.kind === "diameter" || dimension.kind === "radius") {
+        const entity = radialEntity(resolution.entities[0]);
+        if (entity)
+            primitives.push(...radialDimensionPrimitives(dimension, view, projection, entity, units, position));
+    }
+    else if (dimension.kind === "center-mark" || dimension.kind === "centerline") {
+        const entity = radialEntity(resolution.entities[0]);
+        if (entity)
+            primitives.push(...centerAnnotationPrimitives(dimension, view, projection, entity, units, position));
+    }
+    else if (dimension.kind === "ordinate-x" || dimension.kind === "ordinate-y") {
+        primitives.push(...ordinateDimensionPrimitives(dimension, view, projection, resolution.entities[0], units, position));
+    }
+    else if (dimension.kind === "hole-callout" && resolution.entities[0]?.type === "hole") {
+        primitives.push(...calloutPrimitives(dimension, view, projection, resolution.entities[0], units, position));
+    }
+    else if (dimension.kind === "thread-callout" && resolution.entities[0]?.type === "thread") {
+        primitives.push(...calloutPrimitives(dimension, view, projection, resolution.entities[0], units, position));
+    }
+    return { primitives, issues };
+}
+function hatchSegments(loops, spacing, angleDegrees) {
+    const angle = angleDegrees * Math.PI / 180;
+    const along = [Math.cos(angle), Math.sin(angle)];
+    const normal = [-Math.sin(angle), Math.cos(angle)];
+    const coordinates = loops.flat().map((point) => point[0] * normal[0] + point[1] * normal[1]);
+    if (!coordinates.length)
+        return { segments: [], truncated: false };
+    let minimum = Infinity;
+    let maximum = -Infinity;
+    for (const coordinate of coordinates) {
+        minimum = Math.min(minimum, coordinate);
+        maximum = Math.max(maximum, coordinate);
+    }
+    const safeSpacing = Math.max(0.25, spacing);
+    const segments = [];
+    let truncated = false;
+    const start = Math.floor(minimum / safeSpacing) * safeSpacing;
+    for (let coordinate = start; coordinate <= maximum + EPSILON; coordinate += safeSpacing) {
+        const intersections = [];
+        loops.forEach((loop) => {
+            for (let index = 0; index < loop.length; index += 1) {
+                const first = loop[index];
+                const second = loop[(index + 1) % loop.length];
+                const firstNormal = first[0] * normal[0] + first[1] * normal[1];
+                const secondNormal = second[0] * normal[0] + second[1] * normal[1];
+                if (!((firstNormal <= coordinate && coordinate < secondNormal)
+                    || (secondNormal <= coordinate && coordinate < firstNormal)))
+                    continue;
+                const amount = (coordinate - firstNormal) / (secondNormal - firstNormal);
+                const point = [
+                    first[0] + (second[0] - first[0]) * amount,
+                    first[1] + (second[1] - first[1]) * amount,
+                ];
+                intersections.push(point[0] * along[0] + point[1] * along[1]);
+            }
+        });
+        intersections.sort((a, b) => a - b);
+        for (let index = 0; index + 1 < intersections.length; index += 2) {
+            const first = intersections[index];
+            const second = intersections[index + 1];
+            if (second - first < EPSILON)
+                continue;
+            segments.push({
+                a: [along[0] * first + normal[0] * coordinate, along[1] * first + normal[1] * coordinate],
+                b: [along[0] * second + normal[0] * coordinate, along[1] * second + normal[1] * coordinate],
+            });
+            if (segments.length >= 5000) {
+                truncated = true;
+                return { segments, truncated };
+            }
+        }
+    }
+    return { segments, truncated };
 }
 function titleBlockPrimitives(sheet, units) {
     const result = [];
@@ -87372,105 +88315,543 @@ function titleBlockPrimitives(sheet, units) {
     result.push(line(x, y, x + width, y, "title"), line(x + width, y, x + width, y + 27, "title"), line(x + width, y + 27, x, y + 27, "title"), line(x, y + 27, x, y, "title"), line(x, y + 12, x + width, y + 12, "title"), line(x, y + 19, x + width, y + 19, "title"), line(x + width * 0.58, y + 12, x + width * 0.58, y + 27, "title"), line(x + width * 0.78, y + 12, x + width * 0.78, y + 27, "title"), text(x + 3, y + 5, sheet.titleBlock.title || "UNTITLED DRAWING", 4, { weight: "bold" }), text(x + 3, y + 10, sheet.titleBlock.material ? `MATERIAL: ${sheet.titleBlock.material}` : "MATERIAL: -", 2.4), text(x + 3, y + 16.5, `DRAWING: ${sheet.titleBlock.drawingNumber || "-"}`, 2.5), text(x + width * 0.6, y + 16.5, `REV ${sheet.titleBlock.revision || "-"}`, 2.5), text(x + width * 0.8, y + 16.5, `UNITS ${units}`, 2.5), text(x + 3, y + 24, `DRAWN BY: ${sheet.titleBlock.drawnBy || "-"}`, 2.4), text(x + width * 0.6, y + 24, sheet.titleBlock.date, 2.4), text(x + width * 0.8, y + 24, `SHEET ${sheet.name}`, 2.4));
     return result;
 }
+function enlargedPreviewIssue(view) {
+    if (view.type !== "enlarged")
+        return null;
+    if (view.legacyType === "detail")
+        return {
+            severity: "error", blocking: true, code: "LEGACY_DETAIL_REQUIRES_RECREATION", viewId: view.id,
+            message: "This pre-schema-9 Detail placeholder has no trustworthy parent crop. Recreate it with the Detail command before fabrication export.",
+        };
+    return {
+        severity: "warning", blocking: false, code: "ENLARGED_PREVIEW_ONLY", viewId: view.id,
+        message: "This is an independent enlarged orthographic view, not an associative cropped Detail view.",
+    };
+}
+function sameSources(first, second) {
+    const firstIds = [...new Set(first.sourceBodyIds)].sort();
+    const secondIds = [...new Set(second.sourceBodyIds)].sort();
+    return firstIds.length === secondIds.length && firstIds.every((id, index) => id === secondIds[index]);
+}
+function sectionCuttingPlane(section, parent, parentProjection, sectionPosition, parentPosition, units) {
+    const issues = [];
+    const primitives = [];
+    const axis = section.sectionAxis ?? "Y";
+    if (parent.type !== "orthographic" || parent.orientation === "iso")
+        issues.push({
+            severity: "error", blocking: true, code: "INVALID_SECTION_PARENT", viewId: section.id,
+            message: `Section ${section.sectionLabel ?? "A"}-${section.sectionLabel ?? "A"} needs a standard orthographic parent view.`,
+        });
+    if (!(0, benchcad_projection_1.sectionParentIsCompatible)(axis, parent.orientation))
+        issues.push({
+            severity: "error", blocking: true, code: "SECTION_PARENT_PLANE_FACE_ON", viewId: section.id,
+            message: `The ${axis} cutting plane is face-on in “${parent.name}”. Choose a parent where the plane appears edge-on.`,
+        });
+    if (!sameSources(section, parent))
+        issues.push({
+            severity: "error", blocking: true, code: "SECTION_PARENT_SOURCE_MISMATCH", viewId: section.id,
+            message: "The section and its cutting-plane parent must reference the same exact source bodies.",
+        });
+    if (!parentProjection.valid)
+        issues.push({
+            severity: "error", blocking: true, code: "UNRESOLVED_SECTION_PARENT", viewId: section.id,
+            message: `The parent view “${parent.name}” is unresolved, so its cutting-plane line cannot be trusted.`,
+        });
+    if (issues.some((issue) => issue.blocking))
+        return { primitives, issues };
+    const basis = (0, benchcad_projection_1.drawingViewBasis)(parent.orientation);
+    const axisVector = (0, benchcad_projection_1.sectionAxisVector)(axis);
+    const alongU = dot3(axisVector, basis.u);
+    const alongV = dot3(axisVector, basis.v);
+    const offset = section.sectionOffset ?? 0;
+    const padModel = 2.5 / Math.max(EPSILON, parent.scale * unitToMillimeters(units));
+    let first;
+    let second;
+    if (Math.abs(alongU) >= Math.abs(alongV) && Math.abs(alongU) > EPSILON) {
+        const coordinate = offset / alongU;
+        first = [coordinate, parentProjection.bounds.minY - padModel];
+        second = [coordinate, parentProjection.bounds.maxY + padModel];
+    }
+    else if (Math.abs(alongV) > EPSILON) {
+        const coordinate = offset / alongV;
+        first = [parentProjection.bounds.minX - padModel, coordinate];
+        second = [parentProjection.bounds.maxX + padModel, coordinate];
+    }
+    else {
+        return { primitives, issues: [{
+                    severity: "error", blocking: true, code: "SECTION_PARENT_PROJECTION_FAILURE", viewId: section.id,
+                    message: "The cutting plane could not be projected into its parent view.",
+                }] };
+    }
+    const firstSheet = mappedPoint(first, parentProjection, parent, units, parentPosition);
+    const secondSheet = mappedPoint(second, parentProjection, parent, units, parentPosition);
+    primitives.push(line(firstSheet[0], firstSheet[1], secondSheet[0], secondSheet[1], "cutting", parent.id));
+    const sectionDepth = (0, benchcad_projection_1.drawingViewBasis)(section.orientation).depth;
+    const directionModel = [dot3(sectionDepth, basis.u), dot3(sectionDepth, basis.v)];
+    const directionSheet = [directionModel[0], -directionModel[1]];
+    const magnitude = Math.hypot(directionSheet[0], directionSheet[1]) || 1;
+    const direction = [directionSheet[0] / magnitude, directionSheet[1] / magnitude];
+    const perpendicular = [-direction[1], direction[0]];
+    const label = (section.sectionLabel || "A").toUpperCase();
+    const cutDx = secondSheet[0] - firstSheet[0];
+    const cutDy = secondSheet[1] - firstSheet[1];
+    const cutMagnitude = Math.hypot(cutDx, cutDy) || 1;
+    const cutDirection = [cutDx / cutMagnitude, cutDy / cutMagnitude];
+    [firstSheet, secondSheet].forEach((point, index) => {
+        const tip = [point[0] + direction[0] * 6, point[1] + direction[1] * 6];
+        const inward = index === 0 ? cutDirection : [-cutDirection[0], -cutDirection[1]];
+        primitives.push(line(point[0], point[1], tip[0], tip[1], "cutting", parent.id), line(tip[0], tip[1], tip[0] - direction[0] * 2.8 + perpendicular[0] * 1.4, tip[1] - direction[1] * 2.8 + perpendicular[1] * 1.4, "cutting", parent.id), line(tip[0], tip[1], tip[0] - direction[0] * 2.8 - perpendicular[0] * 1.4, tip[1] - direction[1] * 2.8 - perpendicular[1] * 1.4, "cutting", parent.id), text(tip[0] + direction[0] * 3 + inward[0] * 3, tip[1] + direction[1] * 3 + inward[1] * 3, label, 3.2, {
+            align: "middle", weight: "bold", viewId: parent.id,
+        }));
+    });
+    void sectionPosition;
+    return { primitives, issues };
+}
+function boundsOverlap(first, second, tolerance = 0) {
+    return first.maxX > second.minX + tolerance && first.minX < second.maxX - tolerance
+        && first.maxY > second.minY + tolerance && first.minY < second.maxY - tolerance;
+}
+function detailBoundaryPoints(region, segments = 48) {
+    if (region.shape === "rectangle")
+        return [
+            [region.bounds.minX, region.bounds.minY],
+            [region.bounds.maxX, region.bounds.minY],
+            [region.bounds.maxX, region.bounds.maxY],
+            [region.bounds.minX, region.bounds.maxY],
+        ];
+    const radius = region.width / 2;
+    return Array.from({ length: Math.max(24, segments) }, (_, index) => {
+        const angle = index / Math.max(24, segments) * Math.PI * 2;
+        return [region.center[0] + Math.cos(angle) * radius, region.center[1] + Math.sin(angle) * radius];
+    });
+}
+function closedBoundaryPrimitives(points, projection, view, units, position, ownerViewId) {
+    return points.map((point, index) => {
+        const next = points[(index + 1) % points.length];
+        const first = mappedPoint(point, projection, view, units, position);
+        const second = mappedPoint(next, projection, view, units, position);
+        return line(first[0], first[1], second[0], second[1], "detail", ownerViewId);
+    });
+}
+function detailViewRelationship(detail, parent, parentProjection, detailProjection, parentPosition, detailPosition, units) {
+    const issues = [];
+    const primitives = [];
+    const label = (detail.detailLabel || "A").toUpperCase();
+    const region = detailProjection.detailRegion ?? drawingDetailRegion(detail);
+    if (parent.type !== "orthographic")
+        issues.push({
+            severity: "error", blocking: true, code: "INVALID_DETAIL_PARENT", viewId: detail.id,
+            message: `Detail ${label} requires an orthographic parent view.`,
+        });
+    if (parent.orientation !== detail.orientation)
+        issues.push({
+            severity: "error", blocking: true, code: "DETAIL_PARENT_ORIENTATION_MISMATCH", viewId: detail.id,
+            message: `Detail ${label} must retain the ${parent.orientation} orientation of its parent view.`,
+        });
+    if (!sameSources(detail, parent))
+        issues.push({
+            severity: "error", blocking: true, code: "DETAIL_PARENT_SOURCE_MISMATCH", viewId: detail.id,
+            message: `Detail ${label} and its parent must reference the same exact source bodies.`,
+        });
+    if (!parentProjection.valid)
+        issues.push({
+            severity: "error", blocking: true, code: "UNRESOLVED_DETAIL_PARENT", viewId: detail.id,
+            message: `The parent view “${parent.name}” is unresolved, so Detail ${label} cannot be qualified.`,
+        });
+    if (!region)
+        issues.push({
+            severity: "error", blocking: true, code: "INVALID_DETAIL_REGION", viewId: detail.id,
+            message: `Detail ${label} has no valid crop region.`,
+        });
+    if (region && !boundsOverlap(region.bounds, parentProjection.bounds))
+        issues.push({
+            severity: "error", blocking: true, code: "DETAIL_REGION_OUTSIDE_PARENT", viewId: detail.id,
+            message: `Detail ${label} does not overlap its parent view's projected geometry envelope.`,
+        });
+    if (issues.some((issue) => issue.blocking) || !region)
+        return { primitives, issues };
+    const parentBoundary = detailBoundaryPoints(region);
+    primitives.push(...closedBoundaryPrimitives(parentBoundary, parentProjection, parent, units, parentPosition, parent.id));
+    const sourceAnchorModel = region.shape === "circle"
+        ? [region.center[0] + region.width / 2, region.center[1] - region.height * 0.12]
+        : [region.bounds.maxX, region.bounds.minY];
+    const sourceAnchor = mappedPoint(sourceAnchorModel, parentProjection, parent, units, parentPosition);
+    const leaderEnd = [sourceAnchor[0] + 12, sourceAnchor[1] - 10];
+    primitives.push(line(sourceAnchor[0], sourceAnchor[1], leaderEnd[0], leaderEnd[1], "detail", parent.id));
+    const bubbleRadius = 4.8;
+    const bubblePoints = Array.from({ length: 24 }, (_, index) => {
+        const angle = index / 24 * Math.PI * 2;
+        return [leaderEnd[0] + Math.cos(angle) * bubbleRadius, leaderEnd[1] + Math.sin(angle) * bubbleRadius];
+    });
+    bubblePoints.forEach((point, index) => {
+        const next = bubblePoints[(index + 1) % bubblePoints.length];
+        primitives.push(line(point[0], point[1], next[0], next[1], "detail", parent.id));
+    });
+    primitives.push(text(leaderEnd[0], leaderEnd[1] + 1.1, label, 3.4, { align: "middle", weight: "bold", viewId: parent.id }));
+    if (detail.detailShowBoundary !== false)
+        primitives.push(...closedBoundaryPrimitives(detailBoundaryPoints(region), detailProjection, detail, units, detailPosition, detail.id));
+    return { primitives, issues };
+}
+function primitiveBounds(primitives) {
+    const bounds = emptyBounds();
+    primitives.forEach((primitive) => {
+        if (primitive.kind === "line") {
+            includePoint(bounds, [primitive.x1, primitive.y1]);
+            includePoint(bounds, [primitive.x2, primitive.y2]);
+            return;
+        }
+        const width = Math.max(0.5, primitive.text.length * primitive.size * 0.52);
+        const startX = primitive.align === "middle" ? primitive.x - width / 2
+            : primitive.align === "end" ? primitive.x - width : primitive.x;
+        includePoint(bounds, [startX, primitive.y - primitive.size]);
+        includePoint(bounds, [startX + width, primitive.y + primitive.size * 0.35]);
+    });
+    return boundsAreFinite(bounds) ? bounds : null;
+}
+function expandedBounds(bounds, amount) {
+    return { minX: bounds.minX - amount, minY: bounds.minY - amount, maxX: bounds.maxX + amount, maxY: bounds.maxY + amount };
+}
+function titleBlockBounds(sheet) {
+    const margin = 8;
+    const width = Math.min(128, sheet.width - margin * 2);
+    return { minX: sheet.width - margin - width, minY: sheet.height - margin - 27, maxX: sheet.width - margin, maxY: sheet.height - margin };
+}
+function drawingLayoutIssues(sheet, primitives, viewBounds) {
+    const issues = [];
+    const contentBounds = {};
+    const printable = { minX: 9.5, minY: 9.5, maxX: sheet.width - 9.5, maxY: sheet.height - 9.5 };
+    const title = titleBlockBounds(sheet);
+    const outside = (bounds, area) => bounds.minX < area.minX
+        || bounds.maxX > area.maxX || bounds.minY < area.minY || bounds.maxY > area.maxY;
+    sheet.views.forEach((view) => {
+        const own = primitiveBounds(primitives.filter((primitive) => primitive.viewId === view.id));
+        const bounds = own ?? viewBounds[view.id];
+        if (!bounds)
+            return;
+        contentBounds[view.id] = bounds;
+        if (outside(bounds, printable))
+            issues.push({
+                severity: "warning", blocking: false, code: "VIEW_OUTSIDE_PRINTABLE_AREA", sheetId: sheet.id, viewId: view.id,
+                message: `“${view.name}” extends outside the printable border. Reposition or rescale the view before release.`,
+            });
+        if (boundsOverlap(bounds, title, 0.4))
+            issues.push({
+                severity: "warning", blocking: false, code: "VIEW_TITLE_BLOCK_COLLISION", sheetId: sheet.id, viewId: view.id,
+                message: `“${view.name}” overlaps the title block.`,
+            });
+    });
+    const views = sheet.views.filter((view) => contentBounds[view.id]);
+    for (let firstIndex = 0; firstIndex < views.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < views.length; secondIndex += 1) {
+            const first = views[firstIndex], second = views[secondIndex];
+            const firstBounds = expandedBounds(contentBounds[first.id], 1.2);
+            const secondBounds = expandedBounds(contentBounds[second.id], 1.2);
+            if (!boundsOverlap(firstBounds, secondBounds))
+                continue;
+            issues.push({
+                severity: "warning", blocking: false, code: "DRAWING_VIEW_COLLISION", sheetId: sheet.id, viewId: second.id,
+                message: `“${first.name}” overlaps “${second.name}”. Review view placement and annotations.`,
+            });
+        }
+    }
+    const annotationGroups = new Map();
+    primitives.forEach((primitive) => {
+        const key = primitive.dimensionId ? `dimension:${primitive.dimensionId}`
+            : primitive.noteId ? `note:${primitive.noteId}` : "";
+        if (!key)
+            return;
+        annotationGroups.set(key, [...(annotationGroups.get(key) ?? []), primitive]);
+    });
+    const annotationBounds = [...annotationGroups].flatMap(([key, group]) => {
+        // Text boxes are used for annotation collision checks. Dimension extension lines
+        // intentionally touch geometry and must not be reported as layout collisions.
+        const bounds = primitiveBounds(group.filter((primitive) => primitive.kind === "text"));
+        return bounds ? [{ key, bounds }] : [];
+    });
+    annotationBounds.forEach(({ key, bounds }) => {
+        const [kind, id] = key.split(":", 2);
+        if (outside(bounds, printable))
+            issues.push({
+                severity: "warning", blocking: false, code: "ANNOTATION_OUTSIDE_PRINTABLE_AREA", sheetId: sheet.id,
+                dimensionId: kind === "dimension" ? id : undefined,
+                noteId: kind === "note" ? id : undefined,
+                message: `${kind === "dimension" ? "Dimension" : "Note"} ${id} extends outside the printable border.`,
+            });
+        if (boundsOverlap(bounds, title, 0.3))
+            issues.push({
+                severity: "warning", blocking: false, code: "ANNOTATION_TITLE_BLOCK_COLLISION", sheetId: sheet.id,
+                dimensionId: kind === "dimension" ? id : undefined,
+                noteId: kind === "note" ? id : undefined,
+                message: `${kind === "dimension" ? "Dimension" : "Note"} ${id} overlaps the title block.`,
+            });
+    });
+    for (let firstIndex = 0; firstIndex < annotationBounds.length; firstIndex += 1) {
+        for (let secondIndex = firstIndex + 1; secondIndex < annotationBounds.length; secondIndex += 1) {
+            const first = annotationBounds[firstIndex], second = annotationBounds[secondIndex];
+            if (!boundsOverlap(expandedBounds(first.bounds, 0.5), expandedBounds(second.bounds, 0.5)))
+                continue;
+            issues.push({
+                severity: "warning", blocking: false, code: "DRAWING_ANNOTATION_COLLISION", sheetId: sheet.id,
+                message: `Annotations ${first.key.split(":")[1]} and ${second.key.split(":")[1]} overlap. Review their placement before release.`,
+            });
+        }
+    }
+    // Notes are not owned by a drawing view, so check their text boxes against
+    // view content independently.
+    sheet.notes.forEach((note) => {
+        const group = annotationGroups.get(`note:${note.id}`) ?? [];
+        const bounds = primitiveBounds(group.filter((primitive) => primitive.kind === "text"));
+        if (!bounds)
+            return;
+        views.forEach((view) => {
+            if (!boundsOverlap(bounds, expandedBounds(contentBounds[view.id], 0.8)))
+                return;
+            issues.push({
+                severity: "warning", blocking: false, code: "NOTE_VIEW_COLLISION", sheetId: sheet.id,
+                viewId: view.id, noteId: note.id,
+                message: `A note beginning “${note.text.slice(0, 32)}” overlaps “${view.name}”.`,
+            });
+        });
+    });
+    return { issues, contentBounds };
+}
+function drawingPrimitiveSignature(rendered) {
+    const payload = [rendered.width.toFixed(3), rendered.height.toFixed(3), ...rendered.primitives.map((primitive) => primitive.kind === "line"
+            ? ["L", primitive.style, primitive.x1.toFixed(4), primitive.y1.toFixed(4), primitive.x2.toFixed(4), primitive.y2.toFixed(4)].join("|")
+            : ["T", primitive.style ?? "normal", primitive.align ?? "start", primitive.weight ?? "normal",
+                primitive.x.toFixed(4), primitive.y.toFixed(4), primitive.size.toFixed(3), primitive.text].join("|"))].join("\n");
+    let hash = 2166136261;
+    for (let index = 0; index < payload.length; index += 1) {
+        hash ^= payload.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+}
 function renderDrawingSheet(sheet, bodies, meshes, units) {
     const primitives = [];
+    const issues = [];
     const margin = 8;
     primitives.push(line(margin, margin, sheet.width - margin, margin, "border"), line(sheet.width - margin, margin, sheet.width - margin, sheet.height - margin, "border"), line(sheet.width - margin, sheet.height - margin, margin, sheet.height - margin, "border"), line(margin, sheet.height - margin, margin, margin, "border"));
     const viewBounds = {};
+    const { positions: viewPositions, issues: alignmentIssues } = resolveDrawingViewPositions(sheet);
+    issues.push(...alignmentIssues.map((issue) => ({ ...issue, sheetId: sheet.id })));
     const projections = new Map();
     sheet.views.forEach((view) => {
+        const position = viewPositions[view.id] ?? { x: view.x, y: view.y };
         const projection = projectDrawingView(view, bodies, meshes);
         projections.set(view.id, projection);
+        issues.push(...projection.issues.map((issue) => ({ ...issue, sheetId: sheet.id })));
+        const modeIssue = enlargedPreviewIssue(view);
+        if (modeIssue)
+            issues.push({ ...modeIssue, sheetId: sheet.id });
         const mappedBounds = emptyBounds();
         projection.lines.forEach((segment) => {
             if (segment.hidden && !view.showHiddenLines)
                 return;
-            const a = mappedPoint(segment.a, projection, view, units);
-            const b = mappedPoint(segment.b, projection, view, units);
-            includePoint(mappedBounds, a);
-            includePoint(mappedBounds, b);
-            primitives.push(line(a[0], a[1], b[0], b[1], segment.hidden ? "hidden" : "visible", view.id));
+            const first = mappedPoint(segment.a, projection, view, units, position);
+            const second = mappedPoint(segment.b, projection, view, units, position);
+            includePoint(mappedBounds, first);
+            includePoint(mappedBounds, second);
+            const style = segment.hidden ? "hidden" : segment.style === "tangent" ? "tangent" : "visible";
+            primitives.push(line(first[0], first[1], second[0], second[1], style, view.id, segment.entityId));
         });
-        projection.sectionLines.forEach((segment) => {
-            const a = mappedPoint(segment.a, projection, view, units);
-            const b = mappedPoint(segment.b, projection, view, units);
-            includePoint(mappedBounds, a);
-            includePoint(mappedBounds, b);
-            primitives.push(line(a[0], a[1], b[0], b[1], "section", view.id));
-        });
-        const safeBounds = normalizedBounds(mappedBounds);
-        viewBounds[view.id] = safeBounds;
-        if (view.type === "section" && projection.sectionLines.length) {
-            const spacing = 4;
-            const span = safeBounds.maxY - safeBounds.minY;
-            for (let x = safeBounds.minX - span; x < safeBounds.maxX; x += spacing)
-                primitives.push(line(x, safeBounds.maxY, x + span, safeBounds.minY, "hatch", view.id));
+        if (view.type === "section") {
+            projection.sectionLoopGroups.forEach((group, groupIndex) => {
+                const hatch = hatchSegments(group.loops, view.sectionHatchSpacing ?? 3, groupIndex % 2 ? 135 : 45);
+                hatch.segments.forEach((segment) => {
+                    const first = mappedPoint(segment.a, projection, view, units, position);
+                    const second = mappedPoint(segment.b, projection, view, units, position);
+                    includePoint(mappedBounds, first);
+                    includePoint(mappedBounds, second);
+                    primitives.push(line(first[0], first[1], second[0], second[1], "hatch", view.id));
+                });
+                if (hatch.truncated)
+                    issues.push({
+                        severity: "warning", blocking: false, code: "SECTION_HATCH_LIMIT", sheetId: sheet.id, viewId: view.id,
+                        message: `Section hatching for “${view.name}” was limited to 5,000 segments for responsiveness.`,
+                    });
+            });
+            projection.sectionLines.forEach((segment) => {
+                const first = mappedPoint(segment.a, projection, view, units, position);
+                const second = mappedPoint(segment.b, projection, view, units, position);
+                includePoint(mappedBounds, first);
+                includePoint(mappedBounds, second);
+                primitives.push(line(first[0], first[1], second[0], second[1], "section", view.id));
+            });
         }
-        primitives.push(text(view.x, safeBounds.maxY + 6, `${view.name.toUpperCase()} · ${view.type === "section" ? "SECTION" : view.orientation.toUpperCase()} · SCALE ${view.scale}:1`, 2.8, {
-            align: "middle",
-            weight: "bold",
-            viewId: view.id,
-        }));
+        // A Detail's crop boundary defines its selectable and printable view extent,
+        // even when projected edges do not touch every side of the crop.
+        if (view.type === "detail" && projection.detailRegion) {
+            detailBoundaryPoints(projection.detailRegion).forEach((point) => includePoint(mappedBounds, mappedPoint(point, projection, view, units, position)));
+        }
+        const safeBounds = boundsAreFinite(mappedBounds) ? mappedBounds : placeholderBounds(position);
+        viewBounds[view.id] = safeBounds;
+        if (projection.status !== "resolved") {
+            const label = projection.status === "partial" ? "PARTIAL SOURCE — EXPORT BLOCKED" : "UNRESOLVED SOURCE — EXPORT BLOCKED";
+            primitives.push(...warningBox(safeBounds, label, view.id));
+        }
+        const caption = view.type === "section"
+            ? `SECTION ${(view.sectionLabel || "A").toUpperCase()}-${(view.sectionLabel || "A").toUpperCase()} - CLIPPED - SCALE ${view.scale}:1`
+            : view.type === "detail"
+                ? `DETAIL ${(view.detailLabel || "A").toUpperCase()} - ${(view.detailShape === "rectangle" ? "RECTANGULAR" : "CIRCULAR")} CROP - SCALE ${view.scale}:1`
+                : view.type === "enlarged"
+                    ? `${view.name.toUpperCase()} - ENLARGED PREVIEW - SCALE ${view.scale}:1`
+                    : `${view.name.toUpperCase()} - SCALE ${view.scale}:1`;
+        primitives.push(text(position.x, safeBounds.maxY + 6, caption, 2.8, { align: "middle", weight: "bold", style: view.type === "enlarged" ? "warning" : "normal", viewId: view.id }));
+    });
+    sheet.views.filter((view) => view.type === "section").forEach((section) => {
+        const parent = section.sectionParentId
+            ? sheet.views.find((view) => view.id === section.sectionParentId)
+            : undefined;
+        if (!parent) {
+            issues.push({
+                severity: "error", blocking: true, code: "MISSING_SECTION_PARENT", sheetId: sheet.id, viewId: section.id,
+                message: `Section ${(section.sectionLabel || "A").toUpperCase()}-${(section.sectionLabel || "A").toUpperCase()} has no parent view for its cutting-plane line.`,
+            });
+            return;
+        }
+        const parentProjection = projections.get(parent.id);
+        if (!parentProjection)
+            return;
+        const result = sectionCuttingPlane(section, parent, parentProjection, viewPositions[section.id] ?? { x: section.x, y: section.y }, viewPositions[parent.id] ?? { x: parent.x, y: parent.y }, units);
+        primitives.push(...result.primitives);
+        issues.push(...result.issues.map((issue) => ({ ...issue, sheetId: sheet.id })));
+    });
+    sheet.views.filter((view) => view.type === "detail").forEach((detail) => {
+        const parent = detail.detailParentId
+            ? sheet.views.find((view) => view.id === detail.detailParentId)
+            : undefined;
+        if (!parent) {
+            issues.push({
+                severity: "error", blocking: true, code: "MISSING_DETAIL_PARENT", sheetId: sheet.id, viewId: detail.id,
+                message: `Detail ${(detail.detailLabel || "A").toUpperCase()} has no parent view. Reattach it before export.`,
+            });
+            return;
+        }
+        const parentProjection = projections.get(parent.id);
+        const detailProjection = projections.get(detail.id);
+        if (!parentProjection || !detailProjection)
+            return;
+        const result = detailViewRelationship(detail, parent, parentProjection, detailProjection, viewPositions[parent.id] ?? { x: parent.x, y: parent.y }, viewPositions[detail.id] ?? { x: detail.x, y: detail.y }, units);
+        primitives.push(...result.primitives);
+        issues.push(...result.issues.map((issue) => ({ ...issue, sheetId: sheet.id })));
     });
     sheet.dimensions.forEach((dimension) => {
         const view = sheet.views.find((candidate) => candidate.id === dimension.viewId);
         const projection = projections.get(dimension.viewId);
         const bounds = viewBounds[dimension.viewId];
-        if (view && projection && bounds)
-            primitives.push(...dimensionPrimitives(dimension, view, projection, bounds, units));
+        if (!view || !projection || !bounds) {
+            issues.push({
+                severity: "error", blocking: true, code: "ORPHAN_DRAWING_DIMENSION", sheetId: sheet.id,
+                dimensionId: dimension.id, viewId: dimension.viewId,
+                message: `Dimension ${dimension.id} references a drawing view that no longer exists.`,
+            });
+            return;
+        }
+        const rendered = dimensionPrimitives(dimension, view, projection, bounds, units, viewPositions[view.id] ?? { x: view.x, y: view.y });
+        primitives.push(...rendered.primitives.map((primitive) => ({ ...primitive, dimensionId: dimension.id })));
+        issues.push(...rendered.issues.map((issue) => ({ ...issue, sheetId: sheet.id })));
     });
-    sheet.notes.forEach((note) => primitives.push(...note.text.split("\n").map((lineText, index) => text(note.x, note.y + index * (note.fontSize + 1), lineText, note.fontSize))));
-    primitives.push(...titleBlockPrimitives(sheet, units));
-    return { width: sheet.width, height: sheet.height, primitives, viewBounds };
+    if (!sheet.views.length)
+        issues.push({
+            severity: "warning", blocking: true, code: "EMPTY_DRAWING_SHEET", sheetId: sheet.id,
+            message: "The sheet contains no drawing views.",
+        });
+    sheet.notes.forEach((note) => primitives.push(...note.text.split("\n").map((value, index) => ({
+        ...text(note.x, note.y + index * (note.fontSize + 1), value, note.fontSize),
+        noteId: note.id,
+    }))));
+    const layout = drawingLayoutIssues(sheet, primitives, viewBounds);
+    issues.push(...layout.issues);
+    const exportReady = !issues.some((issue) => issue.blocking);
+    primitives.push(text(margin + 2, margin + 5, `${sheet.projectionMethod === "first-angle" ? "FIRST" : "THIRD"}-ANGLE PROJECTION`, 2.1, { weight: "bold" }), ...(!exportReady ? [text(margin + 2, margin + 9, "DRAWING EXPORT BLOCKED — RESOLVE INTEGRITY ISSUES", 2.3, { weight: "bold", style: "warning" })] : []), ...titleBlockPrimitives(sheet, units));
+    const signature = drawingPrimitiveSignature({ width: sheet.width, height: sheet.height, primitives });
+    return {
+        width: sheet.width,
+        height: sheet.height,
+        primitives,
+        viewBounds,
+        contentBounds: layout.contentBounds,
+        viewPositions,
+        issues,
+        exportReady,
+        primitiveSignature: signature,
+    };
+}
+function drawingExportAssessment(sheets, bodies, meshes, units) {
+    const issues = sheets.flatMap((sheet) => renderDrawingSheet(sheet, bodies, meshes, units).issues);
+    const unique = new Map();
+    issues.forEach((issue) => unique.set([
+        issue.severity, issue.code, issue.sheetId, issue.viewId, issue.dimensionId, issue.noteId, issue.bodyId, issue.message,
+    ].join("|"), issue));
+    const deduped = [...unique.values()];
+    return {
+        blocked: deduped.some((issue) => issue.blocking),
+        errors: deduped.filter((issue) => issue.severity === "error"),
+        warnings: deduped.filter((issue) => issue.severity === "warning"),
+        issues: deduped,
+    };
 }
 const xmlEscape = (value) => value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 const lineStyle = (style) => {
     if (style === "hidden")
         return 'stroke="#6f7780" stroke-width="0.25" stroke-dasharray="2 1.2"';
+    if (style === "tangent")
+        return 'stroke="#4d555d" stroke-width="0.20"';
     if (style === "section")
-        return 'stroke="#0b1115" stroke-width="0.7"';
+        return 'stroke="#0b1115" stroke-width="0.70"';
+    if (style === "cutting")
+        return 'stroke="#0b1115" stroke-width="0.65" stroke-dasharray="8 2 1.5 2"';
     if (style === "hatch")
         return 'stroke="#737b82" stroke-width="0.18"';
+    if (style === "detail")
+        return 'stroke="#0b1115" stroke-width="0.40" stroke-dasharray="6 1.5"';
     if (style === "dimension")
         return 'stroke="#1f5570" stroke-width="0.25"';
+    if (style === "center")
+        return 'stroke="#5a4a8a" stroke-width="0.22" stroke-dasharray="6 1.5 1 1.5"';
+    if (style === "warning")
+        return 'stroke="#b42318" stroke-width="0.45" stroke-dasharray="2 1"';
     if (style === "border" || style === "title")
         return 'stroke="#0b1115" stroke-width="0.35"';
     return 'stroke="#0b1115" stroke-width="0.35"';
 };
 function drawingSheetToSvg(sheet, bodies, meshes, units) {
     const rendered = renderDrawingSheet(sheet, bodies, meshes, units);
+    if (!rendered.exportReady)
+        throw new DrawingExportBlockedError(rendered.issues);
     const content = rendered.primitives.map((primitive) => {
         if (primitive.kind === "line")
             return `<line x1="${primitive.x1.toFixed(3)}" y1="${primitive.y1.toFixed(3)}" x2="${primitive.x2.toFixed(3)}" y2="${primitive.y2.toFixed(3)}" ${lineStyle(primitive.style)} fill="none" />`;
-        return `<text x="${primitive.x.toFixed(3)}" y="${primitive.y.toFixed(3)}" font-family="Arial, sans-serif" font-size="${primitive.size}" font-weight="${primitive.weight === "bold" ? "700" : "400"}" text-anchor="${primitive.align ?? "start"}" fill="#0b1115">${xmlEscape(primitive.text)}</text>`;
+        const fill = primitive.style === "warning" ? "#b42318" : "#0b1115";
+        return `<text x="${primitive.x.toFixed(3)}" y="${primitive.y.toFixed(3)}" font-family="Arial, sans-serif" font-size="${primitive.size}" font-weight="${primitive.weight === "bold" ? "700" : "400"}" text-anchor="${primitive.align ?? "start"}" fill="${fill}">${xmlEscape(primitive.text)}</text>`;
     }).join("\n");
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${rendered.width}mm" height="${rendered.height}mm" viewBox="0 0 ${rendered.width} ${rendered.height}"><rect width="100%" height="100%" fill="white"/>${content}</svg>`;
+    const signature = rendered.primitiveSignature || drawingPrimitiveSignature(rendered);
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${rendered.width}mm" height="${rendered.height}mm" viewBox="0 0 ${rendered.width} ${rendered.height}" data-benchcad-primitive-signature="${signature}"><metadata>BENCHCAD-PRIMITIVE-SIGNATURE:${signature}</metadata><rect width="100%" height="100%" fill="white"/>${content}</svg>`;
 }
 function pdfEscape(value) {
-    return value
-        .replaceAll("\\", "\\\\")
-        .replaceAll("(", "\\(")
-        .replaceAll(")", "\\)")
-        .replaceAll("±", "+/-")
-        .replaceAll("Ø", "DIA ")
-        .replace(/[^\x20-\x7e]/g, "?");
+    return value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)")
+        .replaceAll("±", "+/-").replaceAll("Ø", "DIA ").replace(/[^\x20-\x7e]/g, "?");
 }
 function pdfContent(rendered) {
     const points = 72 / 25.4;
     const commands = ["1 J 1 j"];
+    const widths = {
+        visible: 0.35, tangent: 0.2, hidden: 0.25, section: 0.7, cutting: 0.65, hatch: 0.18, detail: 0.4,
+        dimension: 0.25, center: 0.22, border: 0.35, title: 0.35, warning: 0.45,
+    };
     rendered.primitives.forEach((primitive) => {
         if (primitive.kind === "line") {
-            const widths = {
-                visible: 0.35, hidden: 0.25, section: 0.7, hatch: 0.18,
-                dimension: 0.25, border: 0.35, title: 0.35,
-            };
             commands.push(`${(widths[primitive.style] * points).toFixed(3)} w`);
-            commands.push(primitive.style === "hidden" ? "[5 3] 0 d" : "[] 0 d");
-            const color = primitive.style === "dimension" ? "0.12 0.33 0.44 RG" : "0.04 0.07 0.09 RG";
+            commands.push(primitive.style === "hidden" || primitive.style === "warning"
+                ? "[5 3] 0 d"
+                : primitive.style === "cutting" ? "[16 4 3 4] 0 d"
+                    : primitive.style === "detail" ? "[12 3] 0 d"
+                        : primitive.style === "center" ? "[12 3 2 3] 0 d" : "[] 0 d");
+            const color = primitive.style === "dimension" ? "0.12 0.33 0.44 RG"
+                : primitive.style === "detail" ? "0.19 0.36 0.47 RG"
+                    : primitive.style === "warning" ? "0.71 0.14 0.09 RG" : "0.04 0.07 0.09 RG";
             commands.push(color);
             commands.push(`${(primitive.x1 * points).toFixed(3)} ${((rendered.height - primitive.y1) * points).toFixed(3)} m ${(primitive.x2 * points).toFixed(3)} ${((rendered.height - primitive.y2) * points).toFixed(3)} l S`);
         }
@@ -87478,9 +88859,11 @@ function pdfContent(rendered) {
             const x = primitive.x * points;
             const y = (rendered.height - primitive.y) * points;
             const size = primitive.size * points;
-            const approximateWidth = pdfEscape(primitive.text).length * size * 0.48;
+            const escaped = pdfEscape(primitive.text);
+            const approximateWidth = escaped.length * size * 0.48;
             const adjustedX = primitive.align === "middle" ? x - approximateWidth / 2 : primitive.align === "end" ? x - approximateWidth : x;
-            commands.push(`BT /F1 ${size.toFixed(3)} Tf 0.04 0.07 0.09 rg ${adjustedX.toFixed(3)} ${y.toFixed(3)} Td (${pdfEscape(primitive.text)}) Tj ET`);
+            const color = primitive.style === "warning" ? "0.71 0.14 0.09 rg" : "0.04 0.07 0.09 rg";
+            commands.push(`BT /F1 ${size.toFixed(3)} Tf ${color} ${adjustedX.toFixed(3)} ${y.toFixed(3)} Td (${escaped}) Tj ET`);
         }
     });
     return commands.join("\n");
@@ -87490,33 +88873,35 @@ function byteLength(value) {
 }
 function drawingSheetsToPdf(sheets, bodies, meshes, units) {
     const rendered = sheets.map((sheet) => renderDrawingSheet(sheet, bodies, meshes, units));
-    const pageCount = rendered.length;
-    const fontId = 3 + pageCount * 2;
-    const objects = [];
-    objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
-    const pageIds = rendered.map((_, index) => 3 + index * 2);
-    objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageCount} >>`;
-    rendered.forEach((page, index) => {
-        const pageId = pageIds[index];
-        const contentId = pageId + 1;
-        const width = (page.width * 72) / 25.4;
-        const height = (page.height * 72) / 25.4;
+    const blocked = rendered.flatMap((page) => page.issues.filter((issue) => issue.blocking));
+    if (blocked.length)
+        throw new DrawingExportBlockedError(blocked);
+    const objects = ["<< /Type /Catalog /Pages 2 0 R >>", ""];
+    const pageIds = [];
+    rendered.forEach((page) => {
         const content = pdfContent(page);
-        objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width.toFixed(3)} ${height.toFixed(3)}] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`;
-        objects[contentId] = `<< /Length ${byteLength(content)} >>\nstream\n${content}\nendstream`;
+        const contentId = objects.length + 1;
+        objects.push(`<< /Length ${byteLength(content)} >>\nstream\n${content}\nendstream`);
+        const pageId = objects.length + 1;
+        pageIds.push(pageId);
+        const points = 72 / 25.4;
+        objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${(page.width * points).toFixed(3)} ${(page.height * points).toFixed(3)}] /Resources << /Font << /F1 ${2 + rendered.length * 2 + 1} 0 R >> >> /Contents ${contentId} 0 R >>`);
     });
-    objects[fontId] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
-    let pdf = "%PDF-1.4\n%BENCHCAD\n";
+    const fontId = objects.length + 1;
+    objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+    objects[1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${rendered.length} >>`;
+    const signatures = rendered.map((page) => page.primitiveSignature || drawingPrimitiveSignature(page)).join(",");
+    let pdf = `%PDF-1.4\n%BENCHCAD\n%BENCHCAD-PRIMITIVE-SIGNATURE:${signatures}\n`;
     const offsets = [0];
-    for (let id = 1; id <= fontId; id += 1) {
-        offsets[id] = byteLength(pdf);
-        pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
-    }
+    objects.forEach((object, index) => {
+        offsets.push(byteLength(pdf));
+        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    });
     const xref = byteLength(pdf);
-    pdf += `xref\n0 ${fontId + 1}\n0000000000 65535 f \n`;
-    for (let id = 1; id <= fontId; id += 1)
-        pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
-    pdf += `trailer\n<< /Size ${fontId + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, "0")} 00000 n \n`; });
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+    void fontId;
     return new TextEncoder().encode(pdf);
 }
 function resizeDrawingSheet(sheet, size, orientation) {
@@ -87534,12 +88919,135 @@ const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const lucide_react_1 = require("lucide-react");
 const sonner_1 = require("sonner");
+const dropdown_menu_1 = require("@/components/ui/dropdown-menu");
 const benchcad_drawing_1 = require("@/lib/benchcad-drawing");
+const benchcad_drawing_refs_1 = require("@/lib/benchcad-drawing-refs");
 const benchcad_dxf_1 = require("@/lib/benchcad-dxf");
+const benchcad_projection_1 = require("@/lib/benchcad-projection");
 const benchcad_model_1 = require("@/lib/benchcad-model");
 const VIEW_ORIENTATIONS = [
     "front", "back", "top", "bottom", "left", "right", "iso",
 ];
+const SECTION_VIEW_DEFAULTS = {
+    X: { orientation: "right", keepSide: "negative" },
+    Y: { orientation: "front", keepSide: "positive" },
+    Z: { orientation: "top", keepSide: "negative" },
+};
+function nextSectionLabel(views) {
+    const index = views.filter((view) => view.type === "section").length;
+    return String.fromCharCode(65 + (index % 26));
+}
+function nextDetailLabel(views) {
+    const used = new Set(views.filter((view) => view.type === "detail")
+        .map((view) => (view.detailLabel || "").toUpperCase()));
+    for (let index = 0; index < 26; index += 1) {
+        const label = String.fromCharCode(65 + index);
+        if (!used.has(label))
+            return label;
+    }
+    return String(views.filter((view) => view.type === "detail").length + 1);
+}
+function sectionSetupForParent(parent) {
+    if (parent.orientation === "front" || parent.orientation === "back")
+        return { axis: "X", orientation: "right", keepSide: "negative", alignment: "horizontal", xOffset: 85, yOffset: 0 };
+    if (parent.orientation === "top" || parent.orientation === "bottom")
+        return { axis: "Y", orientation: "front", keepSide: "positive", alignment: "vertical", xOffset: 0, yOffset: 70 };
+    if (parent.orientation === "left" || parent.orientation === "right")
+        return { axis: "Y", orientation: "front", keepSide: "positive", alignment: "horizontal", xOffset: 85, yOffset: 0 };
+    return null;
+}
+function sectionOffsetForMeshes(meshes, axis) {
+    const axisIndex = { X: 0, Y: 1, Z: 2 }[axis];
+    let minimum = Infinity;
+    let maximum = -Infinity;
+    meshes.forEach((mesh) => {
+        for (let index = axisIndex; index < mesh.vertices.length; index += 3) {
+            const value = Number(mesh.vertices[index]);
+            if (!Number.isFinite(value))
+                continue;
+            minimum = Math.min(minimum, value);
+            maximum = Math.max(maximum, value);
+        }
+    });
+    return Number.isFinite(minimum) && Number.isFinite(maximum) ? (minimum + maximum) / 2 : 0;
+}
+const drawingUnitMillimeters = (units) => units === "mm" ? 1 : units === "cm" ? 10 : units === "in" ? 25.4 : 1000;
+function projectionHalfExtents(view, bodies, meshes, units) {
+    const projection = (0, benchcad_drawing_1.projectDrawingView)(view, bodies, meshes);
+    if (!projection.valid)
+        return { x: 8, y: 8 };
+    const factor = Math.max(0.0001, view.scale) * drawingUnitMillimeters(units);
+    return {
+        x: Math.max(4, (projection.bounds.maxX - projection.bounds.minX) * factor / 2),
+        y: Math.max(4, (projection.bounds.maxY - projection.bounds.minY) * factor / 2),
+    };
+}
+function fitProjectionGroupToSheet(sheet, views, anchorId, bodies, meshes, units) {
+    const ids = new Set(views.map((view) => view.id));
+    const adjacent = new Map();
+    const link = (a, b) => {
+        if (!adjacent.has(a))
+            adjacent.set(a, new Set());
+        if (!adjacent.has(b))
+            adjacent.set(b, new Set());
+        adjacent.get(a).add(b);
+        adjacent.get(b).add(a);
+    };
+    views.forEach((view) => {
+        if (view.projectionParentId && ids.has(view.projectionParentId))
+            link(view.id, view.projectionParentId);
+    });
+    const group = new Set();
+    const pending = [anchorId];
+    while (pending.length) {
+        const id = pending.pop();
+        if (group.has(id) || !ids.has(id))
+            continue;
+        group.add(id);
+        adjacent.get(id)?.forEach((neighbor) => pending.push(neighbor));
+    }
+    if (!group.size)
+        return views;
+    const temporary = { ...sheet, views };
+    const { positions } = (0, benchcad_drawing_1.resolveDrawingViewPositions)(temporary);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    views.filter((view) => group.has(view.id)).forEach((view) => {
+        const position = positions[view.id] ?? { x: view.x, y: view.y };
+        const half = projectionHalfExtents(view, bodies, meshes, units);
+        minX = Math.min(minX, position.x - half.x - 3);
+        maxX = Math.max(maxX, position.x + half.x + 3);
+        minY = Math.min(minY, position.y - half.y - 3);
+        maxY = Math.max(maxY, position.y + half.y + 10);
+    });
+    if (![minX, minY, maxX, maxY].every(Number.isFinite))
+        return views;
+    const printable = { left: 14, right: sheet.width - 14, top: 20, bottom: sheet.height - 42 };
+    const fitShift = (minimum, maximum, lower, upper) => {
+        if (maximum - minimum > upper - lower)
+            return (lower + upper - minimum - maximum) / 2;
+        if (minimum < lower)
+            return lower - minimum;
+        if (maximum > upper)
+            return upper - maximum;
+        return 0;
+    };
+    const dx = fitShift(minX, maxX, printable.left, printable.right);
+    const dy = fitShift(minY, maxY, printable.top, printable.bottom);
+    if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001)
+        return views;
+    const now = new Date().toISOString();
+    return views.map((view) => group.has(view.id)
+        ? { ...view, x: view.x + dx, y: view.y + dy, updatedAt: now }
+        : view);
+}
+function fitAllProjectionGroupsToSheet(sheet, views, bodies, meshes, units) {
+    const ids = new Set(views.map((view) => view.id));
+    const roots = views.filter((view) => !view.projectionParentId || !ids.has(view.projectionParentId));
+    return roots.reduce((next, root) => {
+        const hasChildren = next.some((view) => view.projectionParentId === root.id);
+        return hasChildren ? fitProjectionGroupToSheet(sheet, next, root.id, bodies, meshes, units) : next;
+    }, views);
+}
 function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -87549,16 +89057,71 @@ function downloadBlob(blob, filename) {
     window.setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 const fileBase = (value) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "benchcad-drawing";
+const ANNOTATION_CHOICES = [
+    { kind: "aligned", label: "Aligned length" },
+    { kind: "horizontal", label: "Referenced horizontal" },
+    { kind: "vertical", label: "Referenced vertical" },
+    { kind: "angular", label: "Angle" },
+    { kind: "diameter", label: "Diameter" },
+    { kind: "radius", label: "Radius" },
+    { kind: "ordinate-x", label: "X ordinate" },
+    { kind: "ordinate-y", label: "Y ordinate" },
+    { kind: "center-mark", label: "Center mark" },
+    { kind: "centerline", label: "Centerlines" },
+    { kind: "hole-callout", label: "Hole callout" },
+    { kind: "thread-callout", label: "Thread callout" },
+];
+function entityMatchesMode(entity, mode) {
+    if (mode === "feature")
+        return entity.type === "hole" || entity.type === "thread";
+    if (mode === "circle")
+        return entity.type === "circle" || entity.type === "hole";
+    return entity.type === mode;
+}
+function annotationReferences(entities) {
+    return entities.map((entity, index) => (0, benchcad_drawing_1.makeDrawingEntityReference)(entity, entities.length > 1 ? (index === 0 ? "primary" : "secondary") : "primary"));
+}
+function annotationReferenceCount(kind) {
+    if (kind === "angular")
+        return [2];
+    if (kind === "aligned" || kind === "horizontal" || kind === "vertical")
+        return [1, 2];
+    if (["diameter", "radius", "ordinate-x", "ordinate-y", "center-mark", "centerline", "hole-callout", "thread-callout"].includes(kind))
+        return [1];
+    return [];
+}
+function entitySummary(entity) {
+    if (entity.type === "edge")
+        return `${entity.label} · ${entity.style}${entity.hidden ? " · hidden" : ""}`;
+    if (entity.type === "vertex")
+        return entity.label;
+    if (entity.type === "circle")
+        return entity.label;
+    if (entity.type === "hole")
+        return `${entity.label} · ${entity.hole.style}`;
+    return `${entity.label} · ${entity.thread.mode}`;
+}
 function Primitive({ primitive }) {
     if (primitive.kind === "line") {
         const classes = `drawing-line drawing-${primitive.style}`;
         return ((0, jsx_runtime_1.jsx)("line", { x1: primitive.x1, y1: primitive.y1, x2: primitive.x2, y2: primitive.y2, className: classes }));
     }
-    return ((0, jsx_runtime_1.jsx)("text", { x: primitive.x, y: primitive.y, fontSize: primitive.size, textAnchor: primitive.align ?? "start", fontWeight: primitive.weight === "bold" ? 700 : 400, className: "drawing-text", children: primitive.text }));
+    return ((0, jsx_runtime_1.jsx)("text", { x: primitive.x, y: primitive.y, fontSize: primitive.size, textAnchor: primitive.align ?? "start", fontWeight: primitive.weight === "bold" ? 700 : 400, className: `drawing-text ${primitive.style === "warning" ? "drawing-warning-text" : ""}`, children: primitive.text }));
+}
+function assessmentLabel(assessment) {
+    const blocking = assessment.issues.filter((issue) => issue.blocking).length;
+    if (blocking)
+        return `${blocking} blocker${blocking === 1 ? "" : "s"}`;
+    if (assessment.warnings.length)
+        return `${assessment.warnings.length} warning${assessment.warnings.length === 1 ? "" : "s"}`;
+    return "ready";
 }
 function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, }) {
     const [sheetId, setSheetId] = (0, react_1.useState)(project.drawings[0]?.id ?? "");
     const [selection, setSelection] = (0, react_1.useState)(project.drawings[0] ? { kind: "sheet", id: project.drawings[0].id } : null);
+    const [referencePickMode, setReferencePickMode] = (0, react_1.useState)("edge");
+    const [annotationKind, setAnnotationKind] = (0, react_1.useState)("aligned");
+    const [pickedEntityIds, setPickedEntityIds] = (0, react_1.useState)([]);
     const [drag, setDrag] = (0, react_1.useState)(null);
     const svgRef = (0, react_1.useRef)(null);
     const sheet = project.drawings.find((candidate) => candidate.id === sheetId)
@@ -87574,8 +89137,34 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
         ? sheet.notes.find((note) => note.id === selection.id) ?? null
         : null;
     const rendered = (0, react_1.useMemo)(() => sheet ? (0, benchcad_drawing_1.renderDrawingSheet)(sheet, bodies, meshes, project.units) : null, [bodies, meshes, project.units, sheet]);
+    const integrity = (0, react_1.useMemo)(() => sheet ? (0, benchcad_drawing_1.drawingExportAssessment)([sheet], bodies, meshes, project.units) : null, [bodies, meshes, project.units, sheet]);
+    const selectedProjection = (0, react_1.useMemo)(() => selectedView ? (0, benchcad_drawing_1.projectDrawingView)(selectedView, bodies, meshes) : null, [bodies, meshes, selectedView]);
+    const selectedDimensionView = sheet && selectedDimension
+        ? sheet.views.find((view) => view.id === selectedDimension.viewId) ?? null
+        : null;
+    const selectedDimensionProjection = (0, react_1.useMemo)(() => selectedDimensionView ? (0, benchcad_drawing_1.projectDrawingView)(selectedDimensionView, bodies, meshes) : null, [bodies, meshes, selectedDimensionView]);
+    const selectedDimensionResolution = (0, react_1.useMemo)(() => selectedDimension && selectedDimensionProjection
+        ? (0, benchcad_drawing_1.resolveDrawingDimensionReferences)(selectedDimension, selectedDimensionProjection.entities)
+        : null, [selectedDimension, selectedDimensionProjection]);
+    const selectableEntities = (0, react_1.useMemo)(() => (selectedProjection?.entities ?? []).filter((entity) => entityMatchesMode(entity, referencePickMode)), [referencePickMode, selectedProjection]);
+    const pickedEntities = (0, react_1.useMemo)(() => {
+        const available = new Map((selectedProjection?.entities ?? []).map((entity) => [entity.id, entity]));
+        return pickedEntityIds.flatMap((id) => available.get(id) ? [available.get(id)] : []);
+    }, [pickedEntityIds, selectedProjection]);
+    (0, react_1.useEffect)(() => {
+        setPickedEntityIds([]);
+    }, [sheetId, selectedView?.id, referencePickMode]);
+    const exactMeshBodyIds = (0, react_1.useMemo)(() => new Set((0, benchcad_drawing_1.drawingMeshesForBodies)(bodies, meshes, bodies.map((body) => body.id))
+        .map((mesh) => mesh.targetId)), [bodies, meshes]);
+    const consumedByBodyId = (0, react_1.useMemo)(() => {
+        const result = new Map();
+        meshes.forEach((mesh) => {
+            (mesh.consumedIds ?? []).forEach((bodyId) => result.set(bodyId, mesh.targetId));
+        });
+        return result;
+    }, [meshes]);
     function changeDrawings(drawings) {
-        onProjectChange({ ...project, drawings });
+        onProjectChange({ ...project, drawings, updatedAt: new Date().toISOString() });
     }
     function updateSheet(next) {
         changeDrawings(project.drawings.map((candidate) => candidate.id === next.id ? next : candidate));
@@ -87583,7 +89172,7 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
     function patchSheet(patch) {
         if (!sheet)
             return;
-        updateSheet({ ...sheet, ...patch, updatedAt: new Date().toISOString() });
+        updateSheet({ ...sheet, ...patch, drawingSchemaVersion: 5, updatedAt: new Date().toISOString() });
     }
     function createSheet() {
         const base = (0, benchcad_model_1.makeDrawingSheet)(project.name);
@@ -87608,49 +89197,378 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
         setSheetId(next[0]?.id ?? "");
         setSelection(next[0] ? { kind: "sheet", id: next[0].id } : null);
     }
+    function visibleBodyIds() {
+        return bodies
+            .filter((body) => body.visible && !consumedByBodyId.has(body.id))
+            .map((body) => body.id);
+    }
+    function exactVisibleBodyIds() {
+        return visibleBodyIds().filter((bodyId) => exactMeshBodyIds.has(bodyId));
+    }
+    function labelsForBodyIds(bodyIds) {
+        return Object.fromEntries(bodies.filter((body) => bodyIds.includes(body.id)).map((body) => [body.id, body.name]));
+    }
+    function createDetailView() {
+        if (!sheet || !selectedView || selectedView.type !== "orthographic") {
+            sonner_1.toast.error("Select a resolved orthographic parent view before creating a Detail");
+            return;
+        }
+        if (!selectedProjection?.valid) {
+            sonner_1.toast.error("Resolve the parent view's exact source geometry before creating a Detail");
+            return;
+        }
+        const spanX = Math.max(0.001, selectedProjection.bounds.maxX - selectedProjection.bounds.minX);
+        const spanY = Math.max(0.001, selectedProjection.bounds.maxY - selectedProjection.bounds.minY);
+        const automaticAnchor = selectedProjection.entities
+            .filter((entity) => entity.type !== "edge" || !entity.hidden)
+            .sort((first, second) => {
+            const rank = (type) => ({ hole: 0, circle: 1, thread: 2, vertex: 3, edge: 4 })[type];
+            const rankDelta = rank(first.type) - rank(second.type);
+            if (rankDelta)
+                return rankDelta;
+            if ("radius" in first && "radius" in second)
+                return first.radius - second.radius;
+            const firstPoint = (0, benchcad_drawing_refs_1.entityAnchor)(first), secondPoint = (0, benchcad_drawing_refs_1.entityAnchor)(second);
+            return (secondPoint[0] + secondPoint[1]) - (firstPoint[0] + firstPoint[1]);
+        })[0];
+        const anchorEntity = pickedEntities[0] ?? automaticAnchor;
+        const center = anchorEntity ? (0, benchcad_drawing_refs_1.entityAnchor)(anchorEntity) : [
+            (selectedProjection.bounds.minX + selectedProjection.bounds.maxX) / 2,
+            (selectedProjection.bounds.minY + selectedProjection.bounds.maxY) / 2,
+        ];
+        const radialEntity = anchorEntity && "radius" in anchorEntity ? anchorEntity : null;
+        const suggestedDiameter = radialEntity
+            ? Math.max(radialEntity.radius * 2.7, Math.min(spanX, spanY) * 0.18)
+            : Math.max(Math.min(spanX, spanY) * 0.46, Math.max(spanX, spanY) * 0.18);
+        const detailWidth = Math.max(0.5, suggestedDiameter);
+        const label = nextDetailLabel(sheet.views);
+        const parentPosition = rendered?.viewPositions[selectedView.id] ?? { x: selectedView.x, y: selectedView.y };
+        const placeRight = parentPosition.x < sheet.width * 0.58;
+        let next = (0, benchcad_drawing_1.makeDrawingView)(selectedView.sourceBodyIds, sheet, {
+            name: `Detail ${label}`,
+            type: "detail",
+            orientation: selectedView.orientation,
+            sourceBodyLabels: { ...(selectedView.sourceBodyLabels ?? labelsForBodyIds(selectedView.sourceBodyIds)) },
+            sourcePolicy: "exact-mesh",
+            x: placeRight ? sheet.width * 0.73 : sheet.width * 0.27,
+            y: parentPosition.y,
+            scale: Math.max(0.001, selectedView.scale * 2),
+            showHiddenLines: selectedView.showHiddenLines,
+            showSilhouetteEdges: selectedView.showSilhouetteEdges !== false,
+            showTangentEdges: Boolean(selectedView.showTangentEdges),
+            creaseAngle: selectedView.creaseAngle ?? 30,
+            projectionAlignment: "free",
+            projectionParentId: undefined,
+            detailParentId: selectedView.id,
+            detailLabel: label,
+            detailShape: "circle",
+            detailCenter: center,
+            detailCenterReference: anchorEntity ? (0, benchcad_drawing_1.makeDrawingEntityReference)(anchorEntity, "origin") : undefined,
+            detailWidth,
+            detailHeight: detailWidth,
+            detailShowBoundary: true,
+        });
+        const projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
+        if (!projection.valid) {
+            sonner_1.toast.error(projection.issues.find((issue) => issue.blocking)?.message ?? "The Detail crop contains no resolved projected geometry");
+            return;
+        }
+        const fitScale = (0, benchcad_drawing_1.recommendedDrawingScale)(projection, project.units, 80, 64);
+        next = { ...next, scale: Math.max(selectedView.scale * 1.25, Math.min(next.scale, Math.max(fitScale, selectedView.scale * 1.25))) };
+        patchSheet({ views: [...sheet.views, next] });
+        setSelection({ kind: "view", id: next.id });
+        setPickedEntityIds([]);
+        (0, sonner_1.toast)(`Detail ${label} created from ${selectedView.name}${anchorEntity ? ` and anchored to ${anchorEntity.label}` : ""}`);
+    }
     function addView(type, orientation) {
         if (!sheet)
             return;
-        if (!bodies.some((body) => body.visible)) {
-            sonner_1.toast.error("A drawing view needs at least one visible body");
+        const visibleIds = visibleBodyIds();
+        if (type !== "section" && !visibleIds.length) {
+            sonner_1.toast.error("A drawing view needs at least one visible exact-mesh source body");
             return;
         }
-        const bodyIds = bodies.filter((body) => body.visible).map((body) => body.id);
-        const sectionSources = (0, benchcad_drawing_1.drawingMeshesForBodies)(bodies, meshes, bodyIds);
-        const sectionCoordinates = sectionSources.flatMap((mesh) => {
-            const values = [];
-            for (let index = 1; index < mesh.vertices.length; index += 3)
-                values.push(Number(mesh.vertices[index]));
-            return values;
-        });
-        const sectionOffset = sectionCoordinates.length
-            ? (Math.min(...sectionCoordinates) + Math.max(...sectionCoordinates)) / 2
-            : 0;
+        if (type === "section") {
+            const parent = selectedView?.type === "orthographic" && selectedView.orientation !== "iso"
+                ? selectedView
+                : sheet.views.find((view) => view.type === "orthographic" && view.orientation !== "iso");
+            if (!parent) {
+                sonner_1.toast.error("Select a front, back, top, bottom, left, or right parent view before creating a section");
+                return;
+            }
+            const setup = sectionSetupForParent(parent);
+            if (!setup) {
+                sonner_1.toast.error("An isometric view cannot carry an axis-aligned cutting plane. Select a cardinal parent view.");
+                return;
+            }
+            const parentProjection = (0, benchcad_drawing_1.projectDrawingView)(parent, bodies, meshes);
+            if (!parentProjection.valid) {
+                sonner_1.toast.error("Resolve the parent view's exact source geometry before creating a section");
+                return;
+            }
+            const bodyIds = [...parent.sourceBodyIds];
+            const exactSources = (0, benchcad_drawing_1.drawingMeshesForBodies)(bodies, meshes, bodyIds);
+            if (!bodyIds.length || exactSources.length !== bodyIds.length) {
+                sonner_1.toast.error("Every parent-view body needs an exact reconstructed mesh before sectioning");
+                return;
+            }
+            const sectionLabel = nextSectionLabel(sheet.views);
+            let next = (0, benchcad_drawing_1.makeDrawingView)(bodyIds, sheet, {
+                name: `Section ${sectionLabel}-${sectionLabel}`,
+                type: "section",
+                orientation: setup.orientation,
+                sourcePolicy: "exact-mesh",
+                sourceBodyLabels: { ...(parent.sourceBodyLabels ?? labelsForBodyIds(bodyIds)) },
+                x: Math.max(16, Math.min(sheet.width - 16, parent.x + setup.xOffset)),
+                y: Math.max(16, Math.min(sheet.height - 42, parent.y + setup.yOffset)),
+                scale: parent.scale,
+                showHiddenLines: false,
+                showSilhouetteEdges: true,
+                showTangentEdges: false,
+                creaseAngle: parent.creaseAngle ?? 30,
+                sectionAxis: setup.axis,
+                sectionOffset: sectionOffsetForMeshes(exactSources, setup.axis),
+                sectionKeepSide: setup.keepSide,
+                sectionLabel,
+                sectionHatchSpacing: 3,
+                sectionParentId: parent.id,
+                projectionParentId: parent.id,
+                projectionAlignment: setup.alignment,
+            });
+            let projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
+            if (projection.valid) {
+                next = { ...next, scale: Math.min(parent.scale, (0, benchcad_drawing_1.recommendedDrawingScale)(projection, project.units)) || parent.scale };
+                projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
+                const effectiveParent = rendered?.viewPositions[parent.id] ?? { x: parent.x, y: parent.y };
+                const parentHalf = projectionHalfExtents(parent, bodies, meshes, project.units);
+                const sectionHalf = projectionHalfExtents(next, bodies, meshes, project.units);
+                const separation = setup.alignment === "horizontal"
+                    ? parentHalf.x + sectionHalf.x + 18
+                    : parentHalf.y + sectionHalf.y + 24;
+                next = {
+                    ...next,
+                    x: setup.alignment === "horizontal"
+                        ? effectiveParent.x + Math.sign(setup.xOffset || 1) * separation
+                        : effectiveParent.x,
+                    y: setup.alignment === "vertical"
+                        ? effectiveParent.y + Math.sign(setup.yOffset || 1) * separation
+                        : effectiveParent.y,
+                };
+            }
+            const sectionViews = fitProjectionGroupToSheet(sheet, [...sheet.views, next], parent.id, bodies, meshes, project.units);
+            patchSheet({ views: sectionViews });
+            setSelection({ kind: "view", id: next.id });
+            (0, sonner_1.toast)(`Section ${sectionLabel}-${sectionLabel} created with clipped geometry and material hatching`);
+            return;
+        }
+        const parent = type === "orthographic"
+            && selectedView?.type === "orthographic"
+            && selectedView.orientation !== "iso"
+            && orientation !== "iso"
+            && orientation !== selectedView.orientation
+            ? selectedView
+            : null;
+        const bodyIds = parent ? [...parent.sourceBodyIds] : exactVisibleBodyIds();
+        const exactSources = (0, benchcad_drawing_1.drawingMeshesForBodies)(bodies, meshes, bodyIds);
+        if (!bodyIds.length || exactSources.length !== bodyIds.length) {
+            sonner_1.toast.error(parent
+                ? "The selected parent view has unresolved geometry. Repair it before creating an aligned projected view."
+                : "No visible body has an exact reconstructed mesh yet. Wait for reconstruction or repair the model before creating a drawing view.");
+            return;
+        }
+        const label = type === "enlarged"
+            ? "Enlarged orthographic preview A"
+            : `${orientation[0].toUpperCase()}${orientation.slice(1)} view`;
+        const placement = parent
+            ? (0, benchcad_drawing_1.projectedPlacement)(sheet, parent, orientation)
+            : {
+                position: {
+                    x: sheet.width * (sheet.views.length % 2 ? 0.68 : 0.34),
+                    y: sheet.height * (sheet.views.length < 2 ? 0.35 : 0.64),
+                },
+                alignment: "free",
+            };
         let next = (0, benchcad_drawing_1.makeDrawingView)(bodyIds, sheet, {
-            name: type === "section" ? "Section A-A" : `${orientation[0].toUpperCase()}${orientation.slice(1)} view`,
+            name: label,
             type,
             orientation,
-            x: sheet.width * (sheet.views.length % 2 ? 0.68 : 0.34),
-            y: sheet.height * (sheet.views.length < 2 ? 0.35 : 0.64),
-            sectionOffset,
+            sourcePolicy: "exact-mesh",
+            sourceBodyLabels: parent
+                ? { ...(parent.sourceBodyLabels ?? labelsForBodyIds(bodyIds)) }
+                : labelsForBodyIds(bodyIds),
+            x: Math.max(16, Math.min(sheet.width - 16, placement.position.x)),
+            y: Math.max(16, Math.min(sheet.height - 42, placement.position.y)),
+            projectionParentId: parent?.id,
+            projectionAlignment: parent ? placement.alignment : "free",
+        });
+        let projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
+        const baseScale = (0, benchcad_drawing_1.recommendedDrawingScale)(projection, project.units);
+        next = { ...next, scale: type === "enlarged" ? baseScale * 2 : baseScale };
+        projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
+        if (parent && projection.valid) {
+            const effectiveParent = rendered?.viewPositions[parent.id] ?? { x: parent.x, y: parent.y };
+            const parentProjection = (0, benchcad_drawing_1.projectDrawingView)(parent, bodies, meshes);
+            const precise = (0, benchcad_drawing_1.projectedPlacement)(sheet, { ...parent, ...effectiveParent }, orientation, {
+                parentProjection,
+                childProjection: projection,
+                parentScale: parent.scale,
+                childScale: next.scale,
+                units: project.units,
+            });
+            next = {
+                ...next,
+                x: precise.position.x,
+                y: precise.position.y,
+                projectionAlignment: precise.alignment,
+            };
+        }
+        const addedViews = parent
+            ? fitProjectionGroupToSheet(sheet, [...sheet.views, next], parent.id, bodies, meshes, project.units)
+            : [...sheet.views, next];
+        patchSheet({ views: addedViews });
+        setSelection({ kind: "view", id: next.id });
+        (0, sonner_1.toast)(type === "enlarged"
+            ? "Enlarged orthographic preview added"
+            : parent
+                ? `${orientation[0].toUpperCase()}${orientation.slice(1)} projected view aligned to ${parent.name}`
+                : "Orthographic view added");
+    }
+    function setProjectionMethod(method) {
+        if (!sheet)
+            return;
+        const nextSheet = { ...sheet, projectionMethod: method };
+        const byId = new Map(sheet.views.map((view) => [view.id, { ...view }]));
+        const resolved = new Set();
+        const resolving = new Set();
+        const resolve = (view) => {
+            const current = byId.get(view.id) ?? view;
+            if (resolved.has(current.id) || resolving.has(current.id))
+                return current;
+            resolving.add(current.id);
+            const parent = current.projectionParentId ? byId.get(current.projectionParentId) : undefined;
+            if (current.type === "orthographic"
+                && current.orientation !== "iso"
+                && (current.projectionAlignment ?? "free") !== "free"
+                && parent) {
+                const resolvedParent = resolve(parent);
+                const parentProjection = (0, benchcad_drawing_1.projectDrawingView)(resolvedParent, bodies, meshes);
+                const childProjection = (0, benchcad_drawing_1.projectDrawingView)(current, bodies, meshes);
+                const placement = (0, benchcad_drawing_1.projectedPlacement)(nextSheet, resolvedParent, current.orientation, parentProjection.valid && childProjection.valid ? {
+                    parentProjection,
+                    childProjection,
+                    parentScale: resolvedParent.scale,
+                    childScale: current.scale,
+                    units: project.units,
+                } : undefined);
+                const updated = {
+                    ...current,
+                    x: Math.max(16, Math.min(sheet.width - 16, placement.position.x)),
+                    y: Math.max(16, Math.min(sheet.height - 42, placement.position.y)),
+                    projectionAlignment: placement.alignment,
+                    updatedAt: new Date().toISOString(),
+                };
+                byId.set(current.id, updated);
+            }
+            resolving.delete(current.id);
+            resolved.add(current.id);
+            return byId.get(current.id) ?? current;
+        };
+        sheet.views.forEach(resolve);
+        const reflowed = sheet.views.map((view) => byId.get(view.id) ?? view);
+        const fitted = fitAllProjectionGroupsToSheet(nextSheet, reflowed, bodies, meshes, project.units);
+        patchSheet({ projectionMethod: method, views: fitted });
+        (0, sonner_1.toast)(`${method === "first-angle" ? "First" : "Third"}-angle projected views reflowed and fitted to the sheet`);
+    }
+    function addProjectedView(orientation) {
+        if (!sheet || !selectedView) {
+            sonner_1.toast.error("Select a resolved front orthographic view first");
+            return;
+        }
+        if (selectedView.type !== "orthographic" || selectedView.orientation !== "front") {
+            sonner_1.toast.error("Automatic projected placement currently starts from a front orthographic view. Other relationships can still be locked in the inspector.");
+            return;
+        }
+        const parentProjection = (0, benchcad_drawing_1.projectDrawingView)(selectedView, bodies, meshes);
+        if (!parentProjection.valid) {
+            sonner_1.toast.error("Resolve the parent view's exact mesh sources before creating a projected view");
+            return;
+        }
+        const effectiveParentPosition = rendered?.viewPositions[selectedView.id] ?? { x: selectedView.x, y: selectedView.y };
+        const placement = (0, benchcad_drawing_1.projectedPlacement)(sheet, { ...selectedView, x: effectiveParentPosition.x, y: effectiveParentPosition.y }, orientation);
+        const bodyIds = [...selectedView.sourceBodyIds];
+        let next = (0, benchcad_drawing_1.makeDrawingView)(bodyIds, sheet, {
+            name: `${orientation[0].toUpperCase()}${orientation.slice(1)} projected view`,
+            type: "orthographic",
+            orientation,
+            sourcePolicy: "exact-mesh",
+            sourceBodyLabels: { ...(selectedView.sourceBodyLabels ?? labelsForBodyIds(bodyIds)) },
+            x: Math.max(16, Math.min(sheet.width - 16, placement.position.x)),
+            y: Math.max(16, Math.min(sheet.height - 42, placement.position.y)),
+            scale: selectedView.scale,
+            showHiddenLines: selectedView.showHiddenLines,
+            showSilhouetteEdges: selectedView.showSilhouetteEdges !== false,
+            showTangentEdges: Boolean(selectedView.showTangentEdges),
+            creaseAngle: selectedView.creaseAngle ?? 30,
+            projectionParentId: selectedView.id,
+            projectionAlignment: placement.alignment,
         });
         const projection = (0, benchcad_drawing_1.projectDrawingView)(next, bodies, meshes);
-        next = { ...next, scale: (0, benchcad_drawing_1.recommendedDrawingScale)(projection, project.units) };
-        patchSheet({ views: [...sheet.views, next] });
+        if (!projection.valid) {
+            sonner_1.toast.error("The projected view could not resolve its exact source geometry");
+            return;
+        }
+        const precise = (0, benchcad_drawing_1.projectedPlacement)(sheet, { ...selectedView, x: effectiveParentPosition.x, y: effectiveParentPosition.y }, orientation, {
+            parentProjection,
+            childProjection: projection,
+            parentScale: selectedView.scale,
+            childScale: selectedView.scale,
+            units: project.units,
+        });
+        next = {
+            ...next,
+            scale: selectedView.scale,
+            x: precise.position.x,
+            y: precise.position.y,
+            projectionAlignment: precise.alignment,
+        };
+        const projectedViews = fitProjectionGroupToSheet(sheet, [...sheet.views, next], selectedView.id, bodies, meshes, project.units);
+        patchSheet({ views: projectedViews });
         setSelection({ kind: "view", id: next.id });
-        (0, sonner_1.toast)(`${type === "section" ? "Section" : "Orthographic"} view added`);
+        (0, sonner_1.toast)(`${orientation[0].toUpperCase()}${orientation.slice(1)} projected view created with ${placement.alignment} alignment`);
     }
     function patchView(viewId, patch) {
         if (!sheet)
             return;
-        patchSheet({
-            views: sheet.views.map((view) => view.id === viewId
-                ? { ...view, ...patch, updatedAt: new Date().toISOString() }
-                : view),
+        const now = new Date().toISOString();
+        const target = sheet.views.find((view) => view.id === viewId);
+        const updatedTarget = target ? { ...target, ...patch, updatedAt: now } : null;
+        const views = sheet.views.map((view) => {
+            if (view.id === viewId)
+                return updatedTarget ?? view;
+            if (updatedTarget?.type === "orthographic" && view.type === "detail" && view.detailParentId === viewId) {
+                return {
+                    ...view,
+                    orientation: updatedTarget.orientation,
+                    sourceBodyIds: [...updatedTarget.sourceBodyIds],
+                    sourceBodyLabels: { ...(updatedTarget.sourceBodyLabels ?? labelsForBodyIds(updatedTarget.sourceBodyIds)) },
+                    sourcePolicy: "exact-mesh",
+                    showHiddenLines: updatedTarget.showHiddenLines,
+                    showSilhouetteEdges: updatedTarget.showSilhouetteEdges,
+                    showTangentEdges: updatedTarget.showTangentEdges,
+                    creaseAngle: updatedTarget.creaseAngle,
+                    updatedAt: now,
+                };
+            }
+            return view;
         });
+        patchSheet({ views });
     }
     function removeView(viewId) {
         if (!sheet)
+            return;
+        const target = sheet.views.find((view) => view.id === viewId);
+        const dependents = sheet.views.filter((view) => view.id !== viewId && (view.projectionParentId === viewId || view.sectionParentId === viewId || view.detailParentId === viewId));
+        if (dependents.length && !window.confirm(`Delete ${target?.name ?? "this view"}? ${dependents.length} dependent view${dependents.length === 1 ? "" : "s"} will remain in the sheet as unresolved so the relationship is not silently discarded.`))
             return;
         patchSheet({
             views: sheet.views.filter((view) => view.id !== viewId),
@@ -87663,11 +89581,58 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
             sonner_1.toast.error("Select a drawing view before adding a dimension");
             return;
         }
+        if (!selectedProjection?.valid) {
+            sonner_1.toast.error("Resolve every source body before adding a dimension");
+            return;
+        }
         const dimension = (0, benchcad_drawing_1.makeDrawingDimension)(selectedView.id, kind, {
             offset: 12 + sheet.dimensions.filter((candidate) => candidate.viewId === selectedView.id && candidate.kind === kind).length * 7,
         });
         patchSheet({ dimensions: [...sheet.dimensions, dimension] });
         setSelection({ kind: "dimension", id: dimension.id });
+    }
+    function togglePickedEntity(entityId, additive = true) {
+        const counts = annotationReferenceCount(annotationKind);
+        setPickedEntityIds((current) => {
+            if (current.includes(entityId))
+                return current.filter((id) => id !== entityId);
+            if (!additive || counts.length === 1 && counts[0] === 1)
+                return [entityId];
+            const maximum = counts.length ? Math.max(...counts) : 1;
+            return [...current, entityId].slice(-maximum);
+        });
+    }
+    function addReferencedAnnotation() {
+        if (!sheet || !selectedView || !selectedProjection?.valid) {
+            sonner_1.toast.error("Select a resolved drawing view before adding a referenced annotation");
+            return;
+        }
+        if (!pickedEntities.length) {
+            sonner_1.toast.error("Pick projected geometry first. Edge, vertex, circle, hole, and thread references are stored with the annotation.");
+            return;
+        }
+        const dimension = (0, benchcad_drawing_1.makeDrawingDimension)(selectedView.id, annotationKind, {
+            referenceMode: "entities",
+            references: annotationReferences(pickedEntities),
+            datum: annotationKind === "ordinate-x" || annotationKind === "ordinate-y" ? [0, 0] : undefined,
+            offset: 12 + sheet.dimensions.filter((candidate) => candidate.viewId === selectedView.id && candidate.kind === annotationKind).length * 7,
+        });
+        const resolution = (0, benchcad_drawing_1.resolveDrawingDimensionReferences)(dimension, selectedProjection.entities);
+        if (resolution.status !== "valid") {
+            sonner_1.toast.error(resolution.message ?? `The selected references are not valid for ${annotationKind.replaceAll("-", " ")}.`);
+            return;
+        }
+        patchSheet({ dimensions: [...sheet.dimensions, dimension] });
+        setSelection({ kind: "dimension", id: dimension.id });
+        setPickedEntityIds([]);
+        (0, sonner_1.toast)(`${ANNOTATION_CHOICES.find((item) => item.kind === annotationKind)?.label ?? annotationKind} added with associative references`);
+    }
+    function acceptDimensionReferenceRepair() {
+        if (!selectedDimension || !selectedDimensionProjection || !selectedDimensionResolution || selectedDimensionResolution.status !== "repairable")
+            return;
+        const repaired = (0, benchcad_drawing_1.repairDrawingDimensionReferences)(selectedDimension, selectedDimensionProjection.entities);
+        patchDimension(selectedDimension.id, repaired);
+        (0, sonner_1.toast)("Suggested projected-geometry reference repair accepted");
     }
     function patchDimension(dimensionId, patch) {
         if (!sheet)
@@ -87676,6 +89641,16 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
             dimensions: sheet.dimensions.map((dimension) => dimension.id === dimensionId
                 ? { ...dimension, ...patch, updatedAt: new Date().toISOString() }
                 : dimension),
+        });
+    }
+    function convertLegacyDimension(kind) {
+        if (!selectedDimension)
+            return;
+        patchDimension(selectedDimension.id, {
+            kind,
+            status: "valid",
+            legacyKind: selectedDimension.legacyKind,
+            message: undefined,
         });
     }
     function addNote() {
@@ -87708,25 +89683,38 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
             setSelection({ kind: "sheet", id: sheet.id });
         }
     }
+    function approveExport(targetSheets) {
+        const assessment = (0, benchcad_drawing_1.drawingExportAssessment)(targetSheets, bodies, meshes, project.units);
+        if (assessment.blocked) {
+            const firstBlocker = assessment.issues.find((issue) => issue.blocking);
+            sonner_1.toast.error(`Drawing export blocked: ${firstBlocker?.message ?? "unresolved drawing references"}`);
+            return false;
+        }
+        if (assessment.warnings.length) {
+            const summary = assessment.warnings.slice(0, 3).map((issue) => `• ${issue.message}`).join("\n");
+            return window.confirm(`This drawing contains ${assessment.warnings.length} preview or unsupported warning${assessment.warnings.length === 1 ? "" : "s"}.\n\n${summary}\n\nExport a clearly marked preview anyway?`);
+        }
+        return true;
+    }
     function exportSvg() {
-        if (!sheet)
+        if (!sheet || !approveExport([sheet]))
             return;
         const svg = (0, benchcad_drawing_1.drawingSheetToSvg)(sheet, bodies, meshes, project.units);
         downloadBlob(new Blob([svg], { type: "image/svg+xml" }), `${fileBase(project.name)}-${fileBase(sheet.name)}.svg`);
-        (0, sonner_1.toast)("Associative drawing exported as SVG");
+        (0, sonner_1.toast)("Drawing exported as SVG");
     }
     function exportDxf() {
-        if (!sheet || !rendered)
+        if (!sheet || !rendered || !approveExport([sheet]))
             return;
         const dxf = (0, benchcad_dxf_1.drawingSheetToDxf)(rendered);
         downloadBlob(new Blob([dxf], { type: "application/dxf;charset=utf-8" }), `${fileBase(project.name)}-${fileBase(sheet.name)}.dxf`);
         (0, sonner_1.toast)("Drawing sheet exported as ASCII DXF in millimeters");
     }
     function exportPdf(allSheets) {
-        const sheets = allSheets ? project.drawings : sheet ? [sheet] : [];
-        if (!sheets.length)
+        const targetSheets = allSheets ? project.drawings : sheet ? [sheet] : [];
+        if (!targetSheets.length || !approveExport(targetSheets))
             return;
-        const pdf = (0, benchcad_drawing_1.drawingSheetsToPdf)(sheets, bodies, meshes, project.units);
+        const pdf = (0, benchcad_drawing_1.drawingSheetsToPdf)(targetSheets, bodies, meshes, project.units);
         downloadBlob(new Blob([pdf], { type: "application/pdf" }), `${fileBase(project.name)}${allSheets ? "-drawing-set" : `-${fileBase(sheet.name)}`}.pdf`);
         (0, sonner_1.toast)(`${allSheets ? "Drawing set" : "Sheet"} exported as PDF`);
     }
@@ -87736,22 +89724,32 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
         const rect = svgRef.current.getBoundingClientRect();
         const x = drag.viewX + ((event.clientX - drag.startX) / rect.width) * sheet.width;
         const y = drag.viewY + ((event.clientY - drag.startY) / rect.height) * sheet.height;
+        const target = sheet.views.find((view) => view.id === drag.viewId);
+        const alignment = target?.projectionAlignment ?? "free";
         patchView(drag.viewId, {
-            x: Math.max(8, Math.min(sheet.width - 8, x)),
-            y: Math.max(8, Math.min(sheet.height - 35, y)),
+            ...(alignment === "vertical" ? {} : { x: Math.max(8, Math.min(sheet.width - 8, x)) }),
+            ...(alignment === "horizontal" ? {} : { y: Math.max(8, Math.min(sheet.height - 35, y)) }),
         });
     }
     if (!sheet) {
-        return ((0, jsx_runtime_1.jsxs)("section", { className: "drawing-workspace drawing-empty-state", children: [(0, jsx_runtime_1.jsxs)("button", { className: "drawing-back", onClick: onExit, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ArrowLeft, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), (0, jsx_runtime_1.jsx)("span", { children: "TECHNICAL DRAWINGS" }), (0, jsx_runtime_1.jsx)("h1", { children: "Turn the current model into an associative drawing set." }), (0, jsx_runtime_1.jsx)("p", { children: "Create a sheet, place orthographic or section views, then add dimensions, tolerances, notes, and a title block." }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-primary", onClick: createSheet, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Plus, {}), " Create first sheet"] })] })] }));
+        return ((0, jsx_runtime_1.jsxs)("section", { className: "drawing-workspace drawing-empty-state", children: [(0, jsx_runtime_1.jsxs)("button", { className: "drawing-back", onClick: onExit, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ArrowLeft, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), (0, jsx_runtime_1.jsx)("span", { children: "TECHNICAL DRAWINGS \u00B7 ASSOCIATIVE DETAIL VIEWS" }), (0, jsx_runtime_1.jsx)("h1", { children: "Create fabrication drawings with referenced geometry, clipped sections, and true Detail views." }), (0, jsx_runtime_1.jsx)("p", { children: "Batch 28D adds parent-linked circular and rectangular Detail crops, associative source callouts, independent scales, layout diagnostics, and qualified SVG, DXF, and PDF output." }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-primary", onClick: createSheet, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Plus, {}), " Create first sheet"] })] })] }));
     }
-    return ((0, jsx_runtime_1.jsxs)("section", { className: "drawing-workspace", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-toolbar", children: [(0, jsx_runtime_1.jsxs)("button", { className: "drawing-back", onClick: onExit, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ArrowLeft, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("span", { className: "drawing-toolbar-title", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), " TECHNICAL DRAWINGS"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: createSheet, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Plus, {}), " Sheet"] }), (0, jsx_runtime_1.jsxs)("label", { className: "drawing-toolbar-select", children: [(0, jsx_runtime_1.jsx)("span", { children: "ORTHO" }), (0, jsx_runtime_1.jsxs)("select", { defaultValue: "", onChange: (event) => {
-                                    if (event.target.value)
-                                        addView("orthographic", event.target.value);
-                                    event.currentTarget.value = "";
-                                }, children: [(0, jsx_runtime_1.jsx)("option", { value: "", disabled: true, children: "Add view\u2026" }), VIEW_ORIENTATIONS.map((orientation) => (0, jsx_runtime_1.jsx)("option", { value: orientation, children: orientation.toUpperCase() }, orientation))] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => addView("section", "front"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}), " Section"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => addDimension("horizontal"), disabled: !selectedView, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), " Width"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => addDimension("vertical"), disabled: !selectedView, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), " Height"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: addNote, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.StickyNote, {}), " Note"] }), (0, jsx_runtime_1.jsx)("span", { className: "drawing-toolbar-spacer" }), (0, jsx_runtime_1.jsxs)("button", { onClick: exportSvg, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " SVG"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: exportDxf, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " DXF"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => exportPdf(false), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " PDF"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => exportPdf(true), disabled: project.drawings.length < 2, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " PDF set"] })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "drawing-browser", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "SHEETS" }), (0, jsx_runtime_1.jsx)("b", { children: project.drawings.length })] }), (0, jsx_runtime_1.jsx)("div", { className: "drawing-sheet-list", children: project.drawings.map((candidate, index) => ((0, jsx_runtime_1.jsxs)("button", { className: candidate.id === sheet.id ? "active" : "", onClick: () => {
+    const errorCount = integrity?.errors.length ?? 0;
+    const warningCount = integrity?.warnings.length ?? 0;
+    const blocked = integrity?.blocked ?? false;
+    return ((0, jsx_runtime_1.jsxs)("section", { className: "drawing-workspace", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-toolbar", role: "toolbar", "aria-label": "Technical drawing commands", children: [(0, jsx_runtime_1.jsxs)("button", { className: "drawing-back", onClick: onExit, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ArrowLeft, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("span", { className: "drawing-toolbar-title", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), " TECHNICAL DRAWINGS"] }), (0, jsx_runtime_1.jsxs)("button", { onClick: createSheet, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Plus, {}), " Sheet"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "drawing-toolbar-menu", title: "Add and manage drawing views", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Move, {}), " Views ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", className: "drawing-command-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubTrigger, { children: "Orthographic view" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubContent, { children: VIEW_ORIENTATIONS.map((orientation) => ((0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => addView("orthographic", orientation), children: orientation.toUpperCase() }, orientation))) })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !selectedView || selectedView.type !== "orthographic" || selectedView.orientation !== "front" || !selectedProjection?.valid, children: "Projected from front" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubContent, { children: ["top", "bottom", "left", "right"].map((orientation) => ((0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => addProjectedView(orientation), children: orientation.toUpperCase() }, orientation))) })] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => addView("section", "front"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}), " Section from selected view"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: createDetailView, disabled: !selectedView || selectedView.type !== "orthographic" || !selectedProjection?.valid, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}), " Detail from selected view"] })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `drawing-toolbar-menu ${pickedEntityIds.length ? "active" : ""}`, title: "Dimensions, associative annotations, and notes", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), " Annotate", pickedEntityIds.length ? ` · ${pickedEntityIds.length} picked` : "", " ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", className: "drawing-command-menu drawing-annotation-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => addDimension("horizontal"), disabled: !selectedView || !selectedProjection?.valid, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), " Overall width"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => addDimension("vertical"), disabled: !selectedView || !selectedProjection?.valid, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), " Overall height"] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !selectedView || !selectedProjection?.valid, children: ["Pick geometry \u00B7 ", referencePickMode] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubContent, { children: ["edge", "vertex", "circle", "feature"].map((pickMode) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => {
+                                                        setReferencePickMode(pickMode);
+                                                        setPickedEntityIds([]);
+                                                    }, children: [pickMode === referencePickMode ? "✓ " : "", pickMode === "feature" ? "HOLE / THREAD" : pickMode.toUpperCase()] }, pickMode))) })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !selectedView || !selectedProjection?.valid, children: ["Annotation \u00B7 ", ANNOTATION_CHOICES.find((item) => item.kind === annotationKind)?.label ?? annotationKind] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSubContent, { className: "drawing-annotation-kinds", children: ANNOTATION_CHOICES.map((item) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => {
+                                                        setAnnotationKind(item.kind);
+                                                        setPickedEntityIds([]);
+                                                    }, children: [item.kind === annotationKind ? "✓ " : "", item.label] }, item.kind))) })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: addReferencedAnnotation, disabled: !selectedView || !selectedProjection?.valid || !pickedEntityIds.length, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Plus, {}), " Add annotation from picked geometry", pickedEntityIds.length ? ` (${pickedEntityIds.length})` : ""] }), pickedEntityIds.length > 0 && ((0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setPickedEntityIds([]), children: "Clear picked geometry" })), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: addNote, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.StickyNote, {}), " Add note"] })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "drawing-toolbar-spacer" }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "drawing-toolbar-menu", title: "Export the current drawing or drawing set", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " Export ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "drawing-command-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: exportSvg, disabled: blocked, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " Current sheet \u00B7 SVG"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: exportDxf, disabled: blocked, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " Current sheet \u00B7 DXF"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportPdf(false), disabled: blocked, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Download, {}), " Current sheet \u00B7 PDF"] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportPdf(true), disabled: project.drawings.length < 2 || (0, benchcad_drawing_1.drawingExportAssessment)(project.drawings, bodies, meshes, project.units).blocked, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " Complete drawing set \u00B7 PDF"] })] })] })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "drawing-browser", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "SHEETS" }), (0, jsx_runtime_1.jsx)("b", { children: project.drawings.length })] }), (0, jsx_runtime_1.jsx)("div", { className: "drawing-sheet-list", children: project.drawings.map((candidate, index) => ((0, jsx_runtime_1.jsxs)("button", { className: candidate.id === sheet.id ? "active" : "", onClick: () => {
                                 setSheetId(candidate.id);
                                 setSelection({ kind: "sheet", id: candidate.id });
-                            }, children: [(0, jsx_runtime_1.jsx)("small", { children: String(index + 1).padStart(2, "0") }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: candidate.name }), (0, jsx_runtime_1.jsxs)("em", { children: [candidate.size, " \u00B7 ", candidate.orientation] })] }), (0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {})] }, candidate.id))) }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "VIEWS & ANNOTATIONS" }), (0, jsx_runtime_1.jsx)("b", { children: sheet.views.length + sheet.dimensions.length + sheet.notes.length })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-outline", children: [sheet.views.map((view) => ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsxs)("button", { className: selection?.kind === "view" && selection.id === view.id ? "active" : "", onClick: () => setSelection({ kind: "view", id: view.id }), children: [view.type === "section" ? (0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Move, {}), (0, jsx_runtime_1.jsxs)("span", { children: [view.name, (0, jsx_runtime_1.jsxs)("small", { children: [view.orientation, " \u00B7 ", view.scale, ":1"] })] }), view.showHiddenLines ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {})] }), sheet.dimensions.filter((dimension) => dimension.viewId === view.id).map((dimension) => ((0, jsx_runtime_1.jsxs)("button", { className: `drawing-child ${selection?.kind === "dimension" && selection.id === dimension.id ? "active" : ""}`, onClick: () => setSelection({ kind: "dimension", id: dimension.id }), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), (0, jsx_runtime_1.jsxs)("span", { children: [dimension.kind, " dimension"] })] }, dimension.id)))] }, view.id))), sheet.notes.map((note) => ((0, jsx_runtime_1.jsxs)("button", { className: selection?.kind === "note" && selection.id === note.id ? "active" : "", onClick: () => setSelection({ kind: "note", id: note.id }), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.StickyNote, {}), (0, jsx_runtime_1.jsx)("span", { children: note.text.split("\n")[0] || "Note" })] }, note.id)))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-canvas-wrap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-canvas-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: sheet.name }), (0, jsx_runtime_1.jsxs)("b", { children: [sheet.width, " \u00D7 ", sheet.height, " mm"] }), (0, jsx_runtime_1.jsx)("em", { children: "Views update from the current model" })] }), (0, jsx_runtime_1.jsx)("div", { className: "drawing-paper-stage", children: (0, jsx_runtime_1.jsxs)("svg", { ref: svgRef, className: "drawing-paper", viewBox: `0 0 ${sheet.width} ${sheet.height}`, style: { aspectRatio: `${sheet.width} / ${sheet.height}` }, onPointerMove: onPointerMove, onPointerUp: (event) => {
+                            }, children: [(0, jsx_runtime_1.jsx)("small", { children: String(index + 1).padStart(2, "0") }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: candidate.name }), (0, jsx_runtime_1.jsxs)("em", { children: [candidate.size, " \u00B7 ", candidate.orientation] })] }), (0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {})] }, candidate.id))) }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "VIEWS & ANNOTATIONS" }), (0, jsx_runtime_1.jsx)("b", { children: sheet.views.length + sheet.dimensions.length + sheet.notes.length })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-outline", children: [sheet.views.map((view) => {
+                                const projection = (0, benchcad_drawing_1.projectDrawingView)(view, bodies, meshes);
+                                return ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsxs)("button", { className: selection?.kind === "view" && selection.id === view.id ? "active" : "", onClick: () => setSelection({ kind: "view", id: view.id }), children: [view.type === "section" ? (0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}) : view.type === "detail" || view.type === "enlarged" ? (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Move, {}), (0, jsx_runtime_1.jsxs)("span", { children: [view.name, (0, jsx_runtime_1.jsxs)("small", { children: [view.orientation, " \u00B7 ", view.scale, ":1 \u00B7 ", projection.status] })] }), projection.status !== "resolved" ? (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}) : view.showHiddenLines ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {})] }), sheet.dimensions.filter((dimension) => dimension.viewId === view.id).map((dimension) => ((0, jsx_runtime_1.jsxs)("button", { className: `drawing-child ${selection?.kind === "dimension" && selection.id === dimension.id ? "active" : ""}`, onClick: () => setSelection({ kind: "dimension", id: dimension.id }), children: [dimension.kind === "unsupported" ? (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), (0, jsx_runtime_1.jsx)("span", { children: dimension.kind === "unsupported" ? `${dimension.legacyKind ?? "legacy"} annotation · unsupported` : `${dimension.kind} dimension` })] }, dimension.id)))] }, view.id));
+                            }), sheet.notes.map((note) => ((0, jsx_runtime_1.jsxs)("button", { className: selection?.kind === "note" && selection.id === note.id ? "active" : "", onClick: () => setSelection({ kind: "note", id: note.id }), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.StickyNote, {}), (0, jsx_runtime_1.jsx)("span", { children: note.text.split("\n")[0] || "Note" })] }, note.id)))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-canvas-wrap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-canvas-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: sheet.name }), (0, jsx_runtime_1.jsxs)("b", { children: [sheet.width, " \u00D7 ", sheet.height, " mm \u00B7 SIG ", rendered?.primitiveSignature ?? "calculating"] }), (0, jsx_runtime_1.jsxs)("em", { className: blocked ? "drawing-integrity-error" : warningCount ? "drawing-integrity-warning" : "drawing-integrity-ready", children: [errorCount || warningCount ? (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}) : null, "Drawing integrity: ", integrity ? assessmentLabel(integrity) : "checking"] })] }), (blocked || warningCount > 0) && ((0, jsx_runtime_1.jsxs)("div", { className: `drawing-integrity-banner ${blocked ? "error" : "warning"}`, role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: blocked ? "Fabrication export is blocked." : "Preview warnings are present." }), (blocked ? integrity?.issues.find((issue) => issue.blocking) : integrity?.issues[0])?.message] })] })), (0, jsx_runtime_1.jsx)("div", { className: "drawing-paper-stage", children: (0, jsx_runtime_1.jsxs)("svg", { ref: svgRef, className: "drawing-paper", viewBox: `0 0 ${sheet.width} ${sheet.height}`, style: { aspectRatio: `${sheet.width} / ${sheet.height}` }, onPointerMove: onPointerMove, onPointerUp: (event) => {
                                 event.currentTarget.releasePointerCapture?.(event.pointerId);
                                 setDrag(null);
                             }, onPointerLeave: () => setDrag(null), "aria-label": `${sheet.name} technical drawing`, children: [(0, jsx_runtime_1.jsx)("rect", { width: sheet.width, height: sheet.height, className: "drawing-paper-bg" }), rendered?.primitives.map((primitive, index) => (0, jsx_runtime_1.jsx)(Primitive, { primitive: primitive }, index)), sheet.views.map((view) => {
@@ -87762,9 +89760,136 @@ function DrawingWorkbench({ project, bodies, meshes, onProjectChange, onExit, })
                                     return ((0, jsx_runtime_1.jsx)("rect", { x: bounds.minX - pad, y: bounds.minY - pad, width: Math.max(8, bounds.maxX - bounds.minX + pad * 2), height: Math.max(8, bounds.maxY - bounds.minY + pad * 2), className: `drawing-view-hit ${selection?.kind === "view" && selection.id === view.id ? "selected" : ""}`, onPointerDown: (event) => {
                                             event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
                                             setSelection({ kind: "view", id: view.id });
-                                            setDrag({ viewId: view.id, startX: event.clientX, startY: event.clientY, viewX: view.x, viewY: view.y });
+                                            const effective = rendered?.viewPositions[view.id] ?? { x: view.x, y: view.y };
+                                            setDrag({ viewId: view.id, startX: event.clientX, startY: event.clientY, viewX: effective.x, viewY: effective.y });
                                         } }, view.id));
-                                })] }) })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "drawing-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "INSPECT" }), (0, jsx_runtime_1.jsx)("b", { children: selection?.kind.toUpperCase() ?? "SHEET" })] }), selectedView ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Name", (0, jsx_runtime_1.jsx)("input", { value: selectedView.name, onChange: (event) => patchView(selectedView.id, { name: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Type", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.type, onChange: (event) => patchView(selectedView.id, { type: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "orthographic", children: "Orthographic" }), (0, jsx_runtime_1.jsx)("option", { value: "section", children: "Section" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Orientation", (0, jsx_runtime_1.jsx)("select", { value: selectedView.orientation, onChange: (event) => patchView(selectedView.id, { orientation: event.target.value }), children: VIEW_ORIENTATIONS.map((value) => (0, jsx_runtime_1.jsx)("option", { value: value, children: value }, value)) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Scale", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.001", step: "0.05", value: selectedView.scale, onChange: (event) => patchView(selectedView.id, { scale: Math.max(0.001, Number(event.target.value)) }) })] }), (0, jsx_runtime_1.jsx)("button", { className: "drawing-fit", onClick: () => patchView(selectedView.id, { scale: (0, benchcad_drawing_1.recommendedDrawingScale)((0, benchcad_drawing_1.projectDrawingView)(selectedView, bodies, meshes), project.units) }), children: "Fit standard scale" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["X mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: Number(selectedView.x.toFixed(2)), onChange: (event) => patchView(selectedView.id, { x: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Y mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: Number(selectedView.y.toFixed(2)), onChange: (event) => patchView(selectedView.id, { y: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.showHiddenLines, onChange: (event) => patchView(selectedView.id, { showHiddenLines: event.target.checked }) }), "Hidden lines"] }), selectedView.type === "section" && (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Cut axis", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.sectionAxis ?? "Y", onChange: (event) => patchView(selectedView.id, { sectionAxis: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { children: "X" }), (0, jsx_runtime_1.jsx)("option", { children: "Y" }), (0, jsx_runtime_1.jsx)("option", { children: "Z" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Offset (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.1", value: selectedView.sectionOffset ?? 0, onChange: (event) => patchView(selectedView.id, { sectionOffset: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "The bold cut boundary and hatch are regenerated from the current exact body mesh." })] }), (0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Source bodies" }), bodies.map((body) => (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.sourceBodyIds.includes(body.id), onChange: (event) => patchView(selectedView.id, { sourceBodyIds: event.target.checked ? [...selectedView.sourceBodyIds, body.id] : selectedView.sourceBodyIds.filter((id) => id !== body.id) }) }), body.name] }, body.id))] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: () => removeView(selectedView.id), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete view"] })] })) : selectedDimension ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Dimension kind", (0, jsx_runtime_1.jsxs)("select", { value: selectedDimension.kind, onChange: (event) => patchDimension(selectedDimension.id, { kind: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "horizontal", children: "Horizontal" }), (0, jsx_runtime_1.jsx)("option", { value: "vertical", children: "Vertical" }), (0, jsx_runtime_1.jsx)("option", { value: "aligned", children: "Aligned" })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Offset mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedDimension.offset, onChange: (event) => patchDimension(selectedDimension.id, { offset: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Precision", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0", max: "6", value: selectedDimension.precision, onChange: (event) => patchDimension(selectedDimension.id, { precision: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Prefix", (0, jsx_runtime_1.jsx)("input", { value: selectedDimension.prefix, onChange: (event) => patchDimension(selectedDimension.id, { prefix: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Suffix", (0, jsx_runtime_1.jsx)("input", { value: selectedDimension.suffix, onChange: (event) => patchDimension(selectedDimension.id, { suffix: event.target.value }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Upper tolerance", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.01", value: selectedDimension.toleranceUpper ?? "", placeholder: "none", onChange: (event) => patchDimension(selectedDimension.id, { toleranceUpper: event.target.value === "" ? null : Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Lower tolerance", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.01", value: selectedDimension.toleranceLower ?? "", placeholder: "none", onChange: (event) => patchDimension(selectedDimension.id, { toleranceLower: event.target.value === "" ? null : Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "This value is driven by the projected view bounds and updates when the source body changes." }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: deleteSelection, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete dimension"] })] })) : selectedNote ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Note", (0, jsx_runtime_1.jsx)("textarea", { rows: 5, value: selectedNote.text, onChange: (event) => patchNote(selectedNote.id, { text: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["X mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedNote.x, onChange: (event) => patchNote(selectedNote.id, { x: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Y mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedNote.y, onChange: (event) => patchNote(selectedNote.id, { y: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Text size mm", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "1", max: "12", step: "0.5", value: selectedNote.fontSize, onChange: (event) => patchNote(selectedNote.id, { fontSize: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: deleteSelection, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete note"] })] })) : ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Sheet name", (0, jsx_runtime_1.jsx)("input", { value: sheet.name, onChange: (event) => patchSheet({ name: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Size", (0, jsx_runtime_1.jsxs)("select", { value: sheet.size, onChange: (event) => updateSheet((0, benchcad_drawing_1.resizeDrawingSheet)(sheet, event.target.value, sheet.orientation)), children: [(0, jsx_runtime_1.jsx)("option", { children: "A4" }), (0, jsx_runtime_1.jsx)("option", { children: "Letter" }), (0, jsx_runtime_1.jsx)("option", { children: "A3" }), (0, jsx_runtime_1.jsx)("option", { children: "Tabloid" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Orientation", (0, jsx_runtime_1.jsxs)("select", { value: sheet.orientation, onChange: (event) => updateSheet((0, benchcad_drawing_1.resizeDrawingSheet)(sheet, sheet.size, event.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: "landscape", children: "Landscape" }), (0, jsx_runtime_1.jsx)("option", { value: "portrait", children: "Portrait" })] })] })] }), (0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Title block" }), (0, jsx_runtime_1.jsxs)("label", { children: ["Title", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.title, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, title: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Drawing no.", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.drawingNumber, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, drawingNumber: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Revision", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.revision, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, revision: event.target.value } }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Material", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.material, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, material: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Drawn by", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.drawnBy, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, drawnBy: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Date", (0, jsx_runtime_1.jsx)("input", { type: "date", value: sheet.titleBlock.date, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, date: event.target.value } }) })] })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "Sheet edits use normal undo/redo and never become construction-history features." }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: () => deleteSheet(sheet), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete sheet"] })] }))] })] }));
+                                })] }) })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "drawing-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-panel-heading", children: [(0, jsx_runtime_1.jsx)("span", { children: "INSPECT" }), (0, jsx_runtime_1.jsx)("b", { children: selection?.kind.toUpperCase() ?? "SHEET" })] }), selectedView ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Name", (0, jsx_runtime_1.jsx)("input", { value: selectedView.name, onChange: (event) => patchView(selectedView.id, { name: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Type", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.type, disabled: true, "aria-label": "Drawing view type", children: [(0, jsx_runtime_1.jsx)("option", { value: "orthographic", children: "Orthographic" }), (0, jsx_runtime_1.jsx)("option", { value: "section", children: "Clipped section" }), (0, jsx_runtime_1.jsx)("option", { value: "detail", children: "Associative Detail" }), (0, jsx_runtime_1.jsx)("option", { value: "enlarged", children: "Legacy enlarged preview" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Orientation", (0, jsx_runtime_1.jsx)("select", { value: selectedView.orientation, disabled: selectedView.type === "section" || selectedView.type === "detail", title: selectedView.type === "section" ? "Use Flip section direction to preserve the retained-side relationship" : selectedView.type === "detail" ? "Detail orientation is inherited from its parent view" : undefined, onChange: (event) => patchView(selectedView.id, { orientation: event.target.value }), children: VIEW_ORIENTATIONS.map((value) => (0, jsx_runtime_1.jsx)("option", { value: value, children: value }, value)) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: `drawing-source-status ${selectedProjection?.status ?? "unresolved"}`, children: [(0, jsx_runtime_1.jsx)("strong", { children: selectedProjection?.status === "resolved" ? "Exact sources resolved" : selectedProjection?.status === "partial" ? "Partial source resolution" : "Unresolved source" }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedProjection?.resolvedBodyIds.length ?? 0, " exact mesh source", selectedProjection?.resolvedBodyIds.length === 1 ? "" : "s"] }), selectedProjection?.issues.map((issue) => (0, jsx_runtime_1.jsx)("small", { children: issue.message }, `${issue.code}-${issue.bodyId ?? "view"}`))] }), integrity && integrity.issues.some((issue) => issue.viewId === selectedView.id) && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-issue-list", role: "status", children: [(0, jsx_runtime_1.jsx)("strong", { children: "VIEW RELEASE CHECKS" }), integrity.issues.filter((issue) => issue.viewId === selectedView.id).map((issue, index) => (0, jsx_runtime_1.jsxs)("div", { className: issue.blocking ? "blocking" : "warning", children: [(0, jsx_runtime_1.jsx)("span", { children: issue.blocking ? "BLOCK" : "REVIEW" }), (0, jsx_runtime_1.jsx)("b", { children: issue.code.replaceAll("_", " ") }), (0, jsx_runtime_1.jsx)("small", { children: issue.message })] }, `${issue.code}-${index}`))] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Scale", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.001", step: "0.05", value: selectedView.scale, onChange: (event) => patchView(selectedView.id, { scale: Math.max(0.001, Number(event.target.value)) }) })] }), (0, jsx_runtime_1.jsx)("button", { className: "drawing-fit", disabled: !selectedProjection?.valid, onClick: () => selectedProjection && patchView(selectedView.id, { scale: (0, benchcad_drawing_1.recommendedDrawingScale)(selectedProjection, project.units) }), children: "Fit standard scale" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["X mm", (selectedView.projectionAlignment ?? "free") === "vertical" ? " · parent locked" : "", (0, jsx_runtime_1.jsx)("input", { type: "number", disabled: (selectedView.projectionAlignment ?? "free") === "vertical", value: Number((rendered?.viewPositions[selectedView.id]?.x ?? selectedView.x).toFixed(2)), onChange: (event) => patchView(selectedView.id, { x: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Y mm", (selectedView.projectionAlignment ?? "free") === "horizontal" ? " · parent locked" : "", (0, jsx_runtime_1.jsx)("input", { type: "number", disabled: (selectedView.projectionAlignment ?? "free") === "horizontal", value: Number((rendered?.viewPositions[selectedView.id]?.y ?? selectedView.y).toFixed(2)), onChange: (event) => patchView(selectedView.id, { y: Number(event.target.value) }) })] })] }), selectedView.type !== "detail" && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Projected alignment", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.projectionAlignment ?? "free", onChange: (event) => {
+                                                    const projectionAlignment = event.target.value;
+                                                    const parent = sheet.views.find((view) => view.id === selectedView.projectionParentId);
+                                                    patchView(selectedView.id, {
+                                                        projectionAlignment,
+                                                        projectionParentId: projectionAlignment === "free" || (parent && !(0, benchcad_projection_1.projectedAlignmentIsCompatible)(parent.orientation, selectedView.orientation, projectionAlignment))
+                                                            ? undefined
+                                                            : selectedView.projectionParentId,
+                                                    });
+                                                }, children: [(0, jsx_runtime_1.jsx)("option", { value: "free", children: "Free" }), (0, jsx_runtime_1.jsx)("option", { value: "horizontal", children: "Horizontal row" }), (0, jsx_runtime_1.jsx)("option", { value: "vertical", children: "Vertical column" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Alignment parent", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.projectionParentId ?? "", disabled: (selectedView.projectionAlignment ?? "free") === "free", onChange: (event) => patchView(selectedView.id, { projectionParentId: event.target.value || undefined }), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choose parent\u2026" }), sheet.views.filter((view) => view.id !== selectedView.id).map((view) => {
+                                                        const compatible = (0, benchcad_projection_1.projectedAlignmentIsCompatible)(view.orientation, selectedView.orientation, selectedView.projectionAlignment ?? "free");
+                                                        return (0, jsx_runtime_1.jsxs)("option", { value: view.id, disabled: !compatible, children: [view.name, compatible ? "" : " · incompatible axes"] }, view.id);
+                                                    })] })] })] }), (0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Projected edges" }), (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.showHiddenLines, onChange: (event) => patchView(selectedView.id, { showHiddenLines: event.target.checked }) }), "Show depth-tested hidden lines"] }), (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.showSilhouetteEdges !== false, onChange: (event) => patchView(selectedView.id, { showSilhouetteEdges: event.target.checked }) }), "Silhouette edges"] }), (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: Boolean(selectedView.showTangentEdges), onChange: (event) => patchView(selectedView.id, { showTangentEdges: event.target.checked }) }), "Tangent tessellation edges"] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Crease threshold (degrees)", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.1", max: "179", step: "1", value: selectedView.creaseAngle ?? 30, onChange: (event) => patchView(selectedView.id, { creaseAngle: Math.max(0.1, Math.min(179, Number(event.target.value))) }) })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "Visibility is evaluated against projected triangle depth and split at occlusion boundaries, including overlap between separate bodies." }), selectedProjection && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-projection-stats", "aria-label": "Projection engine statistics", children: [(0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: selectedProjection.stats.sourceTriangles.toLocaleString() }), " source triangles"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: selectedProjection.stats.visibleSegments.toLocaleString() }), " visible segments"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: selectedProjection.stats.hiddenSegments.toLocaleString() }), " hidden segments"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: selectedProjection.stats.occlusionTests.toLocaleString() }), " depth tests"] }), selectedView.type === "section" && (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: selectedProjection.stats.sectionLoops }), " closed cut loops"] }), (0, jsx_runtime_1.jsxs)("small", { children: [selectedProjection.stats.elapsedMs.toFixed(1), " ms local projection"] })] }), selectedView.type === "section" && (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Section geometry" }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Cut axis", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.sectionAxis ?? "Y", onChange: (event) => {
+                                                                    const axis = event.target.value;
+                                                                    const defaults = SECTION_VIEW_DEFAULTS[axis];
+                                                                    const currentParent = sheet.views.find((view) => view.id === selectedView.sectionParentId);
+                                                                    const keepParent = currentParent && (0, benchcad_projection_1.sectionParentIsCompatible)(axis, currentParent.orientation);
+                                                                    patchView(selectedView.id, {
+                                                                        sectionAxis: axis,
+                                                                        orientation: defaults.orientation,
+                                                                        sectionKeepSide: defaults.keepSide,
+                                                                        sectionParentId: keepParent ? currentParent.id : undefined,
+                                                                        projectionParentId: keepParent ? currentParent.id : undefined,
+                                                                    });
+                                                                    if (currentParent && !keepParent)
+                                                                        sonner_1.toast.error("The previous parent cannot show this cutting plane edge-on. Choose a compatible parent view.");
+                                                                }, children: [(0, jsx_runtime_1.jsx)("option", { children: "X" }), (0, jsx_runtime_1.jsx)("option", { children: "Y" }), (0, jsx_runtime_1.jsx)("option", { children: "Z" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Offset (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.1", value: selectedView.sectionOffset ?? 0, onChange: (event) => patchView(selectedView.id, { sectionOffset: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Section label", (0, jsx_runtime_1.jsx)("input", { value: selectedView.sectionLabel ?? "A", maxLength: 3, onChange: (event) => patchView(selectedView.id, { sectionLabel: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || "A" }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Hatch spacing (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.1", max: "100", step: "0.5", value: selectedView.sectionHatchSpacing ?? 3, onChange: (event) => patchView(selectedView.id, { sectionHatchSpacing: Math.max(0.1, Math.min(100, Number(event.target.value))) }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Parent view", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.sectionParentId ?? "", onChange: (event) => {
+                                                            const parent = sheet.views.find((view) => view.id === event.target.value);
+                                                            if (!parent) {
+                                                                patchView(selectedView.id, { sectionParentId: undefined, projectionParentId: undefined });
+                                                                return;
+                                                            }
+                                                            const setup = sectionSetupForParent(parent);
+                                                            const exactSources = (0, benchcad_drawing_1.drawingMeshesForBodies)(bodies, meshes, parent.sourceBodyIds);
+                                                            patchView(selectedView.id, {
+                                                                sectionParentId: parent.id,
+                                                                projectionParentId: parent.id,
+                                                                projectionAlignment: setup?.alignment ?? selectedView.projectionAlignment ?? "free",
+                                                                sourceBodyIds: [...parent.sourceBodyIds],
+                                                                sourceBodyLabels: { ...(parent.sourceBodyLabels ?? labelsForBodyIds(parent.sourceBodyIds)) },
+                                                                sectionOffset: exactSources.length === parent.sourceBodyIds.length
+                                                                    ? sectionOffsetForMeshes(exactSources, selectedView.sectionAxis ?? "Y")
+                                                                    : selectedView.sectionOffset,
+                                                                scale: parent.scale,
+                                                            });
+                                                        }, children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choose parent\u2026" }), sheet.views.filter((view) => view.id !== selectedView.id
+                                                                && view.type === "orthographic"
+                                                                && view.orientation !== "iso"
+                                                                && (0, benchcad_projection_1.sectionParentIsCompatible)(selectedView.sectionAxis ?? "Y", view.orientation)).map((view) => (0, jsx_runtime_1.jsx)("option", { value: view.id, children: view.name }, view.id))] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-fit", onClick: () => {
+                                                    const nextKeep = selectedView.sectionKeepSide === "negative" ? "positive" : "negative";
+                                                    patchView(selectedView.id, {
+                                                        sectionKeepSide: nextKeep,
+                                                        orientation: (0, benchcad_projection_1.sectionOrientationFor)(selectedView.sectionAxis ?? "Y", nextKeep),
+                                                    });
+                                                }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Flip section direction"] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "The mesh is physically clipped at the plane. Closed cut regions are reconstructed and hatched only inside retained material; the parent view carries the cutting-plane arrows and label." })] }), selectedView.type === "detail" && (0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Detail region" }), (0, jsx_runtime_1.jsxs)("label", { children: ["Parent view", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.detailParentId ?? "", onChange: (event) => {
+                                                            const parent = sheet.views.find((view) => view.id === event.target.value && view.type === "orthographic");
+                                                            if (!parent) {
+                                                                patchView(selectedView.id, { detailParentId: undefined });
+                                                                return;
+                                                            }
+                                                            const parentProjection = (0, benchcad_drawing_1.projectDrawingView)(parent, bodies, meshes);
+                                                            const center = [
+                                                                (parentProjection.bounds.minX + parentProjection.bounds.maxX) / 2,
+                                                                (parentProjection.bounds.minY + parentProjection.bounds.maxY) / 2,
+                                                            ];
+                                                            patchView(selectedView.id, {
+                                                                detailParentId: parent.id,
+                                                                orientation: parent.orientation,
+                                                                sourceBodyIds: [...parent.sourceBodyIds],
+                                                                sourceBodyLabels: { ...(parent.sourceBodyLabels ?? labelsForBodyIds(parent.sourceBodyIds)) },
+                                                                detailCenter: center,
+                                                                detailCenterReference: undefined,
+                                                                showHiddenLines: parent.showHiddenLines,
+                                                                showSilhouetteEdges: parent.showSilhouetteEdges,
+                                                                showTangentEdges: parent.showTangentEdges,
+                                                                creaseAngle: parent.creaseAngle,
+                                                            });
+                                                        }, children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choose parent\u2026" }), sheet.views.filter((view) => view.type === "orthographic" && view.id !== selectedView.id).map((view) => (0, jsx_runtime_1.jsx)("option", { value: view.id, children: view.name }, view.id))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Detail label", (0, jsx_runtime_1.jsx)("input", { value: selectedView.detailLabel ?? "A", maxLength: 3, onChange: (event) => patchView(selectedView.id, { detailLabel: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 3) || "A" }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Crop shape", (0, jsx_runtime_1.jsxs)("select", { value: selectedView.detailShape ?? "circle", onChange: (event) => patchView(selectedView.id, { detailShape: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "circle", children: "Circle" }), (0, jsx_runtime_1.jsx)("option", { value: "rectangle", children: "Rectangle" })] })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Center X (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.1", value: selectedView.detailCenter?.[0] ?? 0, onChange: (event) => patchView(selectedView.id, { detailCenter: [Number(event.target.value), selectedView.detailCenter?.[1] ?? 0], detailCenterReference: undefined }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Center Y (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.1", value: selectedView.detailCenter?.[1] ?? 0, onChange: (event) => patchView(selectedView.id, { detailCenter: [selectedView.detailCenter?.[0] ?? 0, Number(event.target.value)], detailCenterReference: undefined }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: [selectedView.detailShape === "rectangle" ? "Width" : "Diameter", " (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.001", step: "0.5", value: selectedView.detailWidth ?? 20, onChange: (event) => patchView(selectedView.id, { detailWidth: Math.max(0.001, Number(event.target.value)), ...(selectedView.detailShape === "circle" ? { detailHeight: Math.max(0.001, Number(event.target.value)) } : {}) }) })] }), selectedView.detailShape === "rectangle" ? (0, jsx_runtime_1.jsxs)("label", { children: ["Height (", project.units, ")", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.001", step: "0.5", value: selectedView.detailHeight ?? 20, onChange: (event) => patchView(selectedView.id, { detailHeight: Math.max(0.001, Number(event.target.value)) }) })] }) : (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.detailShowBoundary !== false, onChange: (event) => patchView(selectedView.id, { detailShowBoundary: event.target.checked }) }), "Detail frame"] })] }), selectedView.detailShape === "rectangle" && (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedView.detailShowBoundary !== false, onChange: (event) => patchView(selectedView.id, { detailShowBoundary: event.target.checked }) }), "Show Detail frame"] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-repair-actions", children: [(0, jsx_runtime_1.jsxs)("button", { disabled: !pickedEntities.length, onClick: () => {
+                                                            const entity = pickedEntities[0];
+                                                            if (!entity)
+                                                                return;
+                                                            patchView(selectedView.id, { detailCenter: (0, benchcad_drawing_refs_1.entityAnchor)(entity), detailCenterReference: (0, benchcad_drawing_1.makeDrawingEntityReference)(entity, "origin") });
+                                                            (0, sonner_1.toast)(`Detail center anchored to ${entity.label}`);
+                                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Center on picked entity"] }), selectedView.detailCenterReference && (0, jsx_runtime_1.jsx)("button", { onClick: () => patchView(selectedView.id, { detailCenterReference: undefined }), children: "Use fixed center" })] }), (0, jsx_runtime_1.jsx)("small", { children: selectedView.detailCenterReference ? `Associative center: ${selectedView.detailCenterReference.label ?? selectedView.detailCenterReference.entityType}` : "Fixed projected-model-space center" })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "The source boundary and Detail frame share one parent-linked crop region. Geometry is clipped before sheet scaling; the Detail keeps an independent scale and blocks export if its parent or crop becomes unresolved." })] }), selectedView.type === "enlarged" && (0, jsx_runtime_1.jsx)("p", { className: "drawing-help drawing-caution", children: "This migrated enlarged preview has no parent crop and remains export-blocking. Recreate it with the Detail command, then remove this legacy view." }), (0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Source bodies" }), bodies.map((body) => {
+                                        const hasExactMesh = exactMeshBodyIds.has(body.id);
+                                        const checked = selectedView.sourceBodyIds.includes(body.id);
+                                        const resultBodyId = consumedByBodyId.get(body.id);
+                                        const resultBodyName = resultBodyId
+                                            ? bodies.find((candidate) => candidate.id === resultBodyId)?.name ?? resultBodyId
+                                            : "";
+                                        return (0, jsx_runtime_1.jsxs)("label", { className: "drawing-check", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: checked, disabled: selectedView.type === "detail" || (Boolean(resultBodyId) && !checked), onChange: (event) => {
+                                                        const sourceBodyIds = event.target.checked
+                                                            ? [...new Set([...selectedView.sourceBodyIds, body.id])]
+                                                            : selectedView.sourceBodyIds.filter((id) => id !== body.id);
+                                                        const sourceBodyLabels = { ...(selectedView.sourceBodyLabels ?? {}) };
+                                                        if (event.target.checked)
+                                                            sourceBodyLabels[body.id] = body.name;
+                                                        patchView(selectedView.id, { sourceBodyIds, sourceBodyLabels, sourcePolicy: "exact-mesh" });
+                                                    } }), body.name, body.visible ? "" : " (hidden in model)", resultBodyId ? ` — Boolean operand represented by ${resultBodyName}` : hasExactMesh ? "" : " — exact mesh unavailable"] }, body.id);
+                                    }), !bodies.length && (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "No model bodies are available." }), selectedView.type === "detail" && (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "Detail sources and orientation are inherited from the parent view. Change the Detail parent rather than editing source bodies independently." })] }), selectedView.type !== "detail" && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-repair-actions", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: () => {
+                                            const sourceBodyIds = exactVisibleBodyIds();
+                                            if (!sourceBodyIds.length) {
+                                                sonner_1.toast.error("No visible body currently has an exact reconstructed mesh");
+                                                return;
+                                            }
+                                            patchView(selectedView.id, {
+                                                sourceBodyIds,
+                                                sourceBodyLabels: labelsForBodyIds(sourceBodyIds),
+                                                sourcePolicy: "exact-mesh",
+                                            });
+                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Use exact visible bodies"] }), ((selectedProjection?.missingBodyIds.length ?? 0) > 0 || (selectedProjection?.missingMeshIds.length ?? 0) > 0) && (0, jsx_runtime_1.jsxs)("button", { onClick: () => {
+                                            const sourceBodyIds = exactVisibleBodyIds();
+                                            if (!sourceBodyIds.length) {
+                                                sonner_1.toast.error("No exact visible replacement source is available");
+                                                return;
+                                            }
+                                            patchView(selectedView.id, {
+                                                sourceBodyIds,
+                                                sourceBodyLabels: labelsForBodyIds(sourceBodyIds),
+                                                sourcePolicy: "exact-mesh",
+                                            });
+                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Replace unresolved sources"] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: () => removeView(selectedView.id), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete view"] })] })) : selectedDimension ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [selectedDimension.kind === "unsupported" ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-unsupported-card", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), (0, jsx_runtime_1.jsx)("strong", { children: "Unsupported legacy annotation" }), (0, jsx_runtime_1.jsx)("p", { children: selectedDimension.message ?? "This annotation needs a persistent projected-geometry reference and is displayed without a fabricated value." }), selectedDimension.legacyKind && (0, jsx_runtime_1.jsxs)("small", { children: ["Preserved kind: ", selectedDimension.legacyKind] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("button", { onClick: () => convertLegacyDimension("horizontal"), children: "Convert explicitly to overall width" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => convertLegacyDimension("vertical"), children: "Convert explicitly to overall height" })] })] })) : ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Annotation kind", (0, jsx_runtime_1.jsx)("input", { value: selectedDimension.kind.replaceAll("-", " "), readOnly: true })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Offset mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedDimension.offset, onChange: (event) => patchDimension(selectedDimension.id, { offset: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Precision", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0", max: "6", value: selectedDimension.precision, onChange: (event) => patchDimension(selectedDimension.id, { precision: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Prefix", (0, jsx_runtime_1.jsx)("input", { value: selectedDimension.prefix, onChange: (event) => patchDimension(selectedDimension.id, { prefix: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Suffix", (0, jsx_runtime_1.jsx)("input", { value: selectedDimension.suffix, onChange: (event) => patchDimension(selectedDimension.id, { suffix: event.target.value }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Upper tolerance", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.01", value: selectedDimension.toleranceUpper ?? "", placeholder: "none", onChange: (event) => patchDimension(selectedDimension.id, { toleranceUpper: event.target.value === "" ? null : Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Lower tolerance", (0, jsx_runtime_1.jsx)("input", { type: "number", step: "0.01", value: selectedDimension.toleranceLower ?? "", placeholder: "none", onChange: (event) => patchDimension(selectedDimension.id, { toleranceLower: event.target.value === "" ? null : Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: `drawing-source-status ${selectedDimensionResolution?.status === "valid" ? "resolved" : "unresolved"}`, children: [(0, jsx_runtime_1.jsxs)("strong", { children: ["Reference status: ", selectedDimensionResolution?.status ?? selectedDimension.status ?? "checking"] }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedDimension.references?.length ?? 0, " persistent projected-entity reference", selectedDimension.references?.length === 1 ? "" : "s"] }), selectedDimensionResolution?.message && (0, jsx_runtime_1.jsx)("small", { children: selectedDimensionResolution.message })] }), selectedDimensionResolution?.status === "repairable" && (0, jsx_runtime_1.jsxs)("button", { onClick: () => {
+                                            if (!selectedDimensionProjection)
+                                                return;
+                                            patchDimension(selectedDimension.id, (0, benchcad_drawing_1.repairDrawingDimensionReferences)(selectedDimension, selectedDimensionProjection.entities));
+                                            (0, sonner_1.toast)("Suggested annotation reference repair accepted");
+                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Accept suggested repair"] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "Entity-backed annotations remain associative to projected edges, vertices, circles, holes, threads, or axes. Ambiguous topology changes require explicit repair." })] })), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: deleteSelection, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete dimension"] })] })) : selectedNote ? ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Note", (0, jsx_runtime_1.jsx)("textarea", { rows: 5, value: selectedNote.text, onChange: (event) => patchNote(selectedNote.id, { text: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["X mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedNote.x, onChange: (event) => patchNote(selectedNote.id, { x: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Y mm", (0, jsx_runtime_1.jsx)("input", { type: "number", value: selectedNote.y, onChange: (event) => patchNote(selectedNote.id, { y: Number(event.target.value) }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Text size mm", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "1", max: "12", step: "0.5", value: selectedNote.fontSize, onChange: (event) => patchNote(selectedNote.id, { fontSize: Number(event.target.value) }) })] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: deleteSelection, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete note"] })] })) : ((0, jsx_runtime_1.jsxs)("div", { className: "drawing-inspector-scroll", children: [(0, jsx_runtime_1.jsxs)("div", { className: "drawing-schema-card", children: [(0, jsx_runtime_1.jsx)("span", { children: "DRAWING SCHEMA" }), (0, jsx_runtime_1.jsx)("strong", { children: "5" }), (0, jsx_runtime_1.jsxs)("small", { children: ["Project schema ", project.schemaVersion] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Sheet name", (0, jsx_runtime_1.jsx)("input", { value: sheet.name, onChange: (event) => patchSheet({ name: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Size", (0, jsx_runtime_1.jsxs)("select", { value: sheet.size, onChange: (event) => updateSheet((0, benchcad_drawing_1.resizeDrawingSheet)(sheet, event.target.value, sheet.orientation)), children: [(0, jsx_runtime_1.jsx)("option", { children: "A4" }), (0, jsx_runtime_1.jsx)("option", { children: "Letter" }), (0, jsx_runtime_1.jsx)("option", { children: "A3" }), (0, jsx_runtime_1.jsx)("option", { children: "Tabloid" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Orientation", (0, jsx_runtime_1.jsxs)("select", { value: sheet.orientation, onChange: (event) => updateSheet((0, benchcad_drawing_1.resizeDrawingSheet)(sheet, sheet.size, event.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: "landscape", children: "Landscape" }), (0, jsx_runtime_1.jsx)("option", { value: "portrait", children: "Portrait" })] })] })] }), (0, jsx_runtime_1.jsxs)("fieldset", { children: [(0, jsx_runtime_1.jsx)("legend", { children: "Title block" }), (0, jsx_runtime_1.jsxs)("label", { children: ["Title", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.title, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, title: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Drawing no.", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.drawingNumber, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, drawingNumber: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Revision", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.revision, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, revision: event.target.value } }) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Material", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.material, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, material: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "drawing-field-pair", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Drawn by", (0, jsx_runtime_1.jsx)("input", { value: sheet.titleBlock.drawnBy, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, drawnBy: event.target.value } }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Date", (0, jsx_runtime_1.jsx)("input", { type: "date", value: sheet.titleBlock.date, onChange: (event) => patchSheet({ titleBlock: { ...sheet.titleBlock, date: event.target.value } }) })] })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Projection convention", (0, jsx_runtime_1.jsxs)("select", { value: sheet.projectionMethod, onChange: (event) => setProjectionMethod(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "third-angle", children: "Third-angle" }), (0, jsx_runtime_1.jsx)("option", { value: "first-angle", children: "First-angle" })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "drawing-help", children: "Sheet edits use normal undo/redo and never become construction-history features. Schema 5 preserves parent-linked Detail crops and reference-rich annotations; unresolved geometry or relationships block export while layout collisions remain visible release warnings." }), integrity && integrity.issues.length > 0 && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-issue-list", role: "status", children: [(0, jsx_runtime_1.jsxs)("strong", { children: ["SHEET RELEASE CHECKS \u00B7 ", integrity.issues.length] }), integrity.issues.map((issue, index) => (0, jsx_runtime_1.jsxs)("div", { className: issue.blocking ? "blocking" : "warning", children: [(0, jsx_runtime_1.jsx)("span", { children: issue.blocking ? "BLOCK" : "REVIEW" }), (0, jsx_runtime_1.jsx)("b", { children: issue.code.replaceAll("_", " ") }), (0, jsx_runtime_1.jsx)("small", { children: issue.message })] }, `${issue.code}-${issue.viewId ?? issue.dimensionId ?? issue.noteId ?? index}`))] }), integrity && integrity.issues.length === 0 && (0, jsx_runtime_1.jsxs)("div", { className: "drawing-issue-list ready", children: [(0, jsx_runtime_1.jsx)("strong", { children: "SHEET RELEASE CHECKS" }), (0, jsx_runtime_1.jsx)("p", { children: "No drawing integrity or layout findings." })] }), (0, jsx_runtime_1.jsxs)("button", { className: "drawing-danger", onClick: () => deleteSheet(sheet), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), " Delete sheet"] })] }))] })] }));
 }
 
 },
@@ -105837,7 +107962,9 @@ function BenchCadApp() {
     const [leftOpen, setLeftOpen] = (0, react_1.useState)(true);
     const [rightOpen, setRightOpen] = (0, react_1.useState)(true);
     const [timelineOpen, setTimelineOpen] = (0, react_1.useState)(true);
+    const [focusMode, setFocusMode] = (0, react_1.useState)(false);
     const [outlineOpen, setOutlineOpen] = (0, react_1.useState)(true);
+    const [uiPreferencesLoaded, setUiPreferencesLoaded] = (0, react_1.useState)(false);
     const [dashboardOpen, setDashboardOpen] = (0, react_1.useState)(true);
     const [helpOpen, setHelpOpen] = (0, react_1.useState)(false);
     const [storageOpen, setStorageOpen] = (0, react_1.useState)(false);
@@ -106347,10 +108474,57 @@ function BenchCadApp() {
         return () => window.clearInterval(timer);
     }, [playing, playSpeed, project.features.length]);
     (0, react_1.useEffect)(() => {
+        try {
+            const stored = window.localStorage.getItem("benchcad-ui-preferences-v1");
+            if (stored) {
+                const preferences = JSON.parse(stored);
+                if (typeof preferences.leftOpen === "boolean")
+                    setLeftOpen(preferences.leftOpen);
+                if (typeof preferences.rightOpen === "boolean")
+                    setRightOpen(preferences.rightOpen);
+                if (typeof preferences.timelineOpen === "boolean")
+                    setTimelineOpen(preferences.timelineOpen);
+                if (typeof preferences.outlineOpen === "boolean")
+                    setOutlineOpen(preferences.outlineOpen);
+                if (["dark", "light", "contrast"].includes(preferences.theme ?? ""))
+                    setTheme(preferences.theme);
+                if (["maker", "advanced"].includes(preferences.mode ?? ""))
+                    setMode(preferences.mode);
+            }
+        }
+        catch {
+            // Local preference corruption must never prevent the modeling workspace from opening.
+        }
+        finally {
+            setUiPreferencesLoaded(true);
+        }
+    }, []);
+    (0, react_1.useEffect)(() => {
+        if (!uiPreferencesLoaded)
+            return;
+        try {
+            window.localStorage.setItem("benchcad-ui-preferences-v1", JSON.stringify({ leftOpen, rightOpen, timelineOpen, outlineOpen, theme, mode }));
+        }
+        catch {
+            // Private browsing or a full storage quota may prevent preference persistence.
+        }
+    }, [leftOpen, mode, outlineOpen, rightOpen, theme, timelineOpen, uiPreferencesLoaded]);
+    (0, react_1.useEffect)(() => {
         const onKey = (event) => {
+            const modifier = event.metaKey || event.ctrlKey;
+            if (!modifier && event.shiftKey && event.key.toLowerCase() === "f") {
+                event.preventDefault();
+                setFocusMode((value) => !value);
+                setMobilePanel(null);
+                return;
+            }
+            if (event.key === "Escape" && focusMode) {
+                event.preventDefault();
+                setFocusMode(false);
+                return;
+            }
             if ((0, benchcad_interactions_1.shortcutTargetIsEditable)(event.target))
                 return;
-            const modifier = event.metaKey || event.ctrlKey;
             if (modifier && event.key.toLowerCase() === "z") {
                 event.preventDefault();
                 if (event.shiftKey)
@@ -109511,6 +111685,18 @@ function BenchCadApp() {
         setRightOpen(true);
         (0, sonner_1.toast)(`${importedBodyIds.length} imported ${importedBodyIds.length === 1 ? "body" : "bodies"} selected`);
     }
+    function restoreInterfaceLayout() {
+        setFocusMode(false);
+        setLeftOpen(true);
+        setRightOpen(true);
+        setTimelineOpen(true);
+        setOutlineOpen(true);
+        setMobilePanel(null);
+        sonner_1.toast.success("Workspace panels restored");
+    }
+    function cycleTheme() {
+        setTheme((current) => current === "dark" ? "light" : current === "light" ? "contrast" : "dark");
+    }
     function renderOccurrenceBranch(occurrence, depth = 0) {
         const definition = reconstruction.components.find((component) => component.id === occurrence.componentId);
         const children = reconstruction.occurrences.filter((candidate) => candidate.parentOccurrenceId === occurrence.id);
@@ -109518,20 +111704,19 @@ function BenchCadApp() {
         return ((0, jsx_runtime_1.jsxs)("div", { className: "occurrence-branch", children: [(0, jsx_runtime_1.jsxs)("div", { className: `component-child occurrence-child ${selectedIds.includes(occurrence.id) ? "selected" : ""} ${project.activeOccurrenceId === occurrence.id ? "active-occurrence" : ""}`, style: { paddingLeft: `${Math.min(depth, 6) * 14}px` }, children: [(0, jsx_runtime_1.jsxs)("button", { className: "tree-select", onClick: (event) => selectBody(occurrence.id, event.shiftKey || event.metaKey || event.ctrlKey), onDoubleClick: () => activateOccurrence(occurrence.id), children: [(0, jsx_runtime_1.jsx)("span", { className: "tree-role occurrence-role", children: (0, jsx_runtime_1.jsx)(lucide_react_1.BoxSelect, {}) }), (0, jsx_runtime_1.jsx)("span", { children: occurrence.name }), (0, jsx_runtime_1.jsx)("em", { children: definition?.name ?? "MISSING" }), project.activeOccurrenceId === occurrence.id && (0, jsx_runtime_1.jsx)("b", { children: "ACTIVE" }), joint && (0, jsx_runtime_1.jsxs)("b", { title: `${joint.type} joint`, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", joint.type.toUpperCase()] }), occurrence.grounded && (0, jsx_runtime_1.jsx)(lucide_react_1.Lock, {})] }), (0, jsx_runtime_1.jsx)("button", { className: "tree-visibility", onClick: () => setOccurrenceVisibility(occurrence.id, !occurrence.visible), title: `${occurrence.visible ? "Hide" : "Show"} ${occurrence.name}`, "aria-label": `${occurrence.visible ? "Hide" : "Show"} ${occurrence.name}`, "aria-pressed": occurrence.visible, children: occurrence.visible ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {}) })] }), children.map((child) => renderOccurrenceBranch(child, depth + 1))] }, occurrence.id));
     }
     const collapsedClass = `${leftOpen ? "" : "left-collapsed"} ${rightOpen ? "" : "right-collapsed"} ${timelineOpen ? "" : "timeline-collapsed"}`;
-    return ((0, jsx_runtime_1.jsxs)("main", { className: `benchcad theme-${theme} ${collapsedClass}`, children: [(0, jsx_runtime_1.jsxs)("header", { className: "command-bar", children: [(0, jsx_runtime_1.jsxs)("button", { className: "brand", onClick: () => setDashboardOpen(true), "aria-label": "Open project dashboard", children: [(0, jsx_runtime_1.jsxs)("span", { className: "brand-mark", children: [(0, jsx_runtime_1.jsx)("span", {}), (0, jsx_runtime_1.jsx)("span", {}), (0, jsx_runtime_1.jsx)("span", {})] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "BENCH" }), "CAD", (0, jsx_runtime_1.jsx)("small", { children: "LOCAL MODELING WORKBENCH" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "command-divider" }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "command labeled file-command", title: "Project commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FolderOpen, {}), " File ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setDashboardOpen(true), children: "Project dashboard" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => void confirmNewProject(), children: "New project \u00B7 \u2318N" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => projectInputRef.current?.click(), children: "Open project \u00B7 \u2318O" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportProject, children: "Save project archive \u00B7 \u2318S" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "command", title: "Export fabrication files", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), (0, jsx_runtime_1.jsx)("span", { children: "Export" })] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("stl", "visible"), children: "Visible design \u00B7 STL" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("3mf", "visible"), children: "Visible design \u00B7 3MF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("obj", "visible"), children: "Visible design \u00B7 OBJ" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("stl", "selection"), children: "Selection \u00B7 STL" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("3mf", "selection"), children: "Selection \u00B7 3MF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("obj", "selection"), children: "Selection \u00B7 OBJ" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedFeature?.sketchSnapshot && !selectedBody?.profile, onClick: exportSelectedSvg, children: "Sketch or profile \u00B7 SVG" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedFeature?.sketchSnapshot && !selectedBody?.profile, onClick: exportSelectedDxf, children: "Sketch or profile \u00B7 DXF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportViewportPng, children: "Viewport snapshot \u00B7 PNG" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportTimelineReport, children: "Construction timeline \u00B7 JSON" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => { runManufacturingAnalysis(); }, children: "Manufacturing readiness \u00B7 report" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: true, title: benchcad_manufacturing_1.STEP_DECISION.rationale, children: "STEP \u00B7 deferred until true B-rep support" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setWorkspaceMode("drawings"), children: "Technical drawings \u00B7 PDF / SVG" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "command-divider" }), (0, jsx_runtime_1.jsxs)("div", { className: "workspace-switch", "aria-label": "Design workspace", children: [(0, jsx_runtime_1.jsxs)("button", { className: workspaceMode === "model" ? "active" : "", onClick: () => setWorkspaceMode("model"), "aria-pressed": workspaceMode === "model", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("button", { className: workspaceMode === "drawings" ? "active" : "", onClick: () => setWorkspaceMode("drawings"), "aria-pressed": workspaceMode === "drawings", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), " Drawing"] })] }), (0, jsx_runtime_1.jsx)("button", { className: `command icon-command ${modelDiagnostics.length || booleanIssues.length ? "has-issues" : ""}`, onClick: () => openModelDiagnostics(), title: `${modelDiagnostics.length + booleanIssues.length} model diagnostic${modelDiagnostics.length + booleanIssues.length === 1 ? "" : "s"}`, "aria-label": "Open model diagnostics", children: modelDiagnostics.length || booleanIssues.length ? (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: undo, disabled: !undoRef.current.length, title: "Undo command (\u2318Z)", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Undo2, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: redo, disabled: !redoRef.current.length, title: "Redo command (\u21E7\u2318Z)", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Redo2, {}) }), (0, jsx_runtime_1.jsxs)("div", { className: "mode-switch", "aria-label": "Workspace mode", children: [(0, jsx_runtime_1.jsx)("button", { className: mode === "maker" ? "active" : "", onClick: () => setMode("maker"), "aria-pressed": mode === "maker", children: "Maker" }), (0, jsx_runtime_1.jsx)("button", { className: mode === "advanced" ? "active" : "", onClick: () => setMode("advanced"), "aria-pressed": mode === "advanced", children: "Advanced" })] }), (0, jsx_runtime_1.jsxs)("button", { className: `command labeled parameter-command ${project.parameterBindings.some((binding) => binding.status === "error") ? "has-issues" : ""}`, onClick: openParameterManager, title: "Named parameters and expression-driven dimensions", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), (0, jsx_runtime_1.jsx)("span", { children: "Parameters" }), (0, jsx_runtime_1.jsx)("em", { children: project.userParameters.length })] }), (0, jsx_runtime_1.jsxs)(select_1.Select, { value: project.units, onValueChange: (units) => {
+    return ((0, jsx_runtime_1.jsxs)("main", { className: `benchcad theme-${theme} workspace-${workspaceMode} ${focusMode ? "focus-mode" : ""} ${collapsedClass}`, children: [(0, jsx_runtime_1.jsxs)("header", { className: "command-bar", children: [(0, jsx_runtime_1.jsxs)("button", { className: "brand", onClick: () => setDashboardOpen(true), "aria-label": "Open project dashboard", children: [(0, jsx_runtime_1.jsxs)("span", { className: "brand-mark", children: [(0, jsx_runtime_1.jsx)("span", {}), (0, jsx_runtime_1.jsx)("span", {}), (0, jsx_runtime_1.jsx)("span", {})] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "BENCH" }), "CAD", (0, jsx_runtime_1.jsx)("small", { children: "LOCAL CAD WORKBENCH" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "command-divider" }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "command labeled file-command", title: "Project commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FolderOpen, {}), " File ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setDashboardOpen(true), children: "Project dashboard" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => void confirmNewProject(), children: "New project \u00B7 \u2318N" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => projectInputRef.current?.click(), children: "Open project \u00B7 \u2318O" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportProject, children: "Save project archive \u00B7 \u2318S" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "command", title: "Export fabrication files", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), (0, jsx_runtime_1.jsx)("span", { children: "Export" })] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("stl", "visible"), children: "Visible design \u00B7 STL" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("3mf", "visible"), children: "Visible design \u00B7 3MF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => exportViewportGeometry("obj", "visible"), children: "Visible design \u00B7 OBJ" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("stl", "selection"), children: "Selection \u00B7 STL" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("3mf", "selection"), children: "Selection \u00B7 3MF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: () => exportViewportGeometry("obj", "selection"), children: "Selection \u00B7 OBJ" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedFeature?.sketchSnapshot && !selectedBody?.profile, onClick: exportSelectedSvg, children: "Sketch or profile \u00B7 SVG" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedFeature?.sketchSnapshot && !selectedBody?.profile, onClick: exportSelectedDxf, children: "Sketch or profile \u00B7 DXF" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportViewportPng, children: "Viewport snapshot \u00B7 PNG" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: exportTimelineReport, children: "Construction timeline \u00B7 JSON" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => { runManufacturingAnalysis(); }, children: "Manufacturing readiness \u00B7 report" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: true, title: benchcad_manufacturing_1.STEP_DECISION.rationale, children: "STEP \u00B7 deferred until true B-rep support" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setWorkspaceMode("drawings"), children: "Technical drawings \u00B7 PDF / SVG" })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "command-divider" }), (0, jsx_runtime_1.jsxs)("div", { className: "workspace-switch", "aria-label": "Design workspace", children: [(0, jsx_runtime_1.jsxs)("button", { className: workspaceMode === "model" ? "active" : "", onClick: () => setWorkspaceMode("model"), "aria-pressed": workspaceMode === "model", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}), " Model"] }), (0, jsx_runtime_1.jsxs)("button", { className: workspaceMode === "drawings" ? "active" : "", onClick: () => setWorkspaceMode("drawings"), "aria-pressed": workspaceMode === "drawings", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileText, {}), " Drawing"] })] }), (0, jsx_runtime_1.jsx)("button", { className: `command icon-command ${modelDiagnostics.length || booleanIssues.length ? "has-issues" : ""}`, onClick: () => openModelDiagnostics(), title: `${modelDiagnostics.length + booleanIssues.length} model diagnostic${modelDiagnostics.length + booleanIssues.length === 1 ? "" : "s"}`, "aria-label": "Open model diagnostics", children: modelDiagnostics.length || booleanIssues.length ? (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: undo, disabled: !undoRef.current.length, title: "Undo command (\u2318Z)", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Undo2, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: redo, disabled: !redoRef.current.length, title: "Redo command (\u21E7\u2318Z)", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Redo2, {}) }), (0, jsx_runtime_1.jsxs)("div", { className: "mode-switch", "aria-label": "Workspace mode", children: [(0, jsx_runtime_1.jsx)("button", { className: mode === "maker" ? "active" : "", onClick: () => setMode("maker"), "aria-pressed": mode === "maker", children: "Maker" }), (0, jsx_runtime_1.jsx)("button", { className: mode === "advanced" ? "active" : "", onClick: () => setMode("advanced"), "aria-pressed": mode === "advanced", children: "Advanced" })] }), (0, jsx_runtime_1.jsxs)("button", { className: `command labeled parameter-command ${project.parameterBindings.some((binding) => binding.status === "error") ? "has-issues" : ""}`, onClick: openParameterManager, title: "Named parameters and expression-driven dimensions", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), (0, jsx_runtime_1.jsx)("span", { children: "Parameters" }), (0, jsx_runtime_1.jsx)("em", { children: project.userParameters.length })] }), (0, jsx_runtime_1.jsxs)(select_1.Select, { value: project.units, onValueChange: (units) => {
                             const next = cloneProject(project);
                             next.units = units;
                             commitProject((0, benchcad_parameters_1.applyParameterBindings)(next).project);
                         }, children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { size: "sm", className: "units-select", children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "mm", children: "mm" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "cm", children: "cm" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "in", children: "in" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "m", children: "m" })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "active-component-chip", onClick: () => activeOccurrence
                             ? activateOccurrence(activeOccurrence.id)
-                            : activateComponent(project.activeComponentId), title: "Select the active editing context", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("small", { children: "ACTIVE CONTEXT" }), activeOccurrence?.name ?? activeComponent?.name ?? "Root"] })] }), (0, jsx_runtime_1.jsx)("button", { className: `command icon-command ${showGrid ? "is-on" : ""}`, onClick: () => setShowGrid((value) => !value), title: "Toggle grid", "aria-label": "Toggle grid", "aria-pressed": showGrid, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)("span", { className: "command-spacer" }), (0, jsx_runtime_1.jsx)(StatusLed, { status: saveState }), (0, jsx_runtime_1.jsxs)("span", { className: "version", children: ["v", benchcad_model_1.APP_VERSION] }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: () => setTheme(theme === "dark"
-                            ? "light"
-                            : theme === "light"
-                                ? "contrast"
-                                : "dark"), title: `Theme: ${theme}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: () => {
-                            setStorageOpen(true);
-                            refreshStorageHealth();
-                        }, title: "Recovery and storage health", "aria-label": "Open recovery and storage health", children: (0, jsx_runtime_1.jsx)(lucide_react_1.HardDrive, {}) }), (0, jsx_runtime_1.jsx)("button", { className: "command icon-command", onClick: () => setHelpOpen(true), title: "Help and shortcuts", children: (0, jsx_runtime_1.jsx)(lucide_react_1.HelpCircle, {}) })] }), workspaceMode === "drawings" ? ((0, jsx_runtime_1.jsx)(drawing_workbench_1.DrawingWorkbench, { project: project, bodies: reconstruction.bodies, meshes: booleanMeshes, onProjectChange: commitDocumentationProject, onExit: () => setWorkspaceMode("model") })) : ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: "mobile-tabs", children: [(0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "shapes" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "shapes" ? null : "shapes"), "aria-expanded": mobilePanel === "shapes", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Box, {}), " Shapes"] }), (0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "inspect" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "inspect" ? null : "inspect"), "aria-expanded": mobilePanel === "inspect", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Settings2, {}), " Inspect"] }), (0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "timeline" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "timeline" ? null : "timeline"), "aria-expanded": mobilePanel === "timeline", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " History"] })] }), (0, jsx_runtime_1.jsxs)("section", { className: `workspace ${mobilePanel ? `mobile-${mobilePanel}` : ""}`, children: [mobilePanel && ((0, jsx_runtime_1.jsx)("button", { className: "mobile-panel-scrim", onClick: () => setMobilePanel(null), "aria-label": "Close mobile panel" })), (0, jsx_runtime_1.jsxs)("aside", { className: "shape-panel panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-heading", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "INSERT" }), (0, jsx_runtime_1.jsx)("h2", { children: "Shape library" })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Collapse shape library", onClick: () => setLeftOpen(false), children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "shape-search", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Search, {}), (0, jsx_runtime_1.jsx)(input_1.Input, { ref: shapeSearchRef, value: shapeSearch, onChange: (event) => {
+                            : activateComponent(project.activeComponentId), title: "Select the active editing context", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("small", { children: "ACTIVE CONTEXT" }), activeOccurrence?.name ?? activeComponent?.name ?? "Root"] })] }), (0, jsx_runtime_1.jsx)("span", { className: "command-spacer" }), (0, jsx_runtime_1.jsx)(StatusLed, { status: saveState }), (0, jsx_runtime_1.jsxs)("span", { className: "version", children: ["v", benchcad_model_1.APP_VERSION] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `command icon-command utility-command ${focusMode ? "is-on" : ""}`, title: "Workspace and application controls", "aria-label": "Open workspace and application controls", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Settings2, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "utility-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => {
+                                            setFocusMode((value) => !value);
+                                            setMobilePanel(null);
+                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}), " ", focusMode ? "Exit canvas focus · ⇧F" : "Canvas focus · ⇧F"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: restoreInterfaceLayout, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " Restore workspace panels"] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setShowGrid((value) => !value), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", showGrid ? "Hide modeling grid" : "Show modeling grid"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: cycleTheme, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), " Theme \u00B7 ", theme] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => {
+                                            setStorageOpen(true);
+                                            refreshStorageHealth();
+                                        }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.HardDrive, {}), " Recovery and storage"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => setHelpOpen(true), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.HelpCircle, {}), " Help and shortcuts"] })] })] })] }), workspaceMode === "drawings" ? ((0, jsx_runtime_1.jsx)(drawing_workbench_1.DrawingWorkbench, { project: project, bodies: reconstruction.bodies, meshes: booleanMeshes, onProjectChange: commitDocumentationProject, onExit: () => setWorkspaceMode("model") })) : ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: "mobile-tabs", children: [(0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "shapes" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "shapes" ? null : "shapes"), "aria-expanded": mobilePanel === "shapes", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Box, {}), " Shapes"] }), (0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "inspect" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "inspect" ? null : "inspect"), "aria-expanded": mobilePanel === "inspect", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Settings2, {}), " Inspect"] }), (0, jsx_runtime_1.jsxs)("button", { className: mobilePanel === "timeline" ? "active" : "", onClick: () => setMobilePanel(mobilePanel === "timeline" ? null : "timeline"), "aria-expanded": mobilePanel === "timeline", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " History"] })] }), (0, jsx_runtime_1.jsxs)("section", { className: `workspace ${mobilePanel ? `mobile-${mobilePanel}` : ""}`, children: [mobilePanel && ((0, jsx_runtime_1.jsx)("button", { className: "mobile-panel-scrim", onClick: () => setMobilePanel(null), "aria-label": "Close mobile panel" })), (0, jsx_runtime_1.jsxs)("aside", { className: "shape-panel panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-heading", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "INSERT" }), (0, jsx_runtime_1.jsx)("h2", { children: "Shape library" })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Collapse shape library", onClick: () => setLeftOpen(false), children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "shape-search", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Search, {}), (0, jsx_runtime_1.jsx)(input_1.Input, { ref: shapeSearchRef, value: shapeSearch, onChange: (event) => {
                                                     setShapeSearch(event.target.value);
                                                     if (event.target.value)
                                                         setShapeShelf("all");
@@ -109568,9 +111753,9 @@ function BenchCadApp() {
                                                                 return ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !canAlign, children: ["Align / distribute ", axisName] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubContent, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "min"), children: "Align minimum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "center"), children: "Align centers" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "max"), children: "Align maximum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: selectedBodies.length < 3, onClick: () => alignSelection(axis, "distribute"), children: "Distribute equal gaps" })] })] }, axisName));
                                                             }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("linear"), children: "Linear pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("circular"), children: "Circular pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("grid"), children: "Grid pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), [0, 1, 2].map((axis) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createMirror(axis), children: ["Mirror across ", ["X", "Y", "Z"][axis], " = 0"] }, axis)))] })] }), (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedOccurrenceJoint ? "active" : ""}`, onClick: openJointDialog, disabled: !atEnd || !selectedOccurrence, title: selectedOccurrenceJoint
                                                     ? "Inspect the joint controlling this occurrence"
-                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Wireframe", active: wireframe, onClick: () => setWireframe((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, wireframe: wireframe, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " MANIFOLD WASM", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", reconstruction.occurrences.length, " OCCURRENCES \u00B7", " ", reconstruction.joints.length, " JOINTS \u00B7", " ", reconstruction.workplanes.length, " WORKPLANES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
+                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Wireframe", active: wireframe, onClick: () => setWireframe((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, wireframe: wireframe, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
                                                     ? setLeftOpen(true)
-                                                    : selectBody(activeWorkplane.id, false), title: "Active placement and sketch workplane", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", (0, jsx_runtime_1.jsx)("span", { children: "ACTIVE" }), " ", activeWorkplane.name] }), midpointSplitActive && ((0, jsx_runtime_1.jsxs)("div", { className: "split-pick-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["SPLIT BODY \u00B7 ", topologySelections.length + 1, "/2"] }), topologySelections.length
+                                                    : selectBody(activeWorkplane.id, false), title: "Active placement and sketch workplane", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", (0, jsx_runtime_1.jsx)("span", { children: "WORKPLANE" }), " ", activeWorkplane.name] }), midpointSplitActive && ((0, jsx_runtime_1.jsxs)("div", { className: "split-pick-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["SPLIT BODY \u00B7 ", topologySelections.length + 1, "/2"] }), topologySelections.length
                                                                 ? "Click a parallel face on the same body"
                                                                 : "Click the first planar face"] }), (0, jsx_runtime_1.jsx)("button", { onClick: cancelMidpointSplit, children: "Cancel" })] })), measureMode && ((0, jsx_runtime_1.jsxs)("div", { className: "measurement-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), massAnalysis ? ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: formatMass(massAnalysis.mass) }), massAnalysis.bodyCount, " SOLID", massAnalysis.bodyCount === 1 ? "" : "S", " \u00B7 ", effectiveAnalysisScope.toUpperCase()] })) : measuredBodies.length === 1 ? ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: measuredBodies[0].name }), measuredBodies[0].size.join(" × "), " ", project.units] })) : bodyMeasurement ? ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["CENTER ", bodyMeasurement.centerDistance, " ", project.units] }), "BOUNDS CLEARANCE ", bodyMeasurement.clearance, " ", project.units] })) : ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "RULER" }), "Select one body or exactly two bodies"] }))] })), (0, jsx_runtime_1.jsx)("div", { className: "view-orient", "aria-label": "Standard views", children: benchcad_interactions_1.STANDARD_VIEWS.map((view) => ((0, jsx_runtime_1.jsxs)("button", { className: `${view.className} ${activeStandardView === view.id ? "active" : ""}`, onClick: () => viewportRef.current?.setView(view.id), title: view.title, "aria-label": view.title, "aria-pressed": activeStandardView === view.id, children: [view.id === "home" && (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}), view.label] }, view.id))) }), (0, jsx_runtime_1.jsxs)("div", { className: "axis-key", children: [(0, jsx_runtime_1.jsx)("span", { className: "axis-x", children: "X" }), (0, jsx_runtime_1.jsx)("span", { className: "axis-y", children: "Y" }), (0, jsx_runtime_1.jsx)("span", { className: "axis-z", children: "Z" })] }), booleanIssues.length > 0 && ((0, jsx_runtime_1.jsxs)("div", { className: `geometry-issue issue-${booleanIssues[0].status}`, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: booleanIssues[0].code }), " ", booleanIssues[0].message, (0, jsx_runtime_1.jsx)("small", { children: booleanIssues[0].suggestion })] })] })), !atEnd && ((0, jsx_runtime_1.jsxs)("div", { className: "rollback-banner", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Rolled back to feature ", marker, ". Future geometry is unavailable.", " ", (0, jsx_runtime_1.jsx)("button", { onClick: () => setMarker(project.features.length), children: "Return to end" })] }))] })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "inspector panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-heading", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "PROPERTIES" }), (0, jsx_runtime_1.jsx)("h2", { children: measureMode
                                                             ? "Measure"
@@ -109761,7 +111946,7 @@ function BenchCadApp() {
                                                         ? `${booleanIssues.length + modelDiagnostics.length} ISSUE${booleanIssues.length + modelDiagnostics.length > 1 ? "S" : ""}`
                                                         : reconstruction.warnings.length
                                                             ? `${reconstruction.warnings.length} WARNING`
-                                                            : "UP TO DATE" })] })] }), !rightOpen && ((0, jsx_runtime_1.jsx)("button", { className: "panel-reopen reopen-right", onClick: () => setRightOpen(true), "aria-label": "Open inspector", children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) })), (0, jsx_runtime_1.jsxs)("section", { className: "timeline panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "timeline-topline", children: [(0, jsx_runtime_1.jsxs)("button", { className: "outline-toggle", onClick: () => setOutlineOpen((value) => !value), "aria-expanded": outlineOpen, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, { className: outlineOpen ? "" : "rotated" }), " ", "COMPONENTS ", (0, jsx_runtime_1.jsx)("span", { children: project.components.length }), " \u00B7 OCCURRENCES", " ", (0, jsx_runtime_1.jsx)("span", { children: reconstruction.occurrences.length }), " \u00B7 JOINTS", " ", (0, jsx_runtime_1.jsx)("span", { children: reconstruction.joints.length })] }), (0, jsx_runtime_1.jsxs)("div", { className: "timeline-title", children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "CONSTRUCTION HISTORY" }), (0, jsx_runtime_1.jsx)("strong", { children: "Feature timeline" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "playback-controls", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Beginning", onClick: () => setMarker(0), children: (0, jsx_runtime_1.jsx)(lucide_react_1.SkipBack, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Step backward", onClick: () => setMarker((value) => Math.max(0, value - 1)), children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: playing ? "Pause history" : "Play history", active: playing, onClick: () => {
+                                                            : "UP TO DATE" })] })] }), !rightOpen && ((0, jsx_runtime_1.jsx)("button", { className: "panel-reopen reopen-right", onClick: () => setRightOpen(true), "aria-label": "Open inspector", children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) })), (0, jsx_runtime_1.jsxs)("section", { className: "timeline panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "timeline-topline", children: [(0, jsx_runtime_1.jsxs)("button", { className: "outline-toggle assembly-summary-toggle", onClick: () => setOutlineOpen((value) => !value), "aria-expanded": outlineOpen, "aria-label": `${outlineOpen ? "Hide" : "Show"} component browser. ${project.components.length} components, ${reconstruction.occurrences.length} occurrences, ${reconstruction.joints.length} joints`, title: `${project.components.length} component${project.components.length === 1 ? "" : "s"} · ${reconstruction.occurrences.length} occurrence${reconstruction.occurrences.length === 1 ? "" : "s"} · ${reconstruction.joints.length} joint${reconstruction.joints.length === 1 ? "" : "s"}`, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, { className: outlineOpen ? "" : "rotated" }), (0, jsx_runtime_1.jsxs)("span", { className: "assembly-summary-stat", children: [(0, jsx_runtime_1.jsx)("small", { children: "Components" }), (0, jsx_runtime_1.jsx)("strong", { children: project.components.length })] }), (0, jsx_runtime_1.jsxs)("span", { className: "assembly-summary-stat", children: [(0, jsx_runtime_1.jsx)("small", { children: "Occurrences" }), (0, jsx_runtime_1.jsx)("strong", { children: reconstruction.occurrences.length })] }), (0, jsx_runtime_1.jsxs)("span", { className: "assembly-summary-stat", children: [(0, jsx_runtime_1.jsx)("small", { children: "Joints" }), (0, jsx_runtime_1.jsx)("strong", { children: reconstruction.joints.length })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "timeline-title", children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "CONSTRUCTION HISTORY" }), (0, jsx_runtime_1.jsx)("strong", { children: "Feature timeline" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "playback-controls", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Beginning", onClick: () => setMarker(0), children: (0, jsx_runtime_1.jsx)(lucide_react_1.SkipBack, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Step backward", onClick: () => setMarker((value) => Math.max(0, value - 1)), children: (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronLeft, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: playing ? "Pause history" : "Play history", active: playing, onClick: () => {
                                                             if (marker >= project.features.length)
                                                                 setMarker(0);
                                                             setPlaying((value) => !value);
@@ -109924,7 +112109,7 @@ function BenchCadApp() {
                                                 ? "Use any local static server instead of file://"
                                                 : "The hosted application caches itself after a successful visit" })] }), (0, jsx_runtime_1.jsxs)("section", { children: [(0, jsx_runtime_1.jsx)("small", { children: "LOCAL PROJECTS" }), (0, jsx_runtime_1.jsx)("strong", { children: storageHealth?.projectCount ?? localProjects.length }), (0, jsx_runtime_1.jsx)("span", { children: "Stored only in this browser profile" })] }), (0, jsx_runtime_1.jsxs)("section", { children: [(0, jsx_runtime_1.jsx)("small", { children: "STORAGE USE" }), (0, jsx_runtime_1.jsx)("strong", { children: (0, benchcad_runtime_1.formatBytes)(storageHealth?.usageBytes ?? null) }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, benchcad_runtime_1.formatBytes)(storageHealth?.quotaBytes ?? null), " available quota"] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "capability-report", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("h3", { children: "Compatibility checks" }), (0, jsx_runtime_1.jsx)("span", { children: capabilityChecks.filter((check) => check.required && !check.available).length
                                                 ? "Required capabilities are missing"
-                                                : "All required CAD capabilities are available" })] }), (0, jsx_runtime_1.jsx)("dl", { children: capabilityChecks.map((check) => ((0, jsx_runtime_1.jsxs)("span", { className: check.available ? "pass" : check.required ? "fail" : "note", children: [(0, jsx_runtime_1.jsxs)("dt", { children: [check.available ? (0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), check.label] }), (0, jsx_runtime_1.jsx)("dd", { children: check.detail })] }, check.id))) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "recovery-actions", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: exportRecoveryBackup, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Archive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Export recovery backup" }), (0, jsx_runtime_1.jsx)("small", { children: "All local projects \u00B7 integrity checked" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => recoveryInputRef.current?.click(), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Upload, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Restore recovery backup" }), (0, jsx_runtime_1.jsx)("small", { children: "Verify SHA-256 before saving projects" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: makeStoragePersistent, disabled: storageHealth?.persisted === true, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.HardDrive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: storageHealth?.persisted ? "Persistent storage active" : "Protect browser storage" }), (0, jsx_runtime_1.jsx)("small", { children: "Ask the browser not to reclaim BENCHCAD data" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: exportBrowserDiagnostics, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Export diagnostics" }), (0, jsx_runtime_1.jsx)("small", { children: "No project content or filenames included" })] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsxs)(button_1.Button, { variant: "outline", onClick: refreshStorageHealth, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Refresh checks"] }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setStorageOpen(false), children: "Back to the bench" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: helpOpen, onOpenChange: setHelpOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "help-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Make a mounting hole" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "A two-minute tour of BENCHCAD\u2019s editable history." })] }), (0, jsx_runtime_1.jsxs)("ol", { className: "tutorial-steps", children: [(0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "1" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Place a ", (0, jsx_runtime_1.jsx)("strong", { children: "Box" }), ", then use", " ", (0, jsx_runtime_1.jsx)("strong", { children: "M / R / S" }), " for direct transforms."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "2" }), (0, jsx_runtime_1.jsx)("span", { children: "Enable the magnet and choose move, angle, or scale snapping." })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "3" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Add a ", (0, jsx_runtime_1.jsx)("strong", { children: "Cylinder" }), ", set it to ", (0, jsx_runtime_1.jsx)("em", { children: "Hole" }), ", then Shift-select both."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "4" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Choose Auto, Union, Subtract, or Intersect and press", " ", (0, jsx_runtime_1.jsx)("strong", { children: "Apply" }), "."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "5" }), (0, jsx_runtime_1.jsx)("span", { children: "Drag the amber marker back and edit an earlier feature." })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "6" }), (0, jsx_runtime_1.jsx)("span", { children: "Return to the end. Manifold rebuilds downstream geometry automatically." })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "shortcut-grid", children: [(0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "V B M R S" }), " Select / box / transform"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Alt drag" }), " Duplicate"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Arrows" }), " Nudge X/Y"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "\u2325 \u2190 / \u2192" }), " Step history"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Space" }), " Play history"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Esc" }), " Cancel / select"] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "history-contract", "aria-label": "Construction history rules", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "WHAT ENTERS CONSTRUCTION HISTORY" }), (0, jsx_runtime_1.jsx)("small", { children: "Modeling intent becomes a feature. Navigation and editor context do not." })] }), (0, jsx_runtime_1.jsx)("dl", { children: benchcad_interactions_1.HISTORY_POLICY_GROUPS.map((group) => ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("dt", { children: group.title }), (0, jsx_runtime_1.jsx)("dd", { children: group.actions.join(" · ") })] }, group.disposition))) })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsxs)(button_1.Button, { variant: "outline", onClick: exportTimelineReport, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), " Export timeline report"] }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setHelpOpen(false), children: "Back to the bench" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: jointDialogOpen, onOpenChange: setJointDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Assembly Joint" }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogDescription, { children: ["Connect ", reconstruction.occurrences.find((occurrence) => occurrence.id === jointChildId)?.name ?? "the selected occurrence", " to the root assembly or another occurrence. The joint becomes an editable construction feature."] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-dialog-form joint-dialog-form", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Parent reference", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: jointParentId, onValueChange: setJointParentId, children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "root", children: "Root assembly" }), reconstruction.occurrences
+                                                : "All required CAD capabilities are available" })] }), (0, jsx_runtime_1.jsx)("dl", { children: capabilityChecks.map((check) => ((0, jsx_runtime_1.jsxs)("span", { className: check.available ? "pass" : check.required ? "fail" : "note", children: [(0, jsx_runtime_1.jsxs)("dt", { children: [check.available ? (0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), check.label] }), (0, jsx_runtime_1.jsx)("dd", { children: check.detail })] }, check.id))) })] }), (0, jsx_runtime_1.jsxs)("div", { className: "recovery-actions", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: exportRecoveryBackup, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Archive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Export recovery backup" }), (0, jsx_runtime_1.jsx)("small", { children: "All local projects \u00B7 integrity checked" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => recoveryInputRef.current?.click(), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Upload, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Restore recovery backup" }), (0, jsx_runtime_1.jsx)("small", { children: "Verify SHA-256 before saving projects" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: makeStoragePersistent, disabled: storageHealth?.persisted === true, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.HardDrive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: storageHealth?.persisted ? "Persistent storage active" : "Protect browser storage" }), (0, jsx_runtime_1.jsx)("small", { children: "Ask the browser not to reclaim BENCHCAD data" })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: exportBrowserDiagnostics, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Export diagnostics" }), (0, jsx_runtime_1.jsx)("small", { children: "No project content or filenames included" })] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsxs)(button_1.Button, { variant: "outline", onClick: refreshStorageHealth, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Refresh checks"] }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setStorageOpen(false), children: "Back to the bench" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: helpOpen, onOpenChange: setHelpOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "help-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Make a mounting hole" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "A two-minute tour of BENCHCAD\u2019s editable history." })] }), (0, jsx_runtime_1.jsxs)("ol", { className: "tutorial-steps", children: [(0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "1" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Place a ", (0, jsx_runtime_1.jsx)("strong", { children: "Box" }), ", then use", " ", (0, jsx_runtime_1.jsx)("strong", { children: "M / R / S" }), " for direct transforms."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "2" }), (0, jsx_runtime_1.jsx)("span", { children: "Enable the magnet and choose move, angle, or scale snapping." })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "3" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Add a ", (0, jsx_runtime_1.jsx)("strong", { children: "Cylinder" }), ", set it to ", (0, jsx_runtime_1.jsx)("em", { children: "Hole" }), ", then Shift-select both."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "4" }), (0, jsx_runtime_1.jsxs)("span", { children: ["Choose Auto, Union, Subtract, or Intersect and press", " ", (0, jsx_runtime_1.jsx)("strong", { children: "Apply" }), "."] })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "5" }), (0, jsx_runtime_1.jsx)("span", { children: "Drag the amber marker back and edit an earlier feature." })] }), (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("b", { children: "6" }), (0, jsx_runtime_1.jsx)("span", { children: "Return to the end. Manifold rebuilds downstream geometry automatically." })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "shortcut-grid", children: [(0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "V B M R S" }), " Select / box / transform"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Alt drag" }), " Duplicate"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Arrows" }), " Nudge X/Y"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "\u2325 \u2190 / \u2192" }), " Step history"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Space" }), " Play history"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "Esc" }), " Cancel / select"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("kbd", { children: "\u21E7 F" }), " Canvas focus"] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "history-contract", "aria-label": "Construction history rules", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "WHAT ENTERS CONSTRUCTION HISTORY" }), (0, jsx_runtime_1.jsx)("small", { children: "Modeling intent becomes a feature. Navigation and editor context do not." })] }), (0, jsx_runtime_1.jsx)("dl", { children: benchcad_interactions_1.HISTORY_POLICY_GROUPS.map((group) => ((0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("dt", { children: group.title }), (0, jsx_runtime_1.jsx)("dd", { children: group.actions.join(" · ") })] }, group.disposition))) })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsxs)(button_1.Button, { variant: "outline", onClick: exportTimelineReport, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.FileDown, {}), " Export timeline report"] }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setHelpOpen(false), children: "Back to the bench" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: jointDialogOpen, onOpenChange: setJointDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Assembly Joint" }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogDescription, { children: ["Connect ", reconstruction.occurrences.find((occurrence) => occurrence.id === jointChildId)?.name ?? "the selected occurrence", " to the root assembly or another occurrence. The joint becomes an editable construction feature."] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-dialog-form joint-dialog-form", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Parent reference", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: jointParentId, onValueChange: setJointParentId, children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "root", children: "Root assembly" }), reconstruction.occurrences
                                                             .filter((occurrence) => occurrence.id !== jointChildId &&
                                                             !occurrenceParentWouldCycle(jointChildId, occurrence.id))
                                                             .map((occurrence) => ((0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: occurrence.id, children: occurrence.name }, occurrence.id)))] })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Joint type", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: jointType, onValueChange: (value) => {
@@ -109955,6 +112140,523 @@ const benchcad_app_1 = require("@/components/benchcad-app");
 (0, client_1.createRoot)(document.getElementById("root")).render((0, jsx_runtime_1.jsx)(react_1.StrictMode, { children: (0, jsx_runtime_1.jsx)(benchcad_app_1.BenchCadApp, {}) }));
 
 },
+"lib/benchcad-drawing-refs.ts":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.drawingProjectedLineKey = drawingProjectedLineKey;
+exports.deriveDrawingEntities = deriveDrawingEntities;
+exports.makeDrawingEntityReference = makeDrawingEntityReference;
+exports.resolveDrawingEntityReference = resolveDrawingEntityReference;
+exports.drawingAnnotationRequirement = drawingAnnotationRequirement;
+exports.resolveDrawingDimensionReferences = resolveDrawingDimensionReferences;
+exports.repairDrawingDimensionReferences = repairDrawingDimensionReferences;
+exports.entityAnchor = entityAnchor;
+exports.drawingHoleCallout = drawingHoleCallout;
+exports.drawingThreadCallout = drawingThreadCallout;
+const benchcad_model_1 = require("./benchcad-model");
+const benchcad_projection_1 = require("./benchcad-projection");
+const EPS = 1e-8;
+const KEY_PRECISION = 5;
+const distance2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const midpoint2 = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const normalizeAngle = (value) => {
+    let result = value % Math.PI;
+    if (result < 0)
+        result += Math.PI;
+    return result;
+};
+const angleDifference = (a, b) => {
+    const delta = Math.abs(normalizeAngle(a) - normalizeAngle(b));
+    return Math.min(delta, Math.PI - delta);
+};
+const pointKey = (point) => point.map((value) => value.toFixed(KEY_PRECISION)).join(",");
+function stableHash(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+function drawingProjectedLineKey(segment) {
+    if (segment.topologyId)
+        return `${segment.sourceBodyId}|${segment.topologyId}`;
+    return [
+        segment.sourceBodyId,
+        segment.hidden ? "hidden" : "visible",
+        segment.style,
+        ...[pointKey(segment.a), pointKey(segment.b)].sort(),
+    ].join("|");
+}
+const finiteVec2 = (value) => Array.isArray(value)
+    && value.length >= 2
+    && Number.isFinite(Number(value[0]))
+    && Number.isFinite(Number(value[1]))
+    ? [Number(value[0]), Number(value[1])]
+    : undefined;
+function edgeSortKey(edge) {
+    return [
+        edge.sourceBodyId,
+        edge.hidden ? 1 : 0,
+        edge.style,
+        normalizeAngle(edge.angle).toFixed(6),
+        edge.midpoint[0].toFixed(5),
+        edge.midpoint[1].toFixed(5),
+        edge.length.toFixed(5),
+    ].join("|");
+}
+function orderedCircleLoop(lines) {
+    if (lines.length < 12)
+        return null;
+    const points = new Map();
+    const adjacent = new Map();
+    lines.forEach((segment, index) => {
+        const first = pointKey(segment.a);
+        const second = pointKey(segment.b);
+        points.set(first, segment.a);
+        points.set(second, segment.b);
+        adjacent.set(first, [...(adjacent.get(first) ?? []), { key: second, line: index }]);
+        adjacent.set(second, [...(adjacent.get(second) ?? []), { key: first, line: index }]);
+    });
+    if ([...adjacent.values()].some((neighbors) => neighbors.length !== 2))
+        return null;
+    const start = [...points.keys()].sort()[0];
+    const result = [];
+    const used = new Set();
+    let current = start;
+    let previous = "";
+    while (result.length <= lines.length + 1) {
+        result.push(points.get(current));
+        const nextOption = (adjacent.get(current) ?? []).find((option) => option.key !== previous && !used.has(option.line))
+            ?? (adjacent.get(current) ?? []).find((option) => !used.has(option.line));
+        if (!nextOption)
+            break;
+        used.add(nextOption.line);
+        previous = current;
+        current = nextOption.key;
+        if (current === start)
+            break;
+    }
+    return current === start && used.size === lines.length ? result : null;
+}
+function fitCircle(points) {
+    if (points.length < 12)
+        return null;
+    const center = [
+        points.reduce((sum, point) => sum + point[0], 0) / points.length,
+        points.reduce((sum, point) => sum + point[1], 0) / points.length,
+    ];
+    const radii = points.map((point) => distance2(point, center));
+    const radius = radii.reduce((sum, value) => sum + value, 0) / radii.length;
+    if (!Number.isFinite(radius) || radius < EPS)
+        return null;
+    const deviation = Math.sqrt(radii.reduce((sum, value) => sum + (value - radius) ** 2, 0) / radii.length);
+    if (deviation / radius > 0.035)
+        return null;
+    const angles = points.map((point) => Math.atan2(point[1] - center[1], point[0] - center[0]))
+        .map((angle) => angle < 0 ? angle + Math.PI * 2 : angle)
+        .sort((a, b) => a - b);
+    let maximumGap = 0;
+    for (let index = 0; index < angles.length; index += 1) {
+        const next = index === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[index + 1];
+        maximumGap = Math.max(maximumGap, next - angles[index]);
+    }
+    if (maximumGap > Math.PI / 3)
+        return null;
+    return { center, radius, deviation };
+}
+function detectCircleEntities(view, lines) {
+    const canonical = lines.filter((segment) => segment.style !== "tangent"
+        && Boolean(segment.topologyId)
+        && Boolean(segment.sourceVertexIdA)
+        && Boolean(segment.sourceVertexIdB)
+        && Boolean(segment.sourceA)
+        && Boolean(segment.sourceB));
+    const byBody = new Map();
+    canonical.forEach((segment) => byBody.set(segment.sourceBodyId, [...(byBody.get(segment.sourceBodyId) ?? []), segment]));
+    const circles = [];
+    byBody.forEach((bodyLines, bodyId) => {
+        const graph = new Map();
+        const pointByVertex = new Map();
+        bodyLines.forEach((segment) => {
+            const first = segment.sourceVertexIdA;
+            const second = segment.sourceVertexIdB;
+            graph.set(first, [...(graph.get(first) ?? []), { next: second, line: segment }]);
+            graph.set(second, [...(graph.get(second) ?? []), { next: first, line: segment }]);
+            pointByVertex.set(first, segment.sourceA);
+            pointByVertex.set(second, segment.sourceB);
+        });
+        const visited = new Set();
+        const visitKey = (first, second) => [first, second].sort().join("|");
+        [...graph.keys()].sort().forEach((startVertex) => {
+            for (const initial of graph.get(startVertex) ?? []) {
+                if (visited.has(visitKey(startVertex, initial.next)))
+                    continue;
+                const points = [];
+                const topologyIds = [];
+                let previous = "";
+                let current = startVertex;
+                let next = initial.next;
+                let closed = false;
+                for (let guard = 0; guard < bodyLines.length + 4; guard += 1) {
+                    const point = pointByVertex.get(current);
+                    if (!point)
+                        break;
+                    points.push(point);
+                    const key = visitKey(current, next);
+                    if (visited.has(key))
+                        break;
+                    visited.add(key);
+                    const connection = (graph.get(current) ?? []).find((entry) => entry.next === next);
+                    if (connection?.line.topologyId)
+                        topologyIds.push(connection.line.topologyId);
+                    previous = current;
+                    current = next;
+                    if (current === startVertex) {
+                        closed = true;
+                        break;
+                    }
+                    const options = (graph.get(current) ?? []).filter((entry) => entry.next !== previous && !visited.has(visitKey(current, entry.next)));
+                    if (options.length !== 1)
+                        break;
+                    next = options[0].next;
+                }
+                if (!closed || points.length < 12)
+                    continue;
+                const fit = fitCircle(points);
+                if (!fit)
+                    continue;
+                const topologyKey = stableHash(topologyIds.slice().sort().join("|"));
+                circles.push({
+                    type: "circle",
+                    sourceBodyId: bodyId,
+                    center: fit.center,
+                    radius: fit.radius,
+                    points,
+                    topologyKey,
+                    signature: { center: fit.center, radius: fit.radius, metadataId: `mesh-loop:${topologyKey}` },
+                });
+            }
+        });
+    });
+    return circles
+        .sort((first, second) => first.sourceBodyId.localeCompare(second.sourceBodyId)
+        || first.center[0] - second.center[0]
+        || first.center[1] - second.center[1]
+        || first.radius - second.radius)
+        .map((circle, index) => {
+        const { topologyKey, ...entity } = circle;
+        return {
+            ...entity,
+            id: `drawing-circle-v2:${circle.sourceBodyId}:${view.orientation}:${topologyKey}`,
+            label: `Circle ${index + 1} · Ø${(circle.radius * 2).toFixed(3)}`,
+        };
+    });
+}
+function holeCalloutText(hole) {
+    const diameter = `Ø${hole.diameter.toFixed(3)}`;
+    const extent = hole.extent === "through" ? "THRU" : `${hole.depth.toFixed(3)} DEEP`;
+    if (hole.style === "counterbore")
+        return `⌴ Ø${hole.counterboreDiameter.toFixed(3)} × ${hole.counterboreDepth.toFixed(3)} DEEP / ${diameter} ${extent}`;
+    if (hole.style === "countersink")
+        return `⌵ Ø${hole.countersinkDiameter.toFixed(3)} × ${hole.countersinkAngle.toFixed(1)}° / ${diameter} ${extent}`;
+    return `${diameter} ${extent}`;
+}
+function threadCalloutText(thread) {
+    const hand = thread.handedness === "left" ? "LH" : "RH";
+    const depth = `${thread.length.toFixed(3)} ${thread.internal ? "DEEP" : "LONG"}`;
+    return `${thread.designation} · ${depth} · ${hand}${thread.internal ? " · INTERNAL" : " · EXTERNAL"}`;
+}
+function metadataEntities(view, bodies) {
+    const depth = (0, benchcad_projection_1.drawingViewBasis)(view.orientation).depth;
+    const entities = [];
+    for (const body of bodies.filter((candidate) => view.sourceBodyIds.includes(candidate.id))) {
+        (body.holes ?? []).forEach((hole, index) => {
+            const normal = hole.frame?.normal ?? [0, 0, 1];
+            const faceOn = Math.abs(dot3(normal, depth)) >= 0.985;
+            if (!faceOn)
+                return;
+            const center = (0, benchcad_projection_1.projectDrawingPoint)(hole.frame.origin, view.orientation);
+            const displayDiameter = hole.style === "counterbore"
+                ? hole.counterboreDiameter
+                : hole.style === "countersink" ? hole.countersinkDiameter : hole.diameter;
+            const id = `drawing-hole:${body.id}:${index}`;
+            entities.push({
+                id,
+                type: "hole",
+                sourceBodyId: body.id,
+                label: holeCalloutText(hole),
+                center,
+                radius: displayDiameter / 2,
+                faceOn,
+                hole,
+                holeIndex: index,
+                signature: { center, radius: displayDiameter / 2, metadataId: `${body.id}:hole:${index}` },
+            });
+        });
+        (body.threads ?? []).forEach((thread) => {
+            const localAxis = thread.axis === 0 ? [1, 0, 0] : thread.axis === 1 ? [0, 1, 0] : [0, 0, 1];
+            const axis = (0, benchcad_model_1.rotateBodyVector)(body, localAxis);
+            const faceOn = Math.abs(dot3(axis, depth)) >= 0.985;
+            const center = (0, benchcad_projection_1.projectDrawingPoint)(body.position, view.orientation);
+            const id = `drawing-thread:${body.id}:${thread.id}`;
+            entities.push({
+                id,
+                type: "thread",
+                sourceBodyId: body.id,
+                label: threadCalloutText(thread),
+                center,
+                radius: thread.majorDiameter / 2,
+                faceOn,
+                thread,
+                signature: { center, radius: thread.majorDiameter / 2, metadataId: thread.id },
+            });
+        });
+    }
+    return entities;
+}
+function deriveDrawingEntities(view, bodies, lines) {
+    const grouped = new Map();
+    lines.filter((segment) => distance2(segment.a, segment.b) > EPS).forEach((segment, index) => {
+        const key = segment.topologyId
+            ? `${segment.sourceBodyId}|${segment.topologyId}`
+            : `legacy|${index}|${drawingProjectedLineKey(segment)}`;
+        grouped.set(key, [...(grouped.get(key) ?? []), segment]);
+    });
+    const edgeDrafts = [...grouped.values()]
+        .map((segments) => {
+        const first = segments[0];
+        const a = first.sourceA ?? first.a;
+        const b = first.sourceB ?? first.b;
+        const midpoint = midpoint2(a, b);
+        const length = distance2(a, b);
+        const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        return {
+            type: "edge",
+            topologyId: first.topologyId,
+            sourceBodyId: first.sourceBodyId,
+            a,
+            b,
+            midpoint,
+            length,
+            angle,
+            hidden: segments.every((segment) => segment.hidden),
+            style: segments.every((segment) => segment.style === "tangent") ? "tangent" : "visible",
+            signature: { midpoint, length, angle, metadataId: first.topologyId },
+        };
+    })
+        .filter((edge) => edge.length > EPS)
+        .sort((first, second) => edgeSortKey(first).localeCompare(edgeSortKey(second)));
+    const edges = edgeDrafts.map((edge, index) => ({
+        ...edge,
+        id: edge.topologyId
+            ? `drawing-edge-v2:${view.orientation}:${edge.topologyId}`
+            : `drawing-edge:${edge.sourceBodyId}:${view.orientation}:${index}`,
+        label: `${edge.hidden ? "Hidden" : edge.style === "tangent" ? "Tangent" : "Edge"} ${index + 1} · ${edge.length.toFixed(3)}`,
+    }));
+    const vertexPoints = new Map();
+    lines.forEach((segment) => {
+        const endpoints = [
+            [segment.sourceVertexIdA, segment.sourceA ?? segment.a],
+            [segment.sourceVertexIdB, segment.sourceB ?? segment.b],
+        ];
+        endpoints.forEach(([topologyId, point]) => {
+            const key = topologyId ? `${segment.sourceBodyId}|${topologyId}` : `${segment.sourceBodyId}|${pointKey(point)}`;
+            vertexPoints.set(key, { sourceBodyId: segment.sourceBodyId, point, topologyId });
+        });
+    });
+    const vertices = [...vertexPoints.values()]
+        .sort((first, second) => first.sourceBodyId.localeCompare(second.sourceBodyId)
+        || (first.topologyId ?? "").localeCompare(second.topologyId ?? "")
+        || first.point[0] - second.point[0]
+        || first.point[1] - second.point[1])
+        .map((vertex, index) => ({
+        id: vertex.topologyId
+            ? `drawing-vertex-v2:${view.orientation}:${vertex.topologyId}`
+            : `drawing-vertex:${vertex.sourceBodyId}:${view.orientation}:${index}`,
+        type: "vertex",
+        sourceBodyId: vertex.sourceBodyId,
+        label: `Vertex ${index + 1} · ${vertex.point[0].toFixed(3)}, ${vertex.point[1].toFixed(3)}`,
+        point: vertex.point,
+        signature: { point: vertex.point, metadataId: vertex.topologyId },
+    }));
+    const canonicalLines = [...grouped.values()].map((segments) => {
+        const first = segments[0];
+        return {
+            ...first,
+            a: first.sourceA ?? first.a,
+            b: first.sourceB ?? first.b,
+            hidden: segments.every((segment) => segment.hidden),
+            style: segments.every((segment) => segment.style === "tangent") ? "tangent" : "visible",
+        };
+    });
+    const circles = detectCircleEntities(view, canonicalLines);
+    return [...edges, ...vertices, ...circles, ...metadataEntities(view, bodies)];
+}
+function makeDrawingEntityReference(entity, role = "primary") {
+    return {
+        entityId: entity.id,
+        entityType: entity.type,
+        sourceBodyId: entity.sourceBodyId,
+        signature: structuredClone(entity.signature),
+        role,
+        label: entity.label,
+    };
+}
+function candidateScore(reference, entity) {
+    if (reference.entityType !== entity.type || reference.sourceBodyId !== entity.sourceBodyId)
+        return Infinity;
+    const signature = reference.signature;
+    if (signature.metadataId && entity.signature.metadataId === signature.metadataId)
+        return 0;
+    if (entity.type === "edge") {
+        const midpoint = finiteVec2(signature.midpoint);
+        const length = Number(signature.length);
+        const angle = Number(signature.angle);
+        if (!midpoint || !Number.isFinite(length) || !Number.isFinite(angle))
+            return Infinity;
+        const scale = Math.max(1, Math.abs(length));
+        return distance2(midpoint, entity.midpoint) / scale
+            + Math.abs(Math.log(Math.max(EPS, entity.length) / Math.max(EPS, length)))
+            + angleDifference(angle, entity.angle) / (Math.PI / 6);
+    }
+    if (entity.type === "vertex") {
+        const point = finiteVec2(signature.point);
+        return point ? distance2(point, entity.point) / Math.max(1, Math.hypot(point[0], point[1])) : Infinity;
+    }
+    const center = finiteVec2(signature.center);
+    const radius = Number(signature.radius);
+    if (!center || !Number.isFinite(radius))
+        return Infinity;
+    const candidateCenter = entity.center;
+    const candidateRadius = entity.radius;
+    return distance2(center, candidateCenter) / Math.max(1, radius * 2)
+        + Math.abs(Math.log(Math.max(EPS, candidateRadius) / Math.max(EPS, radius)));
+}
+function resolveDrawingEntityReference(reference, entities) {
+    const exact = entities.find((entity) => entity.id === reference.entityId
+        && entity.type === reference.entityType
+        && entity.sourceBodyId === reference.sourceBodyId);
+    if (exact)
+        return { reference, status: "resolved", entity: exact, score: 0 };
+    const candidates = entities
+        .filter((entity) => entity.type === reference.entityType && entity.sourceBodyId === reference.sourceBodyId)
+        .map((entity) => ({ entity, score: candidateScore(reference, entity) }))
+        .filter((item) => Number.isFinite(item.score))
+        .sort((first, second) => first.score - second.score);
+    const best = candidates[0];
+    const threshold = reference.entityType === "edge" ? 1.35
+        : reference.entityType === "vertex" ? 0.35
+            : 0.75;
+    if (best && best.score <= threshold) {
+        return {
+            reference,
+            status: "repairable",
+            candidate: best.entity,
+            score: best.score,
+            message: `${reference.label ?? reference.entityType} no longer resolves by identity. A same-body ${reference.entityType} is available for explicit reattachment.`,
+        };
+    }
+    return {
+        reference,
+        status: "unresolved",
+        message: `${reference.label ?? reference.entityType} no longer exists in this projected view and no safe same-body replacement was found.`,
+    };
+}
+function referenceTypesMatch(kind, entities) {
+    if (kind === "aligned")
+        return (entities.length === 1 && entities[0].type === "edge")
+            || (entities.length === 2 && entities.every((entity) => entity.type === "vertex"));
+    if (kind === "horizontal" || kind === "vertical")
+        return (entities.length === 1 && entities[0].type === "edge")
+            || (entities.length === 2 && entities.every((entity) => entity.type === "vertex"));
+    if (kind === "angular")
+        return entities.length === 2 && entities.every((entity) => entity.type === "edge");
+    if (["diameter", "radius", "center-mark", "centerline"].includes(kind))
+        return entities.length === 1 && ["circle", "hole"].includes(entities[0].type);
+    if (kind === "hole-callout")
+        return entities.length === 1 && entities[0].type === "hole";
+    if (kind === "thread-callout")
+        return entities.length === 1 && entities[0].type === "thread";
+    if (kind === "ordinate-x" || kind === "ordinate-y")
+        return entities.length === 1 && ["vertex", "circle", "hole", "thread"].includes(entities[0].type);
+    return false;
+}
+function drawingAnnotationRequirement(kind) {
+    switch (kind) {
+        case "aligned": return "Select one projected edge or two vertices.";
+        case "horizontal":
+        case "vertical": return "Select one edge or two vertices; with no references this remains an overall envelope dimension.";
+        case "angular": return "Select two non-parallel projected edges.";
+        case "diameter":
+        case "radius":
+        case "center-mark":
+        case "centerline": return "Select one detected circle or face-on hole.";
+        case "hole-callout": return "Select one face-on modeled hole feature.";
+        case "thread-callout": return "Select one modeled thread specification.";
+        case "ordinate-x":
+        case "ordinate-y": return "Select one vertex, circle center, hole center, or thread anchor.";
+        default: return "This annotation is not supported.";
+    }
+}
+function resolveDrawingDimensionReferences(dimension, entities) {
+    if (dimension.kind === "unsupported" || dimension.status === "unsupported")
+        return { status: "unsupported", requirementsMet: false, resolutions: [], entities: [], message: dimension.message };
+    if ((dimension.referenceMode ?? "envelope") === "envelope"
+        && (dimension.kind === "horizontal" || dimension.kind === "vertical"))
+        return { status: "valid", requirementsMet: true, resolutions: [], entities: [] };
+    const references = dimension.references ?? [];
+    if (!references.length)
+        return { status: "unresolved", requirementsMet: false, resolutions: [], entities: [], message: drawingAnnotationRequirement(dimension.kind) };
+    const resolutions = references.map((reference) => resolveDrawingEntityReference(reference, entities));
+    const resolvedEntities = resolutions.flatMap((resolution) => resolution.entity ? [resolution.entity] : []);
+    if (resolutions.some((resolution) => resolution.status === "unresolved"))
+        return { status: "unresolved", requirementsMet: false, resolutions, entities: resolvedEntities, message: resolutions.find((resolution) => resolution.status === "unresolved")?.message };
+    if (resolutions.some((resolution) => resolution.status === "repairable"))
+        return { status: "repairable", requirementsMet: false, resolutions, entities: resolvedEntities, message: resolutions.find((resolution) => resolution.status === "repairable")?.message };
+    const requirementsMet = referenceTypesMatch(dimension.kind, resolvedEntities);
+    return {
+        status: requirementsMet ? "valid" : "unresolved",
+        requirementsMet,
+        resolutions,
+        entities: resolvedEntities,
+        message: requirementsMet ? undefined : drawingAnnotationRequirement(dimension.kind),
+    };
+}
+function repairDrawingDimensionReferences(dimension, entities) {
+    const resolutions = (dimension.references ?? []).map((reference) => resolveDrawingEntityReference(reference, entities));
+    const repaired = resolutions.map((resolution) => {
+        if (resolution.status === "resolved" && resolution.entity)
+            return makeDrawingEntityReference(resolution.entity, resolution.reference.role ?? "primary");
+        if (resolution.status === "repairable" && resolution.candidate)
+            return makeDrawingEntityReference(resolution.candidate, resolution.reference.role ?? "primary");
+        return resolution.reference;
+    });
+    const remaining = repaired.map((reference) => resolveDrawingEntityReference(reference, entities));
+    return {
+        ...dimension,
+        references: repaired,
+        status: remaining.every((resolution) => resolution.status === "resolved") ? "valid" : "unresolved",
+        message: remaining.every((resolution) => resolution.status === "resolved") ? undefined : dimension.message,
+        updatedAt: new Date().toISOString(),
+    };
+}
+function entityAnchor(entity) {
+    if (entity.type === "edge")
+        return entity.midpoint;
+    if (entity.type === "vertex")
+        return entity.point;
+    return entity.center;
+}
+function drawingHoleCallout(entity) {
+    return holeCalloutText(entity.hole);
+}
+function drawingThreadCallout(entity) {
+    return threadCalloutText(entity.thread);
+}
+
+},
 "lib/benchcad-dxf.ts":function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -109963,6 +112665,7 @@ exports.sketchEntitiesToDxf = sketchEntitiesToDxf;
 exports.profileToDxf = profileToDxf;
 exports.drawingSheetToDxf = drawingSheetToDxf;
 const benchcad_model_1 = require("./benchcad-model");
+const benchcad_drawing_1 = require("./benchcad-drawing");
 const UNIT_TO_MM = {
     mm: 1,
     cm: 10,
@@ -110177,21 +112880,48 @@ function parseAsciiDxf(text, projectUnits) {
 function pair(code, value) {
     return `${code}\n${value}\n`;
 }
+const DXF_LAYERS = [
+    ["0", "CONTINUOUS"], ["SKETCH", "CONTINUOUS"], ["CONSTRUCTION", "DASHED2"],
+    ["PROFILE", "CONTINUOUS"], ["PROFILE_HOLE", "CONTINUOUS"],
+    ["VISIBLE", "CONTINUOUS"], ["TANGENT", "CONTINUOUS"], ["HIDDEN", "HIDDEN2"],
+    ["SECTION", "CONTINUOUS"], ["CUTTING", "CENTER2"], ["HATCH", "CONTINUOUS"],
+    ["DETAIL", "CENTER2"], ["CENTERLINE", "CENTER2"], ["CENTER", "CENTER2"],
+    ["DIMENSION", "CONTINUOUS"], ["BORDER", "CONTINUOUS"], ["TITLE", "CONTINUOUS"],
+    ["WARNING", "DASHED2"], ["ANNOTATION", "CONTINUOUS"], ["TEXT", "CONTINUOUS"],
+];
+function ltypeRecord(name, description, pattern) {
+    let output = pair(0, "LTYPE") + pair(2, name) + pair(70, 0) + pair(3, description)
+        + pair(72, 65) + pair(73, pattern.length)
+        + pair(40, pattern.reduce((sum, value) => sum + Math.abs(value), 0));
+    pattern.forEach((value) => { output += pair(49, value) + pair(74, 0); });
+    return output;
+}
 function header(units) {
+    const ltypes = [
+        ltypeRecord("CONTINUOUS", "Solid line", []),
+        ltypeRecord("HIDDEN2", "Hidden __ __ __", [6, -3]),
+        ltypeRecord("CENTER2", "Center ____ _ ____", [12, -3, 2, -3]),
+        ltypeRecord("DASHED2", "Dashed __ __ __", [5, -2]),
+    ].join("");
+    const layers = DXF_LAYERS.map(([name, lineType]) => pair(0, "LAYER") + pair(2, name) + pair(70, 0) + pair(62, 7) + pair(6, lineType)).join("");
     return [
         pair(0, "SECTION"), pair(2, "HEADER"),
         pair(9, "$ACADVER"), pair(1, "AC1015"),
         pair(9, "$INSUNITS"), pair(70, UNIT_TO_INSUNITS[units]),
         pair(0, "ENDSEC"),
-        pair(0, "SECTION"), pair(2, "TABLES"), pair(0, "ENDSEC"),
+        pair(0, "SECTION"), pair(2, "TABLES"),
+        pair(0, "TABLE"), pair(2, "LTYPE"), pair(70, 4), ltypes, pair(0, "ENDTAB"),
+        pair(0, "TABLE"), pair(2, "LAYER"), pair(70, DXF_LAYERS.length), layers, pair(0, "ENDTAB"),
+        pair(0, "ENDSEC"),
         pair(0, "SECTION"), pair(2, "ENTITIES"),
     ].join("");
 }
 function footer() {
     return pair(0, "ENDSEC") + pair(0, "EOF");
 }
-function lineEntity(a, b, layer = "0") {
-    return pair(0, "LINE") + pair(8, layer) + pair(10, a[0]) + pair(20, a[1]) + pair(30, 0)
+function lineEntity(a, b, layer = "0", lineType = "CONTINUOUS") {
+    return pair(0, "LINE") + pair(8, layer) + pair(6, lineType)
+        + pair(10, a[0]) + pair(20, a[1]) + pair(30, 0)
         + pair(11, b[0]) + pair(21, b[1]) + pair(31, 0);
 }
 function polylineEntity(points, closed, layer = "0") {
@@ -110242,10 +112972,21 @@ function profileToDxf(outer, holes, units) {
     return output + footer();
 }
 function drawingSheetToDxf(rendered) {
-    let output = header("mm");
+    if (!rendered.exportReady) {
+        const first = rendered.issues.find((issue) => issue.blocking);
+        throw new Error(`Drawing export locked: ${first?.message ?? "unresolved drawing integrity checks"}`);
+    }
+    const signature = rendered.primitiveSignature || (0, benchcad_drawing_1.drawingPrimitiveSignature)(rendered);
+    let output = header("mm") + pair(999, `BENCHCAD-PRIMITIVE-SIGNATURE:${signature}`);
     for (const primitive of rendered.primitives) {
-        if (primitive.kind === "line")
-            output += lineEntity([primitive.x1, rendered.height - primitive.y1], [primitive.x2, rendered.height - primitive.y2], primitive.style.toUpperCase());
+        if (primitive.kind === "line") {
+            const lineType = primitive.style === "hidden" ? "HIDDEN2"
+                : primitive.style === "cutting" || primitive.style === "center" || primitive.style === "detail" ? "CENTER2"
+                    : primitive.style === "warning" ? "DASHED2"
+                        : "CONTINUOUS";
+            const layer = primitive.style === "center" ? "CENTERLINE" : primitive.style.toUpperCase();
+            output += lineEntity([primitive.x1, rendered.height - primitive.y1], [primitive.x2, rendered.height - primitive.y2], layer, lineType);
+        }
         else
             output += textEntity(primitive.x, rendered.height - primitive.y, primitive.text, primitive.size, "ANNOTATION");
     }
@@ -111061,6 +113802,756 @@ function strokePolyline(points, width) {
 }
 
 },
+"lib/benchcad-projection.ts":function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.drawingViewBasis = drawingViewBasis;
+exports.projectDrawingPoint = projectDrawingPoint;
+exports.drawingDepth = drawingDepth;
+exports.sectionAxisVector = sectionAxisVector;
+exports.sectionOrientationFor = sectionOrientationFor;
+exports.sectionParentIsCompatible = sectionParentIsCompatible;
+exports.projectedAlignmentIsCompatible = projectedAlignmentIsCompatible;
+exports.runProjectionEngine = runProjectionEngine;
+const EPS = 1e-8;
+const KEY_PRECISION = 6;
+const add3 = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const subtract3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const scale3 = (a, amount) => [a[0] * amount, a[1] * amount, a[2] * amount];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross3 = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+];
+const length3 = (a) => Math.hypot(a[0], a[1], a[2]);
+const normalize3 = (a) => {
+    const magnitude = length3(a) || 1;
+    return scale3(a, 1 / magnitude);
+};
+const lerp3 = (a, b, amount) => add3(a, scale3(subtract3(b, a), amount));
+const lerp2 = (a, b, amount) => [
+    a[0] + (b[0] - a[0]) * amount,
+    a[1] + (b[1] - a[1]) * amount,
+];
+const subtract2 = (a, b) => [a[0] - b[0], a[1] - b[1]];
+const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0];
+const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+const pointAt = (vertices, index) => [
+    Number(vertices[index * 3]),
+    Number(vertices[index * 3 + 1]),
+    Number(vertices[index * 3 + 2]),
+];
+const pointKey3 = (point) => point.map((value) => value.toFixed(KEY_PRECISION)).join(",");
+const pointKey2 = (point) => point.map((value) => value.toFixed(KEY_PRECISION)).join(",");
+function drawingViewBasis(orientation) {
+    const bases = {
+        front: { u: [1, 0, 0], v: [0, 0, 1], depth: [0, -1, 0] },
+        back: { u: [-1, 0, 0], v: [0, 0, 1], depth: [0, 1, 0] },
+        top: { u: [1, 0, 0], v: [0, 1, 0], depth: [0, 0, 1] },
+        bottom: { u: [1, 0, 0], v: [0, -1, 0], depth: [0, 0, -1] },
+        left: { u: [0, 1, 0], v: [0, 0, 1], depth: [-1, 0, 0] },
+        right: { u: [0, -1, 0], v: [0, 0, 1], depth: [1, 0, 0] },
+        iso: {
+            u: normalize3([1, -1, 0]),
+            v: normalize3([-1, -1, 2]),
+            depth: normalize3([1, 1, 1]),
+        },
+    };
+    return bases[orientation];
+}
+function projectDrawingPoint(point, orientation) {
+    const basis = drawingViewBasis(orientation);
+    return [dot3(point, basis.u), dot3(point, basis.v)];
+}
+function drawingDepth(point, orientation) {
+    return dot3(point, drawingViewBasis(orientation).depth);
+}
+function sectionAxisVector(axis) {
+    return axis === "X" ? [1, 0, 0] : axis === "Y" ? [0, 1, 0] : [0, 0, 1];
+}
+/** Returns the view direction that looks through the removed half-space. */
+function sectionOrientationFor(axis, keepSide) {
+    if (axis === "X")
+        return keepSide === "negative" ? "right" : "left";
+    if (axis === "Y")
+        return keepSide === "positive" ? "front" : "back";
+    return keepSide === "negative" ? "top" : "bottom";
+}
+/** A parent can show a cutting line only when the plane is edge-on in it. */
+function sectionParentIsCompatible(axis, parentOrientation) {
+    return Math.abs(dot3(sectionAxisVector(axis), drawingViewBasis(parentOrientation).depth)) < 1e-6;
+}
+/**
+ * A projected-view lock is meaningful only when the two views share the model
+ * axis represented by the locked sheet coordinate. Horizontal rows share a
+ * vertical image axis; vertical columns share a horizontal image axis.
+ */
+function projectedAlignmentIsCompatible(parentOrientation, childOrientation, alignment) {
+    if (alignment === "free")
+        return true;
+    if (parentOrientation === "iso" || childOrientation === "iso")
+        return false;
+    const parent = drawingViewBasis(parentOrientation);
+    const child = drawingViewBasis(childOrientation);
+    const sharedAxis = alignment === "horizontal"
+        ? Math.abs(dot3(parent.v, child.v))
+        : Math.abs(dot3(parent.u, child.u));
+    return sharedAxis > 1 - 1e-6;
+}
+function sectionViewIsNormalToPlane(view) {
+    if (view.type !== "section")
+        return true;
+    const axis = view.sectionAxis ?? "Y";
+    return Math.abs(dot3(sectionAxisVector(axis), drawingViewBasis(view.orientation).depth)) > 1 - 1e-6;
+}
+function sectionKeepSideMatchesView(view) {
+    if (view.type !== "section")
+        return true;
+    const axis = view.sectionAxis ?? "Y";
+    const keep = view.sectionKeepSide ?? "positive";
+    const viewerSide = dot3(sectionAxisVector(axis), drawingViewBasis(view.orientation).depth);
+    return viewerSide > 0 ? keep === "negative" : keep === "positive";
+}
+function meshTriangleCount(mesh) {
+    return Math.floor(mesh.indices.length / 3);
+}
+function triangleNormal(points) {
+    return normalize3(cross3(subtract3(points[1], points[0]), subtract3(points[2], points[0])));
+}
+function projectedArea(points) {
+    return cross2(subtract2(points[1], points[0]), subtract2(points[2], points[0])) / 2;
+}
+function projectedTriangles(meshes, orientation) {
+    const result = [];
+    for (const mesh of meshes) {
+        for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
+            const points3 = [0, 1, 2].map((slot) => pointAt(mesh.vertices, Number(mesh.indices[index + slot])));
+            const points = points3.map((point) => projectDrawingPoint(point, orientation));
+            if (Math.abs(projectedArea(points)) < EPS)
+                continue;
+            const depths = points3.map((point) => drawingDepth(point, orientation));
+            result.push({
+                id: `${mesh.targetId}:${index / 3}`,
+                bodyId: mesh.targetId,
+                points,
+                depths,
+                minX: Math.min(points[0][0], points[1][0], points[2][0]),
+                minY: Math.min(points[0][1], points[1][1], points[2][1]),
+                maxX: Math.max(points[0][0], points[1][0], points[2][0]),
+                maxY: Math.max(points[0][1], points[1][1], points[2][1]),
+            });
+        }
+    }
+    return result;
+}
+function candidateEdges(meshes, view) {
+    const basis = drawingViewBasis(view.orientation);
+    const showSilhouettes = view.showSilhouetteEdges !== false;
+    const showTangents = Boolean(view.showTangentEdges);
+    const creaseAngle = clamp(view.creaseAngle ?? 30, 0.1, 179);
+    const sectionAxisIndex = { X: 0, Y: 1, Z: 2 }[view.sectionAxis ?? "Y"];
+    const sectionOffset = view.sectionOffset ?? 0;
+    const result = [];
+    for (const mesh of meshes) {
+        const edges = new Map();
+        for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
+            const triangleId = `${mesh.targetId}:${index / 3}`;
+            const vertexIndexes = [0, 1, 2].map((slot) => Number(mesh.indices[index + slot]));
+            const points = vertexIndexes.map((vertexIndex) => pointAt(mesh.vertices, vertexIndex));
+            const normal = triangleNormal(points);
+            const facing = dot3(normal, basis.depth) >= -EPS;
+            for (const [first, second] of [[0, 1], [1, 2], [2, 0]]) {
+                const rawA = points[first];
+                const rawB = points[second];
+                const rawIndexA = vertexIndexes[first];
+                const rawIndexB = vertexIndexes[second];
+                if (view.type === "section"
+                    && Math.abs(rawA[sectionAxisIndex] - sectionOffset) < 1e-6
+                    && Math.abs(rawB[sectionAxisIndex] - sectionOffset) < 1e-6)
+                    continue;
+                const keyA = pointKey3(rawA);
+                const keyB = pointKey3(rawB);
+                const forward = keyA <= keyB;
+                const a = forward ? rawA : rawB;
+                const b = forward ? rawB : rawA;
+                const indexA = forward ? rawIndexA : rawIndexB;
+                const indexB = forward ? rawIndexB : rawIndexA;
+                const key = `${pointKey3(a)}|${pointKey3(b)}`;
+                const edge = edges.get(key) ?? {
+                    a,
+                    b,
+                    normals: [],
+                    facing: [],
+                    triangleIds: [],
+                    topologyTokens: new Set(),
+                    vertexIdsA: new Set(),
+                    vertexIdsB: new Set(),
+                };
+                edge.normals.push(normal);
+                edge.facing.push(facing);
+                edge.triangleIds.push(triangleId);
+                edge.topologyTokens.add(`${Math.min(rawIndexA, rawIndexB)}:${Math.max(rawIndexA, rawIndexB)}`);
+                edge.vertexIdsA.add(`${mesh.targetId}:vertex:${indexA}`);
+                edge.vertexIdsB.add(`${mesh.targetId}:vertex:${indexB}`);
+                edges.set(key, edge);
+            }
+        }
+        for (const edge of edges.values()) {
+            const boundary = edge.normals.length !== 2;
+            const silhouette = edge.facing.some(Boolean) && edge.facing.some((value) => !value);
+            let maximumAngle = 0;
+            for (let first = 0; first < edge.normals.length; first += 1) {
+                for (let second = first + 1; second < edge.normals.length; second += 1) {
+                    maximumAngle = Math.max(maximumAngle, Math.acos(clamp(dot3(edge.normals[first], edge.normals[second]), -1, 1)) * 180 / Math.PI);
+                }
+            }
+            const crease = !boundary && !silhouette && maximumAngle >= creaseAngle;
+            const tangent = !boundary && !silhouette && !crease
+                && maximumAngle > 0.1 && edge.facing.some(Boolean);
+            const kind = boundary
+                ? "boundary"
+                : silhouette && showSilhouettes
+                    ? "silhouette"
+                    : crease
+                        ? "crease"
+                        : tangent && showTangents
+                            ? "tangent"
+                            : null;
+            if (!kind)
+                continue;
+            const a = projectDrawingPoint(edge.a, view.orientation);
+            const b = projectDrawingPoint(edge.b, view.orientation);
+            if (Math.hypot(b[0] - a[0], b[1] - a[1]) < EPS)
+                continue;
+            const topologyToken = [...edge.topologyTokens].sort()[0] ?? `${pointKey3(edge.a)}:${pointKey3(edge.b)}`;
+            result.push({
+                a,
+                b,
+                depthA: drawingDepth(edge.a, view.orientation),
+                depthB: drawingDepth(edge.b, view.orientation),
+                kind,
+                sourceBodyId: mesh.targetId,
+                adjacentTriangleIds: new Set(edge.triangleIds),
+                topologyId: `${mesh.targetId}:mesh-edge:${topologyToken}`,
+                sourceVertexIdA: [...edge.vertexIdsA].sort()[0] ?? `${mesh.targetId}:vertex:${pointKey3(edge.a)}`,
+                sourceVertexIdB: [...edge.vertexIdsB].sort()[0] ?? `${mesh.targetId}:vertex:${pointKey3(edge.b)}`,
+            });
+        }
+    }
+    return result;
+}
+function clipPolygonToAxisPlane(polygon, axisIndex, offset, keepSide) {
+    const direction = keepSide === "positive" ? 1 : -1;
+    const signedDistance = (point) => (point[axisIndex] - offset) * direction;
+    const result = [];
+    for (let index = 0; index < polygon.length; index += 1) {
+        const current = polygon[index];
+        const next = polygon[(index + 1) % polygon.length];
+        const currentDistance = signedDistance(current);
+        const nextDistance = signedDistance(next);
+        const currentInside = currentDistance >= -EPS;
+        const nextInside = nextDistance >= -EPS;
+        if (currentInside)
+            result.push(current);
+        if (currentInside !== nextInside) {
+            const amount = currentDistance / (currentDistance - nextDistance);
+            result.push(lerp3(current, next, amount));
+        }
+    }
+    return result;
+}
+function clipMeshToSection(mesh, view) {
+    const axisIndex = { X: 0, Y: 1, Z: 2 }[view.sectionAxis ?? "Y"];
+    const offset = view.sectionOffset ?? 0;
+    const keepSide = view.sectionKeepSide ?? "positive";
+    const vertices = [];
+    const indices = [];
+    for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
+        const polygon = [0, 1, 2].map((slot) => pointAt(mesh.vertices, Number(mesh.indices[index + slot])));
+        const clipped = clipPolygonToAxisPlane(polygon, axisIndex, offset, keepSide);
+        if (clipped.length < 3)
+            continue;
+        for (let fan = 1; fan + 1 < clipped.length; fan += 1) {
+            const triangle = [clipped[0], clipped[fan], clipped[fan + 1]];
+            if (length3(cross3(subtract3(triangle[1], triangle[0]), subtract3(triangle[2], triangle[0]))) < EPS)
+                continue;
+            const base = vertices.length / 3;
+            triangle.forEach((point) => vertices.push(...point));
+            indices.push(base, base + 1, base + 2);
+        }
+    }
+    return { targetId: mesh.targetId, consumedIds: mesh.consumedIds, vertices, indices };
+}
+function triangleSectionSegment(points, axisIndex, offset) {
+    const distances = points.map((point) => point[axisIndex] - offset);
+    if (distances.every((distance) => Math.abs(distance) < EPS))
+        return null;
+    const intersections = [];
+    const addUnique = (point) => {
+        if (!intersections.some((candidate) => length3(subtract3(candidate, point)) < 1e-7))
+            intersections.push(point);
+    };
+    for (const [first, second] of [[0, 1], [1, 2], [2, 0]]) {
+        const a = points[first];
+        const b = points[second];
+        const da = distances[first];
+        const db = distances[second];
+        if (Math.abs(da) < EPS)
+            addUnique(a);
+        if (Math.abs(db) < EPS)
+            addUnique(b);
+        if (da * db < -EPS)
+            addUnique(lerp3(a, b, da / (da - db)));
+    }
+    if (intersections.length < 2)
+        return null;
+    let pair = [intersections[0], intersections[1]];
+    let maximum = length3(subtract3(pair[1], pair[0]));
+    for (let first = 0; first < intersections.length; first += 1) {
+        for (let second = first + 1; second < intersections.length; second += 1) {
+            const distance = length3(subtract3(intersections[second], intersections[first]));
+            if (distance > maximum) {
+                maximum = distance;
+                pair = [intersections[first], intersections[second]];
+            }
+        }
+    }
+    return maximum > EPS ? pair : null;
+}
+function sectionSegments(meshes, view) {
+    const axisIndex = { X: 0, Y: 1, Z: 2 }[view.sectionAxis ?? "Y"];
+    const offset = view.sectionOffset ?? 0;
+    const result = [];
+    const seen = new Set();
+    for (const mesh of meshes) {
+        for (let index = 0; index + 2 < mesh.indices.length; index += 3) {
+            const points = [0, 1, 2].map((slot) => pointAt(mesh.vertices, Number(mesh.indices[index + slot])));
+            const segment = triangleSectionSegment(points, axisIndex, offset);
+            if (!segment)
+                continue;
+            const key = [pointKey3(segment[0]), pointKey3(segment[1])].sort().join("|");
+            const scoped = `${mesh.targetId}|${key}`;
+            if (seen.has(scoped))
+                continue;
+            seen.add(scoped);
+            result.push({ a: segment[0], b: segment[1], bodyId: mesh.targetId });
+        }
+    }
+    return result;
+}
+function polygonArea(points) {
+    let area = 0;
+    for (let index = 0; index < points.length; index += 1) {
+        const next = (index + 1) % points.length;
+        area += points[index][0] * points[next][1] - points[next][0] * points[index][1];
+    }
+    return area / 2;
+}
+function simplifyLoop(points) {
+    if (points.length < 3)
+        return points;
+    const result = [];
+    for (let index = 0; index < points.length; index += 1) {
+        const previous = points[(index - 1 + points.length) % points.length];
+        const current = points[index];
+        const next = points[(index + 1) % points.length];
+        if (Math.abs(cross2(subtract2(current, previous), subtract2(next, current))) > 1e-8)
+            result.push(current);
+    }
+    return result.length >= 3 ? result : points;
+}
+function stitchSectionLoops(segments, orientation) {
+    const regions = [];
+    const openBodies = [];
+    const bodyIds = [...new Set(segments.map((segment) => segment.bodyId))];
+    for (const bodyId of bodyIds) {
+        const projected = segments
+            .filter((segment) => segment.bodyId === bodyId)
+            .map((segment) => ({
+            a: projectDrawingPoint(segment.a, orientation),
+            b: projectDrawingPoint(segment.b, orientation),
+        }))
+            .filter((segment) => Math.hypot(segment.b[0] - segment.a[0], segment.b[1] - segment.a[1]) > 1e-7);
+        const edges = new Map();
+        projected.forEach((segment) => {
+            const key = [pointKey2(segment.a), pointKey2(segment.b)].sort().join("|");
+            if (!edges.has(key))
+                edges.set(key, segment);
+        });
+        const list = [...edges.values()];
+        const adjacency = new Map();
+        list.forEach((segment, index) => {
+            for (const point of [segment.a, segment.b]) {
+                const key = pointKey2(point);
+                const entries = adjacency.get(key) ?? [];
+                entries.push(index);
+                adjacency.set(key, entries);
+            }
+        });
+        let open = [...adjacency.values()].some((entries) => entries.length !== 2);
+        const used = new Set();
+        for (let startIndex = 0; startIndex < list.length; startIndex += 1) {
+            if (used.has(startIndex))
+                continue;
+            used.add(startIndex);
+            const start = list[startIndex];
+            const startKey = pointKey2(start.a);
+            let currentKey = pointKey2(start.b);
+            const points = [start.a, start.b];
+            let guard = 0;
+            while (currentKey !== startKey && guard <= list.length + 1) {
+                guard += 1;
+                const nextIndex = (adjacency.get(currentKey) ?? []).find((candidate) => !used.has(candidate));
+                if (nextIndex === undefined)
+                    break;
+                used.add(nextIndex);
+                const next = list[nextIndex];
+                const nextPoint = pointKey2(next.a) === currentKey ? next.b : next.a;
+                points.push(nextPoint);
+                currentKey = pointKey2(nextPoint);
+            }
+            if (currentKey === startKey && points.length >= 4) {
+                points.pop();
+                const simplified = simplifyLoop(points);
+                if (simplified.length >= 3 && Math.abs(polygonArea(simplified)) > 1e-8)
+                    regions.push({ bodyId, points: simplified });
+                else
+                    open = true;
+            }
+            else
+                open = true;
+        }
+        if (open)
+            openBodies.push(bodyId);
+    }
+    return { regions, openBodies };
+}
+function bboxesOverlap(minX1, minY1, maxX1, maxY1, minX2, minY2, maxX2, maxY2) {
+    return maxX1 >= minX2 - EPS && minX1 <= maxX2 + EPS
+        && maxY1 >= minY2 - EPS && minY1 <= maxY2 + EPS;
+}
+function segmentIntersectionT(a, b, c, d) {
+    const r = subtract2(b, a);
+    const s = subtract2(d, c);
+    const denominator = cross2(r, s);
+    if (Math.abs(denominator) < EPS)
+        return null;
+    const offset = subtract2(c, a);
+    const t = cross2(offset, s) / denominator;
+    const u = cross2(offset, r) / denominator;
+    if (t <= 1e-8 || t >= 1 - 1e-8 || u < -1e-8 || u > 1 + 1e-8)
+        return null;
+    return t;
+}
+function triangleBarycentric(point, triangle) {
+    const [a, b, c] = triangle.points;
+    const denominator = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if (Math.abs(denominator) < EPS)
+        return null;
+    const first = ((b[1] - c[1]) * (point[0] - c[0]) + (c[0] - b[0]) * (point[1] - c[1])) / denominator;
+    const second = ((c[1] - a[1]) * (point[0] - c[0]) + (a[0] - c[0]) * (point[1] - c[1])) / denominator;
+    const third = 1 - first - second;
+    const tolerance = 1e-7;
+    return first >= -tolerance && second >= -tolerance && third >= -tolerance
+        ? [first, second, third]
+        : null;
+}
+function triangleDepthAt(point, triangle) {
+    const barycentric = triangleBarycentric(point, triangle);
+    if (!barycentric)
+        return null;
+    return barycentric[0] * triangle.depths[0]
+        + barycentric[1] * triangle.depths[1]
+        + barycentric[2] * triangle.depths[2];
+}
+function pointInsideRegions(point, regions) {
+    // Treat overlapping source bodies as a union while preserving even/odd hole
+    // behavior inside each individual body. A single global parity toggle would
+    // incorrectly turn an overlap between two solids into empty space.
+    const byBody = new Map();
+    for (const region of regions) {
+        const group = byBody.get(region.bodyId) ?? [];
+        group.push(region);
+        byBody.set(region.bodyId, group);
+    }
+    for (const bodyRegions of byBody.values()) {
+        let insideBody = false;
+        for (const region of bodyRegions) {
+            const polygon = region.points;
+            for (let first = 0, second = polygon.length - 1; first < polygon.length; second = first++) {
+                const a = polygon[first];
+                const b = polygon[second];
+                const intersects = (a[1] > point[1]) !== (b[1] > point[1])
+                    && point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / ((b[1] - a[1]) || EPS) + a[0];
+                if (intersects)
+                    insideBody = !insideBody;
+            }
+        }
+        if (insideBody)
+            return true;
+    }
+    return false;
+}
+function uniqueSorted(values) {
+    return [...values]
+        .sort((a, b) => a - b)
+        .filter((value, index, all) => index === 0 || Math.abs(value - all[index - 1]) > 1e-7);
+}
+function modelDepthSpan(meshes, orientation) {
+    let minimum = Infinity;
+    let maximum = -Infinity;
+    for (const mesh of meshes) {
+        for (let index = 0; index < mesh.vertices.length; index += 3) {
+            const depth = drawingDepth([
+                Number(mesh.vertices[index]),
+                Number(mesh.vertices[index + 1]),
+                Number(mesh.vertices[index + 2]),
+            ], orientation);
+            minimum = Math.min(minimum, depth);
+            maximum = Math.max(maximum, depth);
+        }
+    }
+    return Number.isFinite(minimum) && Number.isFinite(maximum) ? Math.max(EPS, maximum - minimum) : 1;
+}
+function makeTriangleSpatialIndex(triangles) {
+    if (!triangles.length)
+        return { query: () => [] };
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const triangle of triangles) {
+        minX = Math.min(minX, triangle.minX);
+        minY = Math.min(minY, triangle.minY);
+        maxX = Math.max(maxX, triangle.maxX);
+        maxY = Math.max(maxY, triangle.maxY);
+    }
+    const gridSize = clamp(Math.ceil(Math.sqrt(triangles.length / 2)), 8, 64);
+    const width = Math.max(EPS, maxX - minX);
+    const height = Math.max(EPS, maxY - minY);
+    const cellX = (value) => clamp(Math.floor(((value - minX) / width) * gridSize), 0, gridSize - 1);
+    const cellY = (value) => clamp(Math.floor(((value - minY) / height) * gridSize), 0, gridSize - 1);
+    const cells = new Map();
+    triangles.forEach((triangle, triangleIndex) => {
+        for (let y = cellY(triangle.minY); y <= cellY(triangle.maxY); y += 1) {
+            for (let x = cellX(triangle.minX); x <= cellX(triangle.maxX); x += 1) {
+                const key = y * gridSize + x;
+                const values = cells.get(key) ?? [];
+                values.push(triangleIndex);
+                cells.set(key, values);
+            }
+        }
+    });
+    return {
+        query(queryMinX, queryMinY, queryMaxX, queryMaxY) {
+            const indexes = new Set();
+            for (let y = cellY(queryMinY); y <= cellY(queryMaxY); y += 1)
+                for (let x = cellX(queryMinX); x <= cellX(queryMaxX); x += 1)
+                    (cells.get(y * gridSize + x) ?? []).forEach((index) => indexes.add(index));
+            return [...indexes]
+                .map((index) => triangles[index])
+                .filter((triangle) => bboxesOverlap(queryMinX, queryMinY, queryMaxX, queryMaxY, triangle.minX, triangle.minY, triangle.maxX, triangle.maxY));
+        },
+    };
+}
+function splitVisibleEdges(candidates, triangles, sectionRegions, sectionPlaneDepth, depthTolerance, stats) {
+    const lines = [];
+    const spatial = makeTriangleSpatialIndex(triangles);
+    for (const edge of candidates) {
+        const edgeMinX = Math.min(edge.a[0], edge.b[0]);
+        const edgeMinY = Math.min(edge.a[1], edge.b[1]);
+        const edgeMaxX = Math.max(edge.a[0], edge.b[0]);
+        const edgeMaxY = Math.max(edge.a[1], edge.b[1]);
+        const nearbyTriangles = spatial.query(edgeMinX, edgeMinY, edgeMaxX, edgeMaxY)
+            .filter((triangle) => !edge.adjacentTriangleIds.has(triangle.id));
+        const splitValues = [0, 1];
+        for (const triangle of nearbyTriangles) {
+            const [a, b, c] = triangle.points;
+            for (const [first, second] of [[a, b], [b, c], [c, a]]) {
+                const amount = segmentIntersectionT(edge.a, edge.b, first, second);
+                if (amount !== null)
+                    splitValues.push(amount);
+            }
+        }
+        for (const region of sectionRegions) {
+            for (let index = 0; index < region.points.length; index += 1) {
+                const amount = segmentIntersectionT(edge.a, edge.b, region.points[index], region.points[(index + 1) % region.points.length]);
+                if (amount !== null)
+                    splitValues.push(amount);
+            }
+        }
+        let splits = uniqueSorted(splitValues);
+        const depthAt = (amount) => edge.depthA + (edge.depthB - edge.depthA) * amount;
+        const depthCrossings = [];
+        for (let index = 0; index + 1 < splits.length; index += 1) {
+            const start = splits[index];
+            const end = splits[index + 1];
+            if (end - start < 1e-8)
+                continue;
+            const inset = Math.min(1e-6, (end - start) * 0.1);
+            const startAmount = start + inset;
+            const endAmount = end - inset;
+            const midpoint = (start + end) / 2;
+            const midpointPoint = lerp2(edge.a, edge.b, midpoint);
+            for (const triangle of nearbyTriangles) {
+                if (!triangleBarycentric(midpointPoint, triangle))
+                    continue;
+                const triangleStart = triangleDepthAt(lerp2(edge.a, edge.b, startAmount), triangle);
+                const triangleEnd = triangleDepthAt(lerp2(edge.a, edge.b, endAmount), triangle);
+                if (triangleStart === null || triangleEnd === null)
+                    continue;
+                const differenceStart = triangleStart - depthAt(startAmount) - depthTolerance;
+                const differenceEnd = triangleEnd - depthAt(endAmount) - depthTolerance;
+                if (differenceStart * differenceEnd < 0) {
+                    const ratio = differenceStart / (differenceStart - differenceEnd);
+                    depthCrossings.push(startAmount + (endAmount - startAmount) * ratio);
+                }
+            }
+        }
+        splits = uniqueSorted([...splits, ...depthCrossings]);
+        let runStart = splits[0];
+        let runHidden = null;
+        const emit = (start, end, hidden) => {
+            if (end - start < 1e-8)
+                return;
+            lines.push({
+                a: lerp2(edge.a, edge.b, start),
+                b: lerp2(edge.a, edge.b, end),
+                hidden,
+                kind: edge.kind,
+                sourceBodyId: edge.sourceBodyId,
+                topologyId: edge.topologyId,
+                sourceA: edge.a,
+                sourceB: edge.b,
+                sourceVertexIdA: edge.sourceVertexIdA,
+                sourceVertexIdB: edge.sourceVertexIdB,
+            });
+        };
+        for (let index = 0; index + 1 < splits.length; index += 1) {
+            const start = splits[index];
+            const end = splits[index + 1];
+            if (end - start < 1e-8)
+                continue;
+            const midpoint = (start + end) / 2;
+            const point = lerp2(edge.a, edge.b, midpoint);
+            const edgeDepth = depthAt(midpoint);
+            let hidden = false;
+            for (const triangle of nearbyTriangles) {
+                if (point[0] < triangle.minX - EPS || point[0] > triangle.maxX + EPS
+                    || point[1] < triangle.minY - EPS || point[1] > triangle.maxY + EPS)
+                    continue;
+                stats.occlusionTests += 1;
+                const triangleDepth = triangleDepthAt(point, triangle);
+                if (triangleDepth !== null && triangleDepth > edgeDepth + depthTolerance) {
+                    hidden = true;
+                    break;
+                }
+            }
+            if (!hidden && sectionPlaneDepth !== null && sectionRegions.length
+                && edgeDepth < sectionPlaneDepth - depthTolerance && pointInsideRegions(point, sectionRegions))
+                hidden = true;
+            if (runHidden === null) {
+                runHidden = hidden;
+                runStart = start;
+            }
+            else if (runHidden !== hidden) {
+                emit(runStart, start, runHidden);
+                runStart = start;
+                runHidden = hidden;
+            }
+            if (index === splits.length - 2 && runHidden !== null)
+                emit(runStart, end, runHidden);
+        }
+    }
+    const dedupe = new Map();
+    for (const segment of lines) {
+        if (Math.hypot(segment.b[0] - segment.a[0], segment.b[1] - segment.a[1]) < 1e-7)
+            continue;
+        const key = [segment.sourceBodyId, segment.topologyId, ...[pointKey2(segment.a), pointKey2(segment.b)].sort()].join("|");
+        const existing = dedupe.get(key);
+        if (!existing
+            || (existing.hidden && !segment.hidden)
+            || (existing.kind === "tangent" && segment.kind !== "tangent"))
+            dedupe.set(key, segment);
+    }
+    return [...dedupe.values()];
+}
+function runProjectionEngine(view, meshes) {
+    const started = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const stats = {
+        sourceTriangles: meshes.reduce((sum, mesh) => sum + meshTriangleCount(mesh), 0),
+        projectedTriangles: 0,
+        candidateEdges: 0,
+        visibleSegments: 0,
+        hiddenSegments: 0,
+        occlusionTests: 0,
+        sectionLoops: 0,
+        elapsedMs: 0,
+    };
+    const issues = [];
+    let workingMeshes = meshes;
+    let sectionRegions = [];
+    let sectionSegments3D = [];
+    let sectionPlaneDepth = null;
+    if (view.type === "section") {
+        if (!sectionViewIsNormalToPlane(view)) {
+            issues.push({
+                code: "SECTION_VIEW_NOT_NORMAL_TO_PLANE",
+                blocking: true,
+                message: "The section view direction is not normal to its cutting plane. Choose the matching front/back, left/right, or top/bottom direction.",
+            });
+        }
+        if (!sectionKeepSideMatchesView(view)) {
+            issues.push({
+                code: "SECTION_KEEP_SIDE_MISMATCH",
+                blocking: true,
+                message: "The retained half-space faces the viewer. Reverse the retained side or use the matching section direction.",
+            });
+        }
+        if (!issues.some((issue) => issue.blocking)) {
+            sectionSegments3D = sectionSegments(meshes, view);
+            const stitched = stitchSectionLoops(sectionSegments3D, view.orientation);
+            sectionRegions = stitched.regions;
+            stats.sectionLoops = sectionRegions.length;
+            if (!sectionSegments3D.length || !sectionRegions.length) {
+                issues.push({
+                    code: "SECTION_PLANE_MISSES_MODEL",
+                    blocking: true,
+                    message: "The cutting plane does not form a closed material region in the selected exact source geometry.",
+                });
+            }
+            if (stitched.openBodies.length) {
+                issues.push({
+                    code: "OPEN_SECTION_REGION",
+                    blocking: true,
+                    message: `The cut produced open section chains for ${stitched.openBodies.length} source ${stitched.openBodies.length === 1 ? "body" : "bodies"}. Repair the source mesh or move the cutting plane.`,
+                });
+            }
+            workingMeshes = meshes.map((mesh) => clipMeshToSection(mesh, view));
+            const axis = view.sectionAxis ?? "Y";
+            const point = [0, 0, 0];
+            point[{ X: 0, Y: 1, Z: 2 }[axis]] = view.sectionOffset ?? 0;
+            sectionPlaneDepth = drawingDepth(point, view.orientation);
+        }
+    }
+    if (issues.some((issue) => issue.blocking)) {
+        stats.elapsedMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
+        return { lines: [], sectionRegions, sectionSegments3D, issues, stats };
+    }
+    const triangles = projectedTriangles(workingMeshes, view.orientation);
+    const candidates = candidateEdges(workingMeshes, view);
+    stats.projectedTriangles = triangles.length;
+    stats.candidateEdges = candidates.length;
+    const depthTolerance = Math.max(1e-7, modelDepthSpan(workingMeshes, view.orientation) * 1e-7);
+    const lines = splitVisibleEdges(candidates, triangles, sectionRegions, sectionPlaneDepth, depthTolerance, stats);
+    stats.visibleSegments = lines.filter((line) => !line.hidden).length;
+    stats.hiddenSegments = lines.filter((line) => line.hidden).length;
+    stats.elapsedMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
+    return { lines, sectionRegions, sectionSegments3D, issues, stats };
+}
+
+},
 "virtual/lucide-react.js":function(require,module,exports){
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -111173,7 +114664,7 @@ exports.Slider = require("node_modules/@radix-ui/react-slider/dist/index.mjs");
 
 },
 };
-const __deps={"node_modules/react/cjs/react.production.js":{},"node_modules/react/index.js":{"./cjs/react.production.js":"node_modules/react/cjs/react.production.js"},"node_modules/scheduler/cjs/scheduler.production.js":{},"node_modules/scheduler/index.js":{"./cjs/scheduler.production.js":"node_modules/scheduler/cjs/scheduler.production.js"},"node_modules/react-dom/cjs/react-dom.production.js":{"react":"node_modules/react/index.js"},"node_modules/react-dom/index.js":{"./cjs/react-dom.production.js":"node_modules/react-dom/cjs/react-dom.production.js"},"node_modules/react-dom/cjs/react-dom-client.production.js":{"scheduler":"node_modules/scheduler/index.js","react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/react-dom/client.js":{"./cjs/react-dom-client.production.js":"node_modules/react-dom/cjs/react-dom-client.production.js"},"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs":{"./toCamelCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs"},"node_modules/lucide-react/dist/esm/defaultAttributes.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs":{},"node_modules/lucide-react/dist/esm/context.mjs":{"react":"node_modules/react/index.js"},"node_modules/lucide-react/dist/esm/Icon.mjs":{"react":"node_modules/react/index.js","./defaultAttributes.mjs":"node_modules/lucide-react/dist/esm/defaultAttributes.mjs","./shared/src/utils/hasA11yProp.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs","./shared/src/utils/mergeClasses.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs","./context.mjs":"node_modules/lucide-react/dist/esm/context.mjs"},"node_modules/lucide-react/dist/esm/createLucideIcon.mjs":{"react":"node_modules/react/index.js","./shared/src/utils/mergeClasses.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs","./shared/src/utils/toKebabCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs","./shared/src/utils/toPascalCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs","./Icon.mjs":"node_modules/lucide-react/dist/esm/Icon.mjs"},"node_modules/lucide-react/dist/esm/icons/archive.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/arrow-left.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/box.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/check.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-down.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-left.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-right.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-up.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/circle.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/cone.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/contrast.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/copy.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/crosshair.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/cuboid.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/download.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/ellipsis.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/eye-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/eye.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/file-down.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/file-text.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/folder-open.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/group.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/hard-drive.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/house.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/layers.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/link-2-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/link-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/lock-open.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/lock.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/magnet.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/maximize.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/minus.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/move-3d.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/move.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pause.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pentagon.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/play.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/plus.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/projector.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/redo-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/ruler.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scaling.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scan-line.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scissors.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/search.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/settings-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/skip-back.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/skip-forward.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/sparkles.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/square-dashed.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/sticky-note.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/trash-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/triangle.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/type.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/undo-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/upload.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/wifi-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/x.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/sonner/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/jszip/dist/jszip.min.js":{},"node_modules/three/build/three.core.js":{},"node_modules/three/build/three.module.js":{"./three.core.js":"node_modules/three/build/three.core.js"},"node_modules/three/examples/jsm/controls/OrbitControls.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/controls/TransformControls.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/exporters/OBJExporter.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/exporters/STLExporter.js":{"three":"node_modules/three/build/three.module.js"},"lib/benchcad-export.ts":{},"lib/benchcad-properties.ts":{},"lib/benchcad-kernel.ts":{},"lib/benchcad-topology.ts":{},"lib/benchcad-model.ts":{"./benchcad-kernel":"lib/benchcad-kernel.ts"},"lib/benchcad-mesh.ts":{"jszip":"node_modules/jszip/dist/jszip.min.js"},"lib/benchcad-interactions.ts":{},"node_modules/react/cjs/react-jsx-runtime.production.js":{},"node_modules/react/jsx-runtime.js":{"./cjs/react-jsx-runtime.production.js":"node_modules/react/cjs/react-jsx-runtime.production.js"},"components/cad-viewport.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","jszip":"node_modules/jszip/dist/jszip.min.js","three":"node_modules/three/build/three.module.js","three/examples/jsm/controls/OrbitControls.js":"node_modules/three/examples/jsm/controls/OrbitControls.js","three/examples/jsm/controls/TransformControls.js":"node_modules/three/examples/jsm/controls/TransformControls.js","three/examples/jsm/exporters/OBJExporter.js":"node_modules/three/examples/jsm/exporters/OBJExporter.js","three/examples/jsm/exporters/STLExporter.js":"node_modules/three/examples/jsm/exporters/STLExporter.js","@/lib/benchcad-export":"lib/benchcad-export.ts","@/lib/benchcad-properties":"lib/benchcad-properties.ts","@/lib/benchcad-kernel":"lib/benchcad-kernel.ts","@/lib/benchcad-topology":"lib/benchcad-topology.ts","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts","@/lib/benchcad-manufacturing":"lib/benchcad-manufacturing.ts","@/lib/benchcad-interactions":"lib/benchcad-interactions.ts"},"lib/benchcad-sketch.ts":{},"components/sketch-workbench.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-sketch":"lib/benchcad-sketch.ts"},"lib/benchcad-drawing.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"components/drawing-workbench.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","sonner":"node_modules/sonner/dist/index.mjs","@/lib/benchcad-drawing":"lib/benchcad-drawing.ts","@/lib/benchcad-dxf":"lib/benchcad-dxf.ts","@/lib/benchcad-model":"lib/benchcad-model.ts"},"node_modules/clsx/dist/clsx.mjs":{},"node_modules/class-variance-authority/dist/index.mjs":{"clsx":"node_modules/clsx/dist/clsx.mjs"},"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-primitive/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/react-slot":"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-visually-hidden/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-context/dist/index.mjs":{"react":"node_modules/react/index.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-collection/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/primitive/dist/index.mjs":{},"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-effect-event/dist/index.mjs":{"@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive/is-development":"virtual/radix-primitive-is-development.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-effect-event":"node_modules/@radix-ui/react-use-effect-event/dist/index.mjs"},"node_modules/@radix-ui/react-presence/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-id/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-direction/dist/index.mjs":{"react":"node_modules/react/index.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dismissable-layer/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dismissable-layer/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-focus-scope/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-focus-scope/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-focus-scope/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-portal/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-focus-guards/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/tslib/tslib.es6.mjs":{},"node_modules/react-remove-scroll-bar/dist/es2015/constants.js":{},"node_modules/use-callback-ref/dist/es2015/assignRef.js":{},"node_modules/use-callback-ref/dist/es2015/useRef.js":{"react":"node_modules/react/index.js"},"node_modules/use-callback-ref/dist/es2015/useMergeRef.js":{"react":"node_modules/react/index.js","./assignRef":"node_modules/use-callback-ref/dist/es2015/assignRef.js","./useRef":"node_modules/use-callback-ref/dist/es2015/useRef.js"},"node_modules/use-sidecar/dist/es2015/medium.js":{"tslib":"node_modules/tslib/tslib.es6.mjs"},"node_modules/use-sidecar/dist/es2015/exports.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js"},"node_modules/react-remove-scroll/dist/es2015/medium.js":{"use-sidecar":"virtual/use-sidecar.js"},"node_modules/react-remove-scroll/dist/es2015/UI.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","react-remove-scroll-bar/constants":"node_modules/react-remove-scroll-bar/dist/es2015/constants.js","use-callback-ref":"virtual/use-callback-ref.js","./medium":"node_modules/react-remove-scroll/dist/es2015/medium.js"},"node_modules/get-nonce/dist/es2015/index.js":{},"node_modules/react-style-singleton/dist/es2015/singleton.js":{"get-nonce":"node_modules/get-nonce/dist/es2015/index.js"},"node_modules/react-style-singleton/dist/es2015/hook.js":{"react":"node_modules/react/index.js","./singleton":"node_modules/react-style-singleton/dist/es2015/singleton.js"},"node_modules/react-style-singleton/dist/es2015/component.js":{"./hook":"node_modules/react-style-singleton/dist/es2015/hook.js"},"node_modules/react-remove-scroll-bar/dist/es2015/utils.js":{},"node_modules/react-remove-scroll-bar/dist/es2015/component.js":{"react":"node_modules/react/index.js","react-style-singleton":"node_modules/react-style-singleton/dist/es2015/component.js","./constants":"node_modules/react-remove-scroll-bar/dist/es2015/constants.js","./utils":"node_modules/react-remove-scroll-bar/dist/es2015/utils.js"},"node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js":{},"node_modules/react-remove-scroll/dist/es2015/handleScroll.js":{},"node_modules/react-remove-scroll/dist/es2015/SideEffect.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","react-remove-scroll-bar":"node_modules/react-remove-scroll-bar/dist/es2015/component.js","react-style-singleton":"node_modules/react-style-singleton/dist/es2015/component.js","./aggresiveCapture":"node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js","./handleScroll":"node_modules/react-remove-scroll/dist/es2015/handleScroll.js"},"node_modules/react-remove-scroll/dist/es2015/sidecar.js":{"use-sidecar":"virtual/use-sidecar.js","./SideEffect":"node_modules/react-remove-scroll/dist/es2015/SideEffect.js","./medium":"node_modules/react-remove-scroll/dist/es2015/medium.js"},"node_modules/react-remove-scroll/dist/es2015/Combination.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","./UI":"node_modules/react-remove-scroll/dist/es2015/UI.js","./sidecar":"node_modules/react-remove-scroll/dist/es2015/sidecar.js"},"node_modules/aria-hidden/dist/es2015/index.js":{},"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-dialog/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react-remove-scroll":"virtual/react-remove-scroll.js","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","@radix-ui/react-slot":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-use-size/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs":{},"node_modules/@floating-ui/core/dist/floating-ui.core.mjs":{"@floating-ui/utils":"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"},"node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs":{},"node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs":{"@floating-ui/core":"node_modules/@floating-ui/core/dist/floating-ui.core.mjs","@floating-ui/utils":"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs","@floating-ui/utils/dom":"node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs"},"node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs":{"@floating-ui/dom":"node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs","react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/@radix-ui/react-popper/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-popper/dist/index.mjs":{"react":"node_modules/react/index.js","@floating-ui/react-dom":"node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs","@radix-ui/react-arrow":"virtual/radix-react-arrow.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-popper/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-size":"node_modules/@radix-ui/react-use-size/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-roving-focus/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-is-hydrated":"node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-menu/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-popper":"node_modules/@radix-ui/react-popper/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-roving-focus":"node_modules/@radix-ui/react-roving-focus/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-slot/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","react-remove-scroll":"virtual/react-remove-scroll.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-dropdown-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dropdown-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-menu":"node_modules/@radix-ui/react-menu/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-use-previous/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/number/dist/index.mjs":{},"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-select/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/number":"node_modules/@radix-ui/number/dist/index.mjs","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-popper":"node_modules/@radix-ui/react-popper/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-slot/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-previous":"node_modules/@radix-ui/react-use-previous/dist/index.mjs","@radix-ui/react-visually-hidden":"node_modules/@radix-ui/react-visually-hidden/dist/index.mjs","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","react-remove-scroll":"virtual/react-remove-scroll.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-slider/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-slider/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/number":"node_modules/@radix-ui/number/dist/index.mjs","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-slider/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-use-previous":"node_modules/@radix-ui/react-use-previous/dist/index.mjs","@radix-ui/react-use-size":"node_modules/@radix-ui/react-use-size/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/radix-ui/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/radix-ui/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/tailwind-merge/dist/bundle-mjs.mjs":{},"lib/utils.ts":{"clsx":"node_modules/clsx/dist/clsx.mjs","tailwind-merge":"node_modules/tailwind-merge/dist/bundle-mjs.mjs"},"components/ui/button.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","class-variance-authority":"node_modules/class-variance-authority/dist/index.mjs","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/dialog.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts","@/components/ui/button":"components/ui/button.tsx"},"components/ui/dropdown-menu.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/input.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","@/lib/utils":"lib/utils.ts"},"components/ui/slider.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/select.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"lib/benchcad-edge-finish.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-boolean.ts":{},"lib/benchcad-revolve.ts":{},"lib/benchcad-sweep-loft.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-sketch":"lib/benchcad-sketch.ts"},"lib/local-store.ts":{"@/lib/benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-recovery.ts":{"jszip":"node_modules/jszip/dist/jszip.min.js","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts"},"lib/benchcad-runtime.ts":{},"lib/benchcad-repair.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-sketch":"lib/benchcad-sketch.ts","./benchcad-sweep-loft":"lib/benchcad-sweep-loft.ts"},"lib/benchcad-selection.ts":{},"components/benchcad-app.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","sonner":"node_modules/sonner/dist/index.mjs","@/components/cad-viewport":"components/cad-viewport.tsx","@/components/sketch-workbench":"components/sketch-workbench.tsx","@/components/drawing-workbench":"components/drawing-workbench.tsx","@/components/ui/button":"components/ui/button.tsx","@/components/ui/dialog":"components/ui/dialog.tsx","@/components/ui/dropdown-menu":"components/ui/dropdown-menu.tsx","@/components/ui/input":"components/ui/input.tsx","@/components/ui/slider":"components/ui/slider.tsx","@/components/ui/select":"components/ui/select.tsx","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-edge-finish":"lib/benchcad-edge-finish.ts","@/lib/benchcad-boolean":"lib/benchcad-boolean.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts","@/lib/benchcad-revolve":"lib/benchcad-revolve.ts","@/lib/benchcad-sweep-loft":"lib/benchcad-sweep-loft.ts","@/lib/benchcad-sketch":"lib/benchcad-sketch.ts","@/lib/benchcad-export":"lib/benchcad-export.ts","@/lib/benchcad-dxf":"lib/benchcad-dxf.ts","@/lib/benchcad-profile-tools":"lib/benchcad-profile-tools.ts","@/lib/benchcad-manufacturing":"lib/benchcad-manufacturing.ts","@/lib/local-store":"lib/local-store.ts","@/lib/benchcad-recovery":"lib/benchcad-recovery.ts","@/lib/benchcad-runtime":"lib/benchcad-runtime.ts","@/lib/benchcad-repair":"lib/benchcad-repair.ts","@/lib/benchcad-selection":"lib/benchcad-selection.ts","@/lib/benchcad-interactions":"lib/benchcad-interactions.ts","@/lib/benchcad-properties":"lib/benchcad-properties.ts","@/lib/benchcad-parameters":"lib/benchcad-parameters.ts"},"standalone-main.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","react-dom/client":"node_modules/react-dom/client.js","@/components/benchcad-app":"components/benchcad-app.tsx"},"lib/benchcad-dxf.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-manufacturing.ts":{"./benchcad-mesh":"lib/benchcad-mesh.ts"},"lib/benchcad-parameters.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-profile-tools.ts":{},"virtual/lucide-react.js":{"node_modules/lucide-react/dist/esm/icons/archive.mjs":"node_modules/lucide-react/dist/esm/icons/archive.mjs","node_modules/lucide-react/dist/esm/icons/arrow-left.mjs":"node_modules/lucide-react/dist/esm/icons/arrow-left.mjs","node_modules/lucide-react/dist/esm/icons/box.mjs":"node_modules/lucide-react/dist/esm/icons/box.mjs","node_modules/lucide-react/dist/esm/icons/square-dashed.mjs":"node_modules/lucide-react/dist/esm/icons/square-dashed.mjs","node_modules/lucide-react/dist/esm/icons/check.mjs":"node_modules/lucide-react/dist/esm/icons/check.mjs","node_modules/lucide-react/dist/esm/icons/chevron-down.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-down.mjs","node_modules/lucide-react/dist/esm/icons/chevron-left.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-left.mjs","node_modules/lucide-react/dist/esm/icons/chevron-right.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-right.mjs","node_modules/lucide-react/dist/esm/icons/chevron-up.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-up.mjs","node_modules/lucide-react/dist/esm/icons/circle.mjs":"node_modules/lucide-react/dist/esm/icons/circle.mjs","node_modules/lucide-react/dist/esm/icons/cone.mjs":"node_modules/lucide-react/dist/esm/icons/cone.mjs","node_modules/lucide-react/dist/esm/icons/contrast.mjs":"node_modules/lucide-react/dist/esm/icons/contrast.mjs","node_modules/lucide-react/dist/esm/icons/copy.mjs":"node_modules/lucide-react/dist/esm/icons/copy.mjs","node_modules/lucide-react/dist/esm/icons/crosshair.mjs":"node_modules/lucide-react/dist/esm/icons/crosshair.mjs","node_modules/lucide-react/dist/esm/icons/cuboid.mjs":"node_modules/lucide-react/dist/esm/icons/cuboid.mjs","node_modules/lucide-react/dist/esm/icons/download.mjs":"node_modules/lucide-react/dist/esm/icons/download.mjs","node_modules/lucide-react/dist/esm/icons/eye.mjs":"node_modules/lucide-react/dist/esm/icons/eye.mjs","node_modules/lucide-react/dist/esm/icons/eye-off.mjs":"node_modules/lucide-react/dist/esm/icons/eye-off.mjs","node_modules/lucide-react/dist/esm/icons/file-down.mjs":"node_modules/lucide-react/dist/esm/icons/file-down.mjs","node_modules/lucide-react/dist/esm/icons/file-text.mjs":"node_modules/lucide-react/dist/esm/icons/file-text.mjs","node_modules/lucide-react/dist/esm/icons/folder-open.mjs":"node_modules/lucide-react/dist/esm/icons/folder-open.mjs","node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs":"node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs","node_modules/lucide-react/dist/esm/icons/group.mjs":"node_modules/lucide-react/dist/esm/icons/group.mjs","node_modules/lucide-react/dist/esm/icons/hard-drive.mjs":"node_modules/lucide-react/dist/esm/icons/hard-drive.mjs","node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs":"node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs","node_modules/lucide-react/dist/esm/icons/house.mjs":"node_modules/lucide-react/dist/esm/icons/house.mjs","node_modules/lucide-react/dist/esm/icons/layers.mjs":"node_modules/lucide-react/dist/esm/icons/layers.mjs","node_modules/lucide-react/dist/esm/icons/link-2.mjs":"node_modules/lucide-react/dist/esm/icons/link-2.mjs","node_modules/lucide-react/dist/esm/icons/link-2-off.mjs":"node_modules/lucide-react/dist/esm/icons/link-2-off.mjs","node_modules/lucide-react/dist/esm/icons/lock.mjs":"node_modules/lucide-react/dist/esm/icons/lock.mjs","node_modules/lucide-react/dist/esm/icons/magnet.mjs":"node_modules/lucide-react/dist/esm/icons/magnet.mjs","node_modules/lucide-react/dist/esm/icons/maximize.mjs":"node_modules/lucide-react/dist/esm/icons/maximize.mjs","node_modules/lucide-react/dist/esm/icons/minus.mjs":"node_modules/lucide-react/dist/esm/icons/minus.mjs","node_modules/lucide-react/dist/esm/icons/ellipsis.mjs":"node_modules/lucide-react/dist/esm/icons/ellipsis.mjs","node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs":"node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs","node_modules/lucide-react/dist/esm/icons/move.mjs":"node_modules/lucide-react/dist/esm/icons/move.mjs","node_modules/lucide-react/dist/esm/icons/move-3d.mjs":"node_modules/lucide-react/dist/esm/icons/move-3d.mjs","node_modules/lucide-react/dist/esm/icons/pause.mjs":"node_modules/lucide-react/dist/esm/icons/pause.mjs","node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs":"node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs","node_modules/lucide-react/dist/esm/icons/pentagon.mjs":"node_modules/lucide-react/dist/esm/icons/pentagon.mjs","node_modules/lucide-react/dist/esm/icons/play.mjs":"node_modules/lucide-react/dist/esm/icons/play.mjs","node_modules/lucide-react/dist/esm/icons/plus.mjs":"node_modules/lucide-react/dist/esm/icons/plus.mjs","node_modules/lucide-react/dist/esm/icons/projector.mjs":"node_modules/lucide-react/dist/esm/icons/projector.mjs","node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs":"node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs","node_modules/lucide-react/dist/esm/icons/redo-2.mjs":"node_modules/lucide-react/dist/esm/icons/redo-2.mjs","node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs":"node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs","node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs":"node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs","node_modules/lucide-react/dist/esm/icons/ruler.mjs":"node_modules/lucide-react/dist/esm/icons/ruler.mjs","node_modules/lucide-react/dist/esm/icons/scaling.mjs":"node_modules/lucide-react/dist/esm/icons/scaling.mjs","node_modules/lucide-react/dist/esm/icons/scan-line.mjs":"node_modules/lucide-react/dist/esm/icons/scan-line.mjs","node_modules/lucide-react/dist/esm/icons/scissors.mjs":"node_modules/lucide-react/dist/esm/icons/scissors.mjs","node_modules/lucide-react/dist/esm/icons/search.mjs":"node_modules/lucide-react/dist/esm/icons/search.mjs","node_modules/lucide-react/dist/esm/icons/settings-2.mjs":"node_modules/lucide-react/dist/esm/icons/settings-2.mjs","node_modules/lucide-react/dist/esm/icons/skip-back.mjs":"node_modules/lucide-react/dist/esm/icons/skip-back.mjs","node_modules/lucide-react/dist/esm/icons/skip-forward.mjs":"node_modules/lucide-react/dist/esm/icons/skip-forward.mjs","node_modules/lucide-react/dist/esm/icons/sparkles.mjs":"node_modules/lucide-react/dist/esm/icons/sparkles.mjs","node_modules/lucide-react/dist/esm/icons/sticky-note.mjs":"node_modules/lucide-react/dist/esm/icons/sticky-note.mjs","node_modules/lucide-react/dist/esm/icons/trash-2.mjs":"node_modules/lucide-react/dist/esm/icons/trash-2.mjs","node_modules/lucide-react/dist/esm/icons/triangle.mjs":"node_modules/lucide-react/dist/esm/icons/triangle.mjs","node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs":"node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs","node_modules/lucide-react/dist/esm/icons/type.mjs":"node_modules/lucide-react/dist/esm/icons/type.mjs","node_modules/lucide-react/dist/esm/icons/undo-2.mjs":"node_modules/lucide-react/dist/esm/icons/undo-2.mjs","node_modules/lucide-react/dist/esm/icons/lock-open.mjs":"node_modules/lucide-react/dist/esm/icons/lock-open.mjs","node_modules/lucide-react/dist/esm/icons/upload.mjs":"node_modules/lucide-react/dist/esm/icons/upload.mjs","node_modules/lucide-react/dist/esm/icons/wifi-off.mjs":"node_modules/lucide-react/dist/esm/icons/wifi-off.mjs","node_modules/lucide-react/dist/esm/icons/x.mjs":"node_modules/lucide-react/dist/esm/icons/x.mjs"},"virtual/radix-react-arrow.js":{"react":"node_modules/react/index.js"},"virtual/use-callback-ref.js":{"node_modules/use-callback-ref/dist/es2015/assignRef.js":"node_modules/use-callback-ref/dist/es2015/assignRef.js","node_modules/use-callback-ref/dist/es2015/useRef.js":"node_modules/use-callback-ref/dist/es2015/useRef.js","node_modules/use-callback-ref/dist/es2015/useMergeRef.js":"node_modules/use-callback-ref/dist/es2015/useMergeRef.js"},"virtual/react-remove-scroll.js":{"node_modules/react-remove-scroll/dist/es2015/Combination.js":"node_modules/react-remove-scroll/dist/es2015/Combination.js"},"virtual/use-sidecar.js":{"node_modules/use-sidecar/dist/es2015/medium.js":"node_modules/use-sidecar/dist/es2015/medium.js","node_modules/use-sidecar/dist/es2015/exports.js":"node_modules/use-sidecar/dist/es2015/exports.js"},"virtual/radix-primitive-is-development.js":{},"virtual/radix-ui.js":{"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs":"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs","node_modules/@radix-ui/react-dialog/dist/index.mjs":"node_modules/@radix-ui/react-dialog/dist/index.mjs","node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs":"node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs","node_modules/@radix-ui/react-select/dist/index.mjs":"node_modules/@radix-ui/react-select/dist/index.mjs","node_modules/@radix-ui/react-slider/dist/index.mjs":"node_modules/@radix-ui/react-slider/dist/index.mjs"}};
+const __deps={"node_modules/react/cjs/react.production.js":{},"node_modules/react/index.js":{"./cjs/react.production.js":"node_modules/react/cjs/react.production.js"},"node_modules/scheduler/cjs/scheduler.production.js":{},"node_modules/scheduler/index.js":{"./cjs/scheduler.production.js":"node_modules/scheduler/cjs/scheduler.production.js"},"node_modules/react-dom/cjs/react-dom.production.js":{"react":"node_modules/react/index.js"},"node_modules/react-dom/index.js":{"./cjs/react-dom.production.js":"node_modules/react-dom/cjs/react-dom.production.js"},"node_modules/react-dom/cjs/react-dom-client.production.js":{"scheduler":"node_modules/scheduler/index.js","react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/react-dom/client.js":{"./cjs/react-dom-client.production.js":"node_modules/react-dom/cjs/react-dom-client.production.js"},"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs":{"./toCamelCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs"},"node_modules/lucide-react/dist/esm/defaultAttributes.mjs":{},"node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs":{},"node_modules/lucide-react/dist/esm/context.mjs":{"react":"node_modules/react/index.js"},"node_modules/lucide-react/dist/esm/Icon.mjs":{"react":"node_modules/react/index.js","./defaultAttributes.mjs":"node_modules/lucide-react/dist/esm/defaultAttributes.mjs","./shared/src/utils/hasA11yProp.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs","./shared/src/utils/mergeClasses.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs","./context.mjs":"node_modules/lucide-react/dist/esm/context.mjs"},"node_modules/lucide-react/dist/esm/createLucideIcon.mjs":{"react":"node_modules/react/index.js","./shared/src/utils/mergeClasses.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs","./shared/src/utils/toKebabCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs","./shared/src/utils/toPascalCase.mjs":"node_modules/lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs","./Icon.mjs":"node_modules/lucide-react/dist/esm/Icon.mjs"},"node_modules/lucide-react/dist/esm/icons/archive.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/arrow-left.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/box.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/check.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-down.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-left.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-right.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/chevron-up.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/circle.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/cone.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/contrast.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/copy.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/crosshair.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/cuboid.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/download.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/ellipsis.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/eye-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/eye.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/file-down.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/file-text.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/folder-open.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/group.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/hard-drive.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/house.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/layers.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/link-2-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/link-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/lock-open.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/lock.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/magnet.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/maximize.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/minus.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/move-3d.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/move.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pause.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/pentagon.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/play.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/plus.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/projector.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/redo-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/ruler.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scaling.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scan-line.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/scissors.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/search.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/settings-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/skip-back.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/skip-forward.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/sparkles.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/square-dashed.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/sticky-note.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/trash-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/triangle.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/type.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/undo-2.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/upload.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/wifi-off.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/lucide-react/dist/esm/icons/x.mjs":{"../createLucideIcon.mjs":"node_modules/lucide-react/dist/esm/createLucideIcon.mjs"},"node_modules/sonner/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/jszip/dist/jszip.min.js":{},"node_modules/three/build/three.core.js":{},"node_modules/three/build/three.module.js":{"./three.core.js":"node_modules/three/build/three.core.js"},"node_modules/three/examples/jsm/controls/OrbitControls.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/controls/TransformControls.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/exporters/OBJExporter.js":{"three":"node_modules/three/build/three.module.js"},"node_modules/three/examples/jsm/exporters/STLExporter.js":{"three":"node_modules/three/build/three.module.js"},"lib/benchcad-export.ts":{},"lib/benchcad-properties.ts":{},"lib/benchcad-kernel.ts":{},"lib/benchcad-topology.ts":{},"lib/benchcad-model.ts":{"./benchcad-kernel":"lib/benchcad-kernel.ts"},"lib/benchcad-mesh.ts":{"jszip":"node_modules/jszip/dist/jszip.min.js"},"lib/benchcad-interactions.ts":{},"node_modules/react/cjs/react-jsx-runtime.production.js":{},"node_modules/react/jsx-runtime.js":{"./cjs/react-jsx-runtime.production.js":"node_modules/react/cjs/react-jsx-runtime.production.js"},"components/cad-viewport.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","jszip":"node_modules/jszip/dist/jszip.min.js","three":"node_modules/three/build/three.module.js","three/examples/jsm/controls/OrbitControls.js":"node_modules/three/examples/jsm/controls/OrbitControls.js","three/examples/jsm/controls/TransformControls.js":"node_modules/three/examples/jsm/controls/TransformControls.js","three/examples/jsm/exporters/OBJExporter.js":"node_modules/three/examples/jsm/exporters/OBJExporter.js","three/examples/jsm/exporters/STLExporter.js":"node_modules/three/examples/jsm/exporters/STLExporter.js","@/lib/benchcad-export":"lib/benchcad-export.ts","@/lib/benchcad-properties":"lib/benchcad-properties.ts","@/lib/benchcad-kernel":"lib/benchcad-kernel.ts","@/lib/benchcad-topology":"lib/benchcad-topology.ts","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts","@/lib/benchcad-manufacturing":"lib/benchcad-manufacturing.ts","@/lib/benchcad-interactions":"lib/benchcad-interactions.ts"},"lib/benchcad-sketch.ts":{},"components/sketch-workbench.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-sketch":"lib/benchcad-sketch.ts"},"lib/benchcad-drawing.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-drawing-refs":"lib/benchcad-drawing-refs.ts","./benchcad-projection":"lib/benchcad-projection.ts"},"components/drawing-workbench.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","sonner":"node_modules/sonner/dist/index.mjs","@/components/ui/dropdown-menu":"components/ui/dropdown-menu.tsx","@/lib/benchcad-drawing":"lib/benchcad-drawing.ts","@/lib/benchcad-drawing-refs":"lib/benchcad-drawing-refs.ts","@/lib/benchcad-dxf":"lib/benchcad-dxf.ts","@/lib/benchcad-projection":"lib/benchcad-projection.ts","@/lib/benchcad-model":"lib/benchcad-model.ts"},"node_modules/clsx/dist/clsx.mjs":{},"node_modules/class-variance-authority/dist/index.mjs":{"clsx":"node_modules/clsx/dist/clsx.mjs"},"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-primitive/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/react-slot":"node_modules/@radix-ui/react-primitive/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-visually-hidden/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-context/dist/index.mjs":{"react":"node_modules/react/index.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-collection/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-collection/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/primitive/dist/index.mjs":{},"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-effect-event/dist/index.mjs":{"@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive/is-development":"virtual/radix-primitive-is-development.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-effect-event":"node_modules/@radix-ui/react-use-effect-event/dist/index.mjs"},"node_modules/@radix-ui/react-presence/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-id/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-direction/dist/index.mjs":{"react":"node_modules/react/index.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dismissable-layer/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dismissable-layer/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-focus-scope/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-focus-scope/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-focus-scope/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-portal/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-focus-guards/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/tslib/tslib.es6.mjs":{},"node_modules/react-remove-scroll-bar/dist/es2015/constants.js":{},"node_modules/use-callback-ref/dist/es2015/assignRef.js":{},"node_modules/use-callback-ref/dist/es2015/useRef.js":{"react":"node_modules/react/index.js"},"node_modules/use-callback-ref/dist/es2015/useMergeRef.js":{"react":"node_modules/react/index.js","./assignRef":"node_modules/use-callback-ref/dist/es2015/assignRef.js","./useRef":"node_modules/use-callback-ref/dist/es2015/useRef.js"},"node_modules/use-sidecar/dist/es2015/medium.js":{"tslib":"node_modules/tslib/tslib.es6.mjs"},"node_modules/use-sidecar/dist/es2015/exports.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js"},"node_modules/react-remove-scroll/dist/es2015/medium.js":{"use-sidecar":"virtual/use-sidecar.js"},"node_modules/react-remove-scroll/dist/es2015/UI.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","react-remove-scroll-bar/constants":"node_modules/react-remove-scroll-bar/dist/es2015/constants.js","use-callback-ref":"virtual/use-callback-ref.js","./medium":"node_modules/react-remove-scroll/dist/es2015/medium.js"},"node_modules/get-nonce/dist/es2015/index.js":{},"node_modules/react-style-singleton/dist/es2015/singleton.js":{"get-nonce":"node_modules/get-nonce/dist/es2015/index.js"},"node_modules/react-style-singleton/dist/es2015/hook.js":{"react":"node_modules/react/index.js","./singleton":"node_modules/react-style-singleton/dist/es2015/singleton.js"},"node_modules/react-style-singleton/dist/es2015/component.js":{"./hook":"node_modules/react-style-singleton/dist/es2015/hook.js"},"node_modules/react-remove-scroll-bar/dist/es2015/utils.js":{},"node_modules/react-remove-scroll-bar/dist/es2015/component.js":{"react":"node_modules/react/index.js","react-style-singleton":"node_modules/react-style-singleton/dist/es2015/component.js","./constants":"node_modules/react-remove-scroll-bar/dist/es2015/constants.js","./utils":"node_modules/react-remove-scroll-bar/dist/es2015/utils.js"},"node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js":{},"node_modules/react-remove-scroll/dist/es2015/handleScroll.js":{},"node_modules/react-remove-scroll/dist/es2015/SideEffect.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","react-remove-scroll-bar":"node_modules/react-remove-scroll-bar/dist/es2015/component.js","react-style-singleton":"node_modules/react-style-singleton/dist/es2015/component.js","./aggresiveCapture":"node_modules/react-remove-scroll/dist/es2015/aggresiveCapture.js","./handleScroll":"node_modules/react-remove-scroll/dist/es2015/handleScroll.js"},"node_modules/react-remove-scroll/dist/es2015/sidecar.js":{"use-sidecar":"virtual/use-sidecar.js","./SideEffect":"node_modules/react-remove-scroll/dist/es2015/SideEffect.js","./medium":"node_modules/react-remove-scroll/dist/es2015/medium.js"},"node_modules/react-remove-scroll/dist/es2015/Combination.js":{"tslib":"node_modules/tslib/tslib.es6.mjs","react":"node_modules/react/index.js","./UI":"node_modules/react-remove-scroll/dist/es2015/UI.js","./sidecar":"node_modules/react-remove-scroll/dist/es2015/sidecar.js"},"node_modules/aria-hidden/dist/es2015/index.js":{},"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-dialog/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","react-remove-scroll":"virtual/react-remove-scroll.js","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","@radix-ui/react-slot":"node_modules/@radix-ui/react-dialog/node_modules/@radix-ui/react-slot/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-use-size/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs"},"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs":{},"node_modules/@floating-ui/core/dist/floating-ui.core.mjs":{"@floating-ui/utils":"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"},"node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs":{},"node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs":{"@floating-ui/core":"node_modules/@floating-ui/core/dist/floating-ui.core.mjs","@floating-ui/utils":"node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs","@floating-ui/utils/dom":"node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs"},"node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs":{"@floating-ui/dom":"node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs","react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js"},"node_modules/@radix-ui/react-popper/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-popper/dist/index.mjs":{"react":"node_modules/react/index.js","@floating-ui/react-dom":"node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs","@radix-ui/react-arrow":"virtual/radix-react-arrow.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-popper/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-size":"node_modules/@radix-ui/react-use-size/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-roving-focus/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-roving-focus/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-is-hydrated":"node_modules/@radix-ui/react-use-is-hydrated/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-menu/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-popper":"node_modules/@radix-ui/react-popper/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-roving-focus":"node_modules/@radix-ui/react-roving-focus/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-menu/node_modules/@radix-ui/react-slot/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","react-remove-scroll":"virtual/react-remove-scroll.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-dropdown-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-dropdown-menu/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-menu":"node_modules/@radix-ui/react-menu/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-use-previous/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/number/dist/index.mjs":{},"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/@radix-ui/react-select/dist/index.mjs":{"react":"node_modules/react/index.js","react-dom":"node_modules/react-dom/index.js","@radix-ui/number":"node_modules/@radix-ui/number/dist/index.mjs","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-dismissable-layer":"node_modules/@radix-ui/react-dismissable-layer/dist/index.mjs","@radix-ui/react-focus-guards":"node_modules/@radix-ui/react-focus-guards/dist/index.mjs","@radix-ui/react-focus-scope":"node_modules/@radix-ui/react-focus-scope/dist/index.mjs","@radix-ui/react-id":"node_modules/@radix-ui/react-id/dist/index.mjs","@radix-ui/react-popper":"node_modules/@radix-ui/react-popper/dist/index.mjs","@radix-ui/react-portal":"node_modules/@radix-ui/react-portal/dist/index.mjs","@radix-ui/react-presence":"node_modules/@radix-ui/react-presence/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-slot":"node_modules/@radix-ui/react-select/node_modules/@radix-ui/react-slot/dist/index.mjs","@radix-ui/react-use-callback-ref":"node_modules/@radix-ui/react-use-callback-ref/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-use-layout-effect":"node_modules/@radix-ui/react-use-layout-effect/dist/index.mjs","@radix-ui/react-use-previous":"node_modules/@radix-ui/react-use-previous/dist/index.mjs","@radix-ui/react-visually-hidden":"node_modules/@radix-ui/react-visually-hidden/dist/index.mjs","aria-hidden":"node_modules/aria-hidden/dist/es2015/index.js","react-remove-scroll":"virtual/react-remove-scroll.js","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/@radix-ui/react-slider/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/@radix-ui/react-slider/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/number":"node_modules/@radix-ui/number/dist/index.mjs","@radix-ui/primitive":"node_modules/@radix-ui/primitive/dist/index.mjs","@radix-ui/react-compose-refs":"node_modules/@radix-ui/react-slider/node_modules/@radix-ui/react-compose-refs/dist/index.mjs","@radix-ui/react-context":"node_modules/@radix-ui/react-context/dist/index.mjs","@radix-ui/react-use-controllable-state":"node_modules/@radix-ui/react-use-controllable-state/dist/index.mjs","@radix-ui/react-direction":"node_modules/@radix-ui/react-direction/dist/index.mjs","@radix-ui/react-use-previous":"node_modules/@radix-ui/react-use-previous/dist/index.mjs","@radix-ui/react-use-size":"node_modules/@radix-ui/react-use-size/dist/index.mjs","@radix-ui/react-primitive":"node_modules/@radix-ui/react-primitive/dist/index.mjs","@radix-ui/react-collection":"node_modules/@radix-ui/react-collection/dist/index.mjs","react/jsx-runtime":"node_modules/react/jsx-runtime.js"},"node_modules/radix-ui/node_modules/@radix-ui/react-compose-refs/dist/index.mjs":{"react":"node_modules/react/index.js"},"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs":{"react":"node_modules/react/index.js","@radix-ui/react-compose-refs":"node_modules/radix-ui/node_modules/@radix-ui/react-compose-refs/dist/index.mjs"},"node_modules/tailwind-merge/dist/bundle-mjs.mjs":{},"lib/utils.ts":{"clsx":"node_modules/clsx/dist/clsx.mjs","tailwind-merge":"node_modules/tailwind-merge/dist/bundle-mjs.mjs"},"components/ui/button.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","class-variance-authority":"node_modules/class-variance-authority/dist/index.mjs","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/dialog.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts","@/components/ui/button":"components/ui/button.tsx"},"components/ui/dropdown-menu.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/input.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","@/lib/utils":"lib/utils.ts"},"components/ui/slider.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"components/ui/select.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","radix-ui":"virtual/radix-ui.js","@/lib/utils":"lib/utils.ts"},"lib/benchcad-edge-finish.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-boolean.ts":{},"lib/benchcad-revolve.ts":{},"lib/benchcad-sweep-loft.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-sketch":"lib/benchcad-sketch.ts"},"lib/local-store.ts":{"@/lib/benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-recovery.ts":{"jszip":"node_modules/jszip/dist/jszip.min.js","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts"},"lib/benchcad-runtime.ts":{},"lib/benchcad-repair.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-sketch":"lib/benchcad-sketch.ts","./benchcad-sweep-loft":"lib/benchcad-sweep-loft.ts"},"lib/benchcad-selection.ts":{},"components/benchcad-app.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","lucide-react":"virtual/lucide-react.js","sonner":"node_modules/sonner/dist/index.mjs","@/components/cad-viewport":"components/cad-viewport.tsx","@/components/sketch-workbench":"components/sketch-workbench.tsx","@/components/drawing-workbench":"components/drawing-workbench.tsx","@/components/ui/button":"components/ui/button.tsx","@/components/ui/dialog":"components/ui/dialog.tsx","@/components/ui/dropdown-menu":"components/ui/dropdown-menu.tsx","@/components/ui/input":"components/ui/input.tsx","@/components/ui/slider":"components/ui/slider.tsx","@/components/ui/select":"components/ui/select.tsx","@/lib/benchcad-model":"lib/benchcad-model.ts","@/lib/benchcad-edge-finish":"lib/benchcad-edge-finish.ts","@/lib/benchcad-boolean":"lib/benchcad-boolean.ts","@/lib/benchcad-mesh":"lib/benchcad-mesh.ts","@/lib/benchcad-revolve":"lib/benchcad-revolve.ts","@/lib/benchcad-sweep-loft":"lib/benchcad-sweep-loft.ts","@/lib/benchcad-sketch":"lib/benchcad-sketch.ts","@/lib/benchcad-export":"lib/benchcad-export.ts","@/lib/benchcad-dxf":"lib/benchcad-dxf.ts","@/lib/benchcad-profile-tools":"lib/benchcad-profile-tools.ts","@/lib/benchcad-manufacturing":"lib/benchcad-manufacturing.ts","@/lib/local-store":"lib/local-store.ts","@/lib/benchcad-recovery":"lib/benchcad-recovery.ts","@/lib/benchcad-runtime":"lib/benchcad-runtime.ts","@/lib/benchcad-repair":"lib/benchcad-repair.ts","@/lib/benchcad-selection":"lib/benchcad-selection.ts","@/lib/benchcad-interactions":"lib/benchcad-interactions.ts","@/lib/benchcad-properties":"lib/benchcad-properties.ts","@/lib/benchcad-parameters":"lib/benchcad-parameters.ts"},"standalone-main.tsx":{"react/jsx-runtime":"node_modules/react/jsx-runtime.js","react":"node_modules/react/index.js","react-dom/client":"node_modules/react-dom/client.js","@/components/benchcad-app":"components/benchcad-app.tsx"},"lib/benchcad-drawing-refs.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-projection":"lib/benchcad-projection.ts"},"lib/benchcad-dxf.ts":{"./benchcad-model":"lib/benchcad-model.ts","./benchcad-drawing":"lib/benchcad-drawing.ts"},"lib/benchcad-manufacturing.ts":{"./benchcad-mesh":"lib/benchcad-mesh.ts"},"lib/benchcad-parameters.ts":{"./benchcad-model":"lib/benchcad-model.ts"},"lib/benchcad-profile-tools.ts":{},"lib/benchcad-projection.ts":{},"virtual/lucide-react.js":{"node_modules/lucide-react/dist/esm/icons/archive.mjs":"node_modules/lucide-react/dist/esm/icons/archive.mjs","node_modules/lucide-react/dist/esm/icons/arrow-left.mjs":"node_modules/lucide-react/dist/esm/icons/arrow-left.mjs","node_modules/lucide-react/dist/esm/icons/box.mjs":"node_modules/lucide-react/dist/esm/icons/box.mjs","node_modules/lucide-react/dist/esm/icons/square-dashed.mjs":"node_modules/lucide-react/dist/esm/icons/square-dashed.mjs","node_modules/lucide-react/dist/esm/icons/check.mjs":"node_modules/lucide-react/dist/esm/icons/check.mjs","node_modules/lucide-react/dist/esm/icons/chevron-down.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-down.mjs","node_modules/lucide-react/dist/esm/icons/chevron-left.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-left.mjs","node_modules/lucide-react/dist/esm/icons/chevron-right.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-right.mjs","node_modules/lucide-react/dist/esm/icons/chevron-up.mjs":"node_modules/lucide-react/dist/esm/icons/chevron-up.mjs","node_modules/lucide-react/dist/esm/icons/circle.mjs":"node_modules/lucide-react/dist/esm/icons/circle.mjs","node_modules/lucide-react/dist/esm/icons/cone.mjs":"node_modules/lucide-react/dist/esm/icons/cone.mjs","node_modules/lucide-react/dist/esm/icons/contrast.mjs":"node_modules/lucide-react/dist/esm/icons/contrast.mjs","node_modules/lucide-react/dist/esm/icons/copy.mjs":"node_modules/lucide-react/dist/esm/icons/copy.mjs","node_modules/lucide-react/dist/esm/icons/crosshair.mjs":"node_modules/lucide-react/dist/esm/icons/crosshair.mjs","node_modules/lucide-react/dist/esm/icons/cuboid.mjs":"node_modules/lucide-react/dist/esm/icons/cuboid.mjs","node_modules/lucide-react/dist/esm/icons/download.mjs":"node_modules/lucide-react/dist/esm/icons/download.mjs","node_modules/lucide-react/dist/esm/icons/eye.mjs":"node_modules/lucide-react/dist/esm/icons/eye.mjs","node_modules/lucide-react/dist/esm/icons/eye-off.mjs":"node_modules/lucide-react/dist/esm/icons/eye-off.mjs","node_modules/lucide-react/dist/esm/icons/file-down.mjs":"node_modules/lucide-react/dist/esm/icons/file-down.mjs","node_modules/lucide-react/dist/esm/icons/file-text.mjs":"node_modules/lucide-react/dist/esm/icons/file-text.mjs","node_modules/lucide-react/dist/esm/icons/folder-open.mjs":"node_modules/lucide-react/dist/esm/icons/folder-open.mjs","node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs":"node_modules/lucide-react/dist/esm/icons/grid-3x3.mjs","node_modules/lucide-react/dist/esm/icons/group.mjs":"node_modules/lucide-react/dist/esm/icons/group.mjs","node_modules/lucide-react/dist/esm/icons/hard-drive.mjs":"node_modules/lucide-react/dist/esm/icons/hard-drive.mjs","node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs":"node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs","node_modules/lucide-react/dist/esm/icons/house.mjs":"node_modules/lucide-react/dist/esm/icons/house.mjs","node_modules/lucide-react/dist/esm/icons/layers.mjs":"node_modules/lucide-react/dist/esm/icons/layers.mjs","node_modules/lucide-react/dist/esm/icons/link-2.mjs":"node_modules/lucide-react/dist/esm/icons/link-2.mjs","node_modules/lucide-react/dist/esm/icons/link-2-off.mjs":"node_modules/lucide-react/dist/esm/icons/link-2-off.mjs","node_modules/lucide-react/dist/esm/icons/lock.mjs":"node_modules/lucide-react/dist/esm/icons/lock.mjs","node_modules/lucide-react/dist/esm/icons/magnet.mjs":"node_modules/lucide-react/dist/esm/icons/magnet.mjs","node_modules/lucide-react/dist/esm/icons/maximize.mjs":"node_modules/lucide-react/dist/esm/icons/maximize.mjs","node_modules/lucide-react/dist/esm/icons/minus.mjs":"node_modules/lucide-react/dist/esm/icons/minus.mjs","node_modules/lucide-react/dist/esm/icons/ellipsis.mjs":"node_modules/lucide-react/dist/esm/icons/ellipsis.mjs","node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs":"node_modules/lucide-react/dist/esm/icons/mouse-pointer-2.mjs","node_modules/lucide-react/dist/esm/icons/move.mjs":"node_modules/lucide-react/dist/esm/icons/move.mjs","node_modules/lucide-react/dist/esm/icons/move-3d.mjs":"node_modules/lucide-react/dist/esm/icons/move-3d.mjs","node_modules/lucide-react/dist/esm/icons/pause.mjs":"node_modules/lucide-react/dist/esm/icons/pause.mjs","node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs":"node_modules/lucide-react/dist/esm/icons/pencil-ruler.mjs","node_modules/lucide-react/dist/esm/icons/pentagon.mjs":"node_modules/lucide-react/dist/esm/icons/pentagon.mjs","node_modules/lucide-react/dist/esm/icons/play.mjs":"node_modules/lucide-react/dist/esm/icons/play.mjs","node_modules/lucide-react/dist/esm/icons/plus.mjs":"node_modules/lucide-react/dist/esm/icons/plus.mjs","node_modules/lucide-react/dist/esm/icons/projector.mjs":"node_modules/lucide-react/dist/esm/icons/projector.mjs","node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs":"node_modules/lucide-react/dist/esm/icons/rectangle-horizontal.mjs","node_modules/lucide-react/dist/esm/icons/redo-2.mjs":"node_modules/lucide-react/dist/esm/icons/redo-2.mjs","node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs":"node_modules/lucide-react/dist/esm/icons/refresh-cw.mjs","node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs":"node_modules/lucide-react/dist/esm/icons/rotate-3d.mjs","node_modules/lucide-react/dist/esm/icons/ruler.mjs":"node_modules/lucide-react/dist/esm/icons/ruler.mjs","node_modules/lucide-react/dist/esm/icons/scaling.mjs":"node_modules/lucide-react/dist/esm/icons/scaling.mjs","node_modules/lucide-react/dist/esm/icons/scan-line.mjs":"node_modules/lucide-react/dist/esm/icons/scan-line.mjs","node_modules/lucide-react/dist/esm/icons/scissors.mjs":"node_modules/lucide-react/dist/esm/icons/scissors.mjs","node_modules/lucide-react/dist/esm/icons/search.mjs":"node_modules/lucide-react/dist/esm/icons/search.mjs","node_modules/lucide-react/dist/esm/icons/settings-2.mjs":"node_modules/lucide-react/dist/esm/icons/settings-2.mjs","node_modules/lucide-react/dist/esm/icons/skip-back.mjs":"node_modules/lucide-react/dist/esm/icons/skip-back.mjs","node_modules/lucide-react/dist/esm/icons/skip-forward.mjs":"node_modules/lucide-react/dist/esm/icons/skip-forward.mjs","node_modules/lucide-react/dist/esm/icons/sparkles.mjs":"node_modules/lucide-react/dist/esm/icons/sparkles.mjs","node_modules/lucide-react/dist/esm/icons/sticky-note.mjs":"node_modules/lucide-react/dist/esm/icons/sticky-note.mjs","node_modules/lucide-react/dist/esm/icons/trash-2.mjs":"node_modules/lucide-react/dist/esm/icons/trash-2.mjs","node_modules/lucide-react/dist/esm/icons/triangle.mjs":"node_modules/lucide-react/dist/esm/icons/triangle.mjs","node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs":"node_modules/lucide-react/dist/esm/icons/triangle-alert.mjs","node_modules/lucide-react/dist/esm/icons/type.mjs":"node_modules/lucide-react/dist/esm/icons/type.mjs","node_modules/lucide-react/dist/esm/icons/undo-2.mjs":"node_modules/lucide-react/dist/esm/icons/undo-2.mjs","node_modules/lucide-react/dist/esm/icons/lock-open.mjs":"node_modules/lucide-react/dist/esm/icons/lock-open.mjs","node_modules/lucide-react/dist/esm/icons/upload.mjs":"node_modules/lucide-react/dist/esm/icons/upload.mjs","node_modules/lucide-react/dist/esm/icons/wifi-off.mjs":"node_modules/lucide-react/dist/esm/icons/wifi-off.mjs","node_modules/lucide-react/dist/esm/icons/x.mjs":"node_modules/lucide-react/dist/esm/icons/x.mjs"},"virtual/radix-react-arrow.js":{"react":"node_modules/react/index.js"},"virtual/use-callback-ref.js":{"node_modules/use-callback-ref/dist/es2015/assignRef.js":"node_modules/use-callback-ref/dist/es2015/assignRef.js","node_modules/use-callback-ref/dist/es2015/useRef.js":"node_modules/use-callback-ref/dist/es2015/useRef.js","node_modules/use-callback-ref/dist/es2015/useMergeRef.js":"node_modules/use-callback-ref/dist/es2015/useMergeRef.js"},"virtual/react-remove-scroll.js":{"node_modules/react-remove-scroll/dist/es2015/Combination.js":"node_modules/react-remove-scroll/dist/es2015/Combination.js"},"virtual/use-sidecar.js":{"node_modules/use-sidecar/dist/es2015/medium.js":"node_modules/use-sidecar/dist/es2015/medium.js","node_modules/use-sidecar/dist/es2015/exports.js":"node_modules/use-sidecar/dist/es2015/exports.js"},"virtual/radix-primitive-is-development.js":{},"virtual/radix-ui.js":{"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs":"node_modules/radix-ui/node_modules/@radix-ui/react-slot/dist/index.mjs","node_modules/@radix-ui/react-dialog/dist/index.mjs":"node_modules/@radix-ui/react-dialog/dist/index.mjs","node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs":"node_modules/@radix-ui/react-dropdown-menu/dist/index.mjs","node_modules/@radix-ui/react-select/dist/index.mjs":"node_modules/@radix-ui/react-select/dist/index.mjs","node_modules/@radix-ui/react-slider/dist/index.mjs":"node_modules/@radix-ui/react-slider/dist/index.mjs"}};
 const __cache=Object.create(null);
 function __load(id){
  if(__cache[id]) return __cache[id].exports;

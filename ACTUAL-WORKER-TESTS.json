@@ -1,0 +1,25 @@
+{
+  "suite": "BENCHCAD v0.36.0 actual geometry worker smoke",
+  "errors": [],
+  "console_errors": [],
+  "console_warnings": [
+    "THREE.WebGLShadowMap: PCFSoftShadowMap has been deprecated. Using PCFShadowMap instead."
+  ],
+  "checks": {
+    "production_bundle_rendered": true,
+    "manifold_wasm_ready": true,
+    "geometry_worker_started": true,
+    "model_meshes_rendered": true,
+    "manufacture_command_available": true,
+    "manufacturing_dialog_rendered": true,
+    "manufacturing_uses_reconstructed_geometry": true
+  },
+  "workerKinds": [
+    "geometry"
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7
+  }
+}

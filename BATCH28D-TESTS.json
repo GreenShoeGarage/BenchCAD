@@ -1,0 +1,376 @@
+{
+  "release": {
+    "name": "BENCHCAD",
+    "appVersion": "0.35.0",
+    "batch": "28D",
+    "projectSchemaVersion": 9,
+    "drawingSchemaVersion": 5,
+    "batch28Status": "COMPLETE",
+    "nextBatch": "29 - Large-Model Performance"
+  },
+  "status": "PASS",
+  "canonicalCounts": {
+    "batch28DAssertions": 59,
+    "retainedBatch28CAssertions": 70,
+    "retainedBatch28BAssertions": 65,
+    "retainedBatch27Tests": 18,
+    "deterministicAndRegressionTotal": 212,
+    "productionBrowserChecks": 27
+  },
+  "suites": {
+    "batch28D": {
+      "suite": "BENCHCAD Batch 28D Detail Views and Output Qualification",
+      "appVersion": "0.35.0",
+      "schemaVersion": 9,
+      "drawingSchemaVersion": 5,
+      "assertions": 59,
+      "detail": {
+        "circularSegments": 4,
+        "rectangularSegments": 4,
+        "sourceCalloutPrimitives": 73,
+        "childFramePrimitives": 48
+      },
+      "layoutWarnings": {
+        "collisions": 1,
+        "overflow": 1
+      },
+      "signature": "74f28c45",
+      "outputBytes": {
+        "svg": 20016,
+        "dxf": 16693,
+        "pdf": 11871
+      },
+      "passed": 59,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "batch28CRegression": {
+      "suite": "BENCHCAD Batch 28C Associative Drawing References",
+      "appVersion": "0.35.0",
+      "schemaVersion": 9,
+      "drawingSchemaVersion": 5,
+      "assertions": 70,
+      "entities": {
+        "frontEdges": 8,
+        "frontVertices": 8,
+        "topCircles": 2,
+        "topHoles": 1,
+        "topThreads": 1
+      },
+      "annotationKinds": [
+        "horizontal",
+        "vertical",
+        "aligned",
+        "horizontal",
+        "vertical",
+        "angular",
+        "diameter",
+        "radius",
+        "center-mark",
+        "centerline",
+        "ordinate-x",
+        "ordinate-y",
+        "hole-callout",
+        "thread-callout"
+      ],
+      "repair": {
+        "repairable": "repairable",
+        "repaired": "valid",
+        "unresolved": "unresolved"
+      },
+      "outputBytes": {
+        "svg": 19464,
+        "dxf": 15942,
+        "pdf": 12595
+      },
+      "passed": 70,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "batch28BRegression": {
+      "suite": "BENCHCAD Batch 28B Projection Engine",
+      "appVersion": "0.35.0",
+      "schemaVersion": 9,
+      "assertions": 65,
+      "occlusion": {
+        "sourceTriangles": 24,
+        "projectedTriangles": 8,
+        "candidateEdges": 16,
+        "visibleSegments": 9,
+        "hiddenSegments": 9,
+        "occlusionTests": 87,
+        "sectionLoops": 0,
+        "elapsedMs": 5.124655000000004
+      },
+      "section": {
+        "sourceTriangles": 12,
+        "projectedTriangles": 2,
+        "candidateEdges": 4,
+        "visibleSegments": 2,
+        "hiddenSegments": 2,
+        "occlusionTests": 4,
+        "sectionLoops": 1,
+        "elapsedMs": 2.8977329999999952
+      },
+      "outputBytes": {
+        "svg": 7443,
+        "dxf": 5495,
+        "pdf": 4877
+      },
+      "status": "PASS"
+    },
+    "batch27Regression": {
+      "status": "pass",
+      "tests": 18,
+      "dxfEntities": 5,
+      "manufacturingFindings": 3,
+      "interferenceFindings": 5
+    }
+  },
+  "productionBrowser": {
+    "engine": "Chromium",
+    "mode": "headed with software WebGL",
+    "syntheticBase": "https://benchcad.local/projects/benchcad/",
+    "checks": {
+      "bundle_rendered": true,
+      "version_visible": true,
+      "wasm_geometry_ready": true,
+      "nested_geometry_worker_path": true,
+      "real_exact_mesh_reconstructed": true,
+      "first_sheet_rendered": true,
+      "drawing_schema_5": true,
+      "front_view_exact_sources": true,
+      "detail_button_enabled": true,
+      "detail_inspector_visible": true,
+      "detail_parent_linked": true,
+      "detail_default_circle": true,
+      "detail_independent_scale": true,
+      "parent_source_callout_rendered": true,
+      "detail_caption_rendered": true,
+      "detail_export_ready": true,
+      "rectangular_crop_control_operates": true,
+      "rectangular_detail_remains_resolved": true,
+      "layout_overflow_diagnostic_visible": true,
+      "layout_warning_is_advisory": true,
+      "layout_warning_clears_after_reposition": true,
+      "final_detail_integrity_ready": true,
+      "svg_download_valid": true,
+      "dxf_download_valid": true,
+      "pdf_download_valid": true,
+      "cross_format_signatures_match": true,
+      "screenshot_created": true
+    },
+    "errors": [],
+    "consoleErrors": [],
+    "consoleWarnings": [],
+    "geometry": {
+      "issues": [],
+      "results": [
+        {
+          "targetId": "body-422tuloxqal",
+          "vertexLength": 504,
+          "indexLength": 1020,
+          "triangles": 340,
+          "consumedIds": [
+            "body-vqfn0jy4fv",
+            "body-ssawxarqbjn"
+          ]
+        }
+      ]
+    },
+    "workerUrls": [
+      "https://benchcad.local/projects/benchcad/assets/geometry.worker-BwAX3YFX.js"
+    ],
+    "downloads": {
+      "SVG": {
+        "filename": "mounting-plate-sheet-1.svg",
+        "bytes": 22483,
+        "path": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.svg",
+        "sha256": "9b3a924fdfd4c3b74046093cd41cf6e1b44c6a9900850e5f815aa41b58c86111",
+        "signature": "4dd91b27"
+      },
+      "DXF": {
+        "filename": "mounting-plate-sheet-1.dxf",
+        "bytes": 19682,
+        "path": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.dxf",
+        "sha256": "77d7715eac9a73c0ca262569ca8c4c9e91ab2a5c607238bf5f6724be0ab26061",
+        "signature": "4dd91b27"
+      },
+      "PDF": {
+        "filename": "mounting-plate-sheet-1.pdf",
+        "bytes": 13408,
+        "path": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.pdf",
+        "sha256": "ee3ea403ef6c126c8fd7a55e1c0d1ee987423dc3ae28aadd625d0eb422a93912",
+        "signature": "4dd91b27"
+      }
+    },
+    "crossFormatSignatures": {
+      "SVG": "4dd91b27",
+      "DXF": "4dd91b27",
+      "PDF": "4dd91b27"
+    },
+    "pass": true
+  },
+  "build": {
+    "targetedTypeScript": "PASS",
+    "mainBundleSyntax": "PASS",
+    "geometryWorkerSyntax": "PASS",
+    "importWorkerSyntax": "PASS",
+    "serviceWorkerSyntax": "PASS"
+  },
+  "staticDeployment": {
+    "structure": {
+      "index_relative_assets": true,
+      "manifest_relative_scope": true,
+      "app_shell_entries": 12,
+      "missing_app_shell": [],
+      "old_entry_assets_absent": true,
+      "status": "PASS"
+    },
+    "nestedHttp": {
+      "nested_base": "/projects/benchcad/",
+      "assets": [
+        {
+          "path": "./",
+          "status": 200,
+          "bytes": 877,
+          "type": "text/html"
+        },
+        {
+          "path": "./index.html",
+          "status": 200,
+          "bytes": 877,
+          "type": "text/html"
+        },
+        {
+          "path": "./assets/benchcad-v0.35.0.js",
+          "status": 200,
+          "bytes": 4394905,
+          "type": "text/javascript"
+        },
+        {
+          "path": "./assets/benchcad-v0.35.0.css",
+          "status": 200,
+          "bytes": 267204,
+          "type": "text/css"
+        },
+        {
+          "path": "./assets/geometry.worker-BwAX3YFX.js",
+          "status": 200,
+          "bytes": 61583,
+          "type": "text/javascript"
+        },
+        {
+          "path": "./assets/import.worker-4ZIJcZ3b.js",
+          "status": 200,
+          "bytes": 103713,
+          "type": "text/javascript"
+        },
+        {
+          "path": "./assets/manifold-BE4c7gO-.wasm",
+          "status": 200,
+          "bytes": 541470,
+          "type": "application/wasm"
+        },
+        {
+          "path": "./favicon.svg",
+          "status": 200,
+          "bytes": 712,
+          "type": "image/svg+xml"
+        },
+        {
+          "path": "./file.svg",
+          "status": 200,
+          "bytes": 392,
+          "type": "image/svg+xml"
+        },
+        {
+          "path": "./globe.svg",
+          "status": 200,
+          "bytes": 1036,
+          "type": "image/svg+xml"
+        },
+        {
+          "path": "./manifest.webmanifest",
+          "status": 200,
+          "bytes": 526,
+          "type": "application/manifest+json"
+        },
+        {
+          "path": "./window.svg",
+          "status": 200,
+          "bytes": 386,
+          "type": "image/svg+xml"
+        }
+      ],
+      "status": "PASS"
+    },
+    "zipRootIndexRequired": true,
+    "relativeRuntimeUrlsRequired": true
+  },
+  "pdfQualification": {
+    "preflight": {
+      "path": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.pdf",
+      "ok_open": true,
+      "encrypted": false,
+      "pages": 1,
+      "likely_scanned": false,
+      "xfa_present": false,
+      "warnings": [],
+      "pdffonts_excerpt": null
+    },
+    "inspection": {
+      "path": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.pdf",
+      "pages": 1,
+      "encrypted": false,
+      "page_sizes": [
+        {
+          "width_pt": 842,
+          "height_pt": 595,
+          "count": 1
+        }
+      ],
+      "metadata": {},
+      "outline_items": 0,
+      "form_fields": 0,
+      "attachments": 0,
+      "annotations": 0,
+      "poppler_pdfinfo": "Custom Metadata: no\nMetadata Stream: no\nTagged:          no\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       841.89 x 595.276 pts (A4)\nPage rot:        0\nFile size:       13408 bytes\nOptimized:       no\nPDF version:     1.4",
+      "poppler_pdffonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nHelvetica                            Type 1            Standard         no  no  no       5  0"
+    },
+    "rendererParity": {
+      "input_pdf": "/mnt/data/benchcad-v0.35.0-batch28d-smoke.pdf",
+      "dpi": 180,
+      "engine_a": "pdftoppm",
+      "engine_b": "pdfium",
+      "pages": 1,
+      "changed_pages": 1,
+      "per_page": [
+        {
+          "page": 1,
+          "a": "/mnt/data/benchcad-v0.35.0-pdf-parity/render_pdftoppm/page-1.png",
+          "b": "/mnt/data/benchcad-v0.35.0-pdf-parity/render_pdfium/page-1.png",
+          "changed": true,
+          "pct_changed": 0.014602731990256338,
+          "bbox": [
+            55,
+            55,
+            2050,
+            1434
+          ],
+          "max_channel": 239,
+          "diff": "/mnt/data/benchcad-v0.35.0-pdf-parity/diff/page-1.png"
+        }
+      ]
+    },
+    "visualReview": "PASS - no clipped content, broken glyphs, or unintended overlaps in the release fixture",
+    "rendererDifferenceAssessment": "Minor rasterization/antialiasing variation only; geometry and text placement match."
+  },
+  "crossBrowserQualification": {
+    "chromium": "PASS",
+    "firefox": "NOT EXECUTED - Firefox runtime absent from release container",
+    "webkitSafari": "NOT EXECUTED - WebKit runtime absent from release container",
+    "followUp": "Real Gecko and WebKit qualification remains in Batch 30 public-beta hardening."
+  },
+  "testAccountingNote": "The canonical Batch 28D suite contains 59 independent assertions. A temporary 71-count wrapper duplicated 12 checks and is not used in release totals."
+}

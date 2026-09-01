@@ -1,0 +1,150 @@
+{
+  "suite": "BENCHCAD v0.36.0 static application-shell and relative-path validation",
+  "checks": [
+    {
+      "name": "index exists at package root",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index references v0.36.0 application bundle",
+      "pass": true,
+      "detail": "./assets/benchcad-v0.36.0.js"
+    },
+    {
+      "name": "index references v0.36.0 stylesheet",
+      "pass": true,
+      "detail": "./assets/benchcad-v0.36.0.css"
+    },
+    {
+      "name": "index runtime references are relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index runtime files exist",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index references stay inside nested deployment path",
+      "pass": true,
+      "detail": "[\"https://example.com/projects/benchcad/assets/benchcad-v0.36.0.js\", \"https://example.com/projects/benchcad/assets/benchcad-v0.36.0.css\", \"https://example.com/projects/benchcad/favicon.svg\", \"https://example.com/projects/benchcad/manifest.webmanifest\"]"
+    },
+    {
+      "name": "bundle exposes v0.36.0 identity",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle references packaged geometry worker",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle references packaged import worker",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle registers relative service worker",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no stale v0.35.1 app assets in entry shell",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker uses v0.36.0 cache namespace",
+      "pass": true,
+      "detail": "benchcad-v0.36.0-uiux-consolidation"
+    },
+    {
+      "name": "service worker application shell parsed",
+      "pass": true,
+      "detail": "12"
+    },
+    {
+      "name": "service worker shell paths are relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "every service worker shell resource exists",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "service worker covers all critical runtime assets",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "service worker shell resolves inside nested deployment path",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest start URL is relative",
+      "pass": true,
+      "detail": "./"
+    },
+    {
+      "name": "manifest scope is relative",
+      "pass": true,
+      "detail": "./"
+    },
+    {
+      "name": "manifest icon exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/benchcad-v0.36.0.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: sw.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Manifold WebAssembly binary is present and nontrivial",
+      "pass": true,
+      "detail": "541470"
+    },
+    {
+      "name": "project schema remains 9",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing schema remains 5",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "release documentation included",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "summary": {
+    "passed": 28,
+    "failed": 0,
+    "total": 28
+  }
+}
