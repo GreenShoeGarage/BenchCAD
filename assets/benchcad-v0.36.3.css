@@ -1098,3 +1098,14 @@ circle.drawing-entity-hit.selected,
   }
 }
 
+
+
+/* BENCHCAD v0.36.3 — independent modeling-light presets */
+.viewport-lighting-trigger{position:relative;}
+.viewport-lighting-trigger:after{content:"";position:absolute;right:4px;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--bench-amber,#e5a44c);opacity:.82;}
+.viewport-lighting-trigger.is-active{color:var(--bench-amber,#e5a44c);background:color-mix(in srgb,var(--bench-amber,#e5a44c) 13%,var(--bench-surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bench-amber,#e5a44c) 45%,var(--bench-border));}
+.viewport-lighting-menu{min-width:276px;}
+.viewport-lighting-option small{max-width:218px;}
+@media(width<=760px){
+  .viewport-lighting-menu{min-width:min(276px,calc(100vw - 20px));}
+}

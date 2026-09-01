@@ -1,0 +1,13 @@
+{
+  "applicationVersion": "0.36.3",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "distribution": "prebuilt static application",
+  "javascriptBytes": 5526819,
+  "cssBytes": 290811,
+  "geometryWorker": "assets/geometry.worker-BwAX3YFX.js",
+  "importWorker": "assets/import.worker-4ZIJcZ3b.js",
+  "wasm": "assets/manifold-BE4c7gO-.wasm",
+  "feature": "independent modeling-light presets",
+  "compatibilityStubs": 0
+}

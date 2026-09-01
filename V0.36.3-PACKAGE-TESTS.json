@@ -1,0 +1,419 @@
+{
+  "suite": "BENCHCAD v0.36.3 package and implementation validation",
+  "generatedAt": "2026-09-01T11:35:18.207500+00:00",
+  "applicationVersion": "0.36.3",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "checks": [
+    {
+      "name": "required file: index.html",
+      "pass": true,
+      "detail": 894
+    },
+    {
+      "name": "required file: sw.js",
+      "pass": true,
+      "detail": 1741
+    },
+    {
+      "name": "required file: manifest.webmanifest",
+      "pass": true,
+      "detail": 554
+    },
+    {
+      "name": "required file: VERSION.txt",
+      "pass": true,
+      "detail": 116
+    },
+    {
+      "name": "required file: assets/benchcad-v0.36.3.js",
+      "pass": true,
+      "detail": 5526819
+    },
+    {
+      "name": "required file: assets/benchcad-v0.36.3.css",
+      "pass": true,
+      "detail": 290811
+    },
+    {
+      "name": "required file: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": 61583
+    },
+    {
+      "name": "required file: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": 103713
+    },
+    {
+      "name": "required file: assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": 541470
+    },
+    {
+      "name": "application version is 0.36.3",
+      "pass": true
+    },
+    {
+      "name": "project schema remains 9",
+      "pass": true
+    },
+    {
+      "name": "drawing schema remains 5",
+      "pass": true
+    },
+    {
+      "name": "index uses relative v0.36.3 JS",
+      "pass": true
+    },
+    {
+      "name": "index uses relative v0.36.3 CSS",
+      "pass": true
+    },
+    {
+      "name": "manifest uses relative start and scope",
+      "pass": true
+    },
+    {
+      "name": "service worker cache version updated",
+      "pass": true
+    },
+    {
+      "name": "node syntax: assets/benchcad-v0.36.3.js",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "node syntax: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "node syntax: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "node syntax: sw.js",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "name": "Manifold asset has WebAssembly magic",
+      "pass": true
+    },
+    {
+      "name": "service worker app shell entries exist",
+      "pass": true,
+      "detail": {
+        "entries": 11,
+        "missing": []
+      }
+    },
+    {
+      "name": "service worker includes both workers and wasm",
+      "pass": true
+    },
+    {
+      "name": "current runtime references contain no old main bundle names",
+      "pass": true
+    },
+    {
+      "name": "lighting preset implemented: workbench",
+      "pass": true
+    },
+    {
+      "name": "lighting preset implemented: flat",
+      "pass": true
+    },
+    {
+      "name": "lighting preset implemented: technical",
+      "pass": true
+    },
+    {
+      "name": "lighting preset implemented: presentation",
+      "pass": true
+    },
+    {
+      "name": "lighting preset implemented: performance",
+      "pass": true
+    },
+    {
+      "name": "lighting menu label: Workbench",
+      "pass": true
+    },
+    {
+      "name": "lighting menu label: Flat / CAD",
+      "pass": true
+    },
+    {
+      "name": "lighting menu label: Technical",
+      "pass": true
+    },
+    {
+      "name": "lighting menu label: Presentation",
+      "pass": true
+    },
+    {
+      "name": "lighting menu label: Performance",
+      "pass": true
+    },
+    {
+      "name": "Workbench is default lighting preset",
+      "pass": true
+    },
+    {
+      "name": "lighting cycle order is deterministic",
+      "pass": true
+    },
+    {
+      "name": "Shift+L is advertised",
+      "pass": true
+    },
+    {
+      "name": "lighting preference is persisted",
+      "pass": true
+    },
+    {
+      "name": "display and lighting reset is implemented",
+      "pass": true
+    },
+    {
+      "name": "viewport exposes lighting data attribute",
+      "pass": true
+    },
+    {
+      "name": "Flat/CAD uses no tone mapping",
+      "pass": true
+    },
+    {
+      "name": "Workbench and technical use ACES tone mapping",
+      "pass": true
+    },
+    {
+      "name": "Flat and Performance use Lambert materials",
+      "pass": true
+    },
+    {
+      "name": "modeling and presentation presets use Standard materials",
+      "pass": true
+    },
+    {
+      "name": "Performance caps DPR at 1.25",
+      "pass": true
+    },
+    {
+      "name": "shadow map resolution is bounded at 1024",
+      "pass": true
+    },
+    {
+      "name": "lighting trigger uses Sparkles icon",
+      "pass": true
+    },
+    {
+      "name": "lighting menu CSS exists",
+      "pass": true
+    },
+    {
+      "name": "all referenced Lucide icons are bundled",
+      "pass": true,
+      "detail": {
+        "referenced": 71,
+        "missing": []
+      }
+    },
+    {
+      "name": "browser suite passed",
+      "pass": true,
+      "detail": {
+        "passed": 55,
+        "failed": 0,
+        "total": 55
+      }
+    },
+    {
+      "name": "browser suite has 55 checks",
+      "pass": true,
+      "detail": {
+        "passed": 55,
+        "failed": 0,
+        "total": 55
+      }
+    },
+    {
+      "name": "four isolated browser scenarios passed",
+      "pass": true,
+      "detail": {
+        "main": {
+          "passed": 24,
+          "failed": 0,
+          "total": 24
+        },
+        "presentation": {
+          "passed": 11,
+          "failed": 0,
+          "total": 11
+        },
+        "performance": {
+          "passed": 10,
+          "failed": 0,
+          "total": 10
+        },
+        "mobile": {
+          "passed": 10,
+          "failed": 0,
+          "total": 10
+        }
+      }
+    },
+    {
+      "name": "retained validation evidence: ACTUAL-WORKER-TESTS.json",
+      "pass": true,
+      "detail": {
+        "keys": [
+          "suite",
+          "errors",
+          "console_errors",
+          "console_warnings",
+          "checks",
+          "workerKinds",
+          "summary"
+        ]
+      }
+    },
+    {
+      "name": "retained validation evidence: V0.36.2-INTERIOR-VISIBILITY-TESTS.json",
+      "pass": true,
+      "detail": {
+        "keys": [
+          "suite",
+          "applicationVersion",
+          "projectSchema",
+          "drawingSchema",
+          "checks",
+          "pageErrors",
+          "consoleErrors",
+          "consoleWarnings"
+        ]
+      }
+    },
+    {
+      "name": "retained validation evidence: V0.36.2-DRAWING-REGRESSION.json",
+      "pass": true,
+      "detail": {
+        "keys": [
+          "errors",
+          "console_errors",
+          "console_warnings",
+          "checks",
+          "worker_urls",
+          "geometry",
+          "downloads",
+          "signatures"
+        ]
+      }
+    },
+    {
+      "name": "document current version: README.md",
+      "pass": true
+    },
+    {
+      "name": "document current version: RELEASE-README.md",
+      "pass": true
+    },
+    {
+      "name": "document current version: RELEASE-NOTES.md",
+      "pass": true
+    },
+    {
+      "name": "document current version: KNOWN-LIMITATIONS.md",
+      "pass": true
+    },
+    {
+      "name": "document current version: PACKAGE-CONTENTS.md",
+      "pass": true
+    },
+    {
+      "name": "documentation image: benchcad-lighting-presets.png",
+      "pass": true,
+      "detail": 181964
+    },
+    {
+      "name": "documentation image: benchcad-lighting-workbench.png",
+      "pass": true,
+      "detail": 139356
+    },
+    {
+      "name": "documentation image: benchcad-lighting-flat.png",
+      "pass": true,
+      "detail": 127495
+    },
+    {
+      "name": "documentation image: benchcad-lighting-technical.png",
+      "pass": true,
+      "detail": 137900
+    },
+    {
+      "name": "documentation image: benchcad-lighting-mobile.png",
+      "pass": true,
+      "detail": 118868
+    },
+    {
+      "name": "static internal checksums verify",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "name": "static index is at staging root",
+      "pass": true
+    },
+    {
+      "name": "real HTTP nested /projects/benchcad/ deployment resolves runtime assets",
+      "pass": true,
+      "detail": {
+        "./": {
+          "status": 200,
+          "bytes": 894
+        },
+        "index.html": {
+          "status": 200,
+          "bytes": 894
+        },
+        "assets/benchcad-v0.36.3.js": {
+          "status": 200,
+          "bytes": 5526819
+        },
+        "assets/benchcad-v0.36.3.css": {
+          "status": 200,
+          "bytes": 290811
+        },
+        "assets/geometry.worker-BwAX3YFX.js": {
+          "status": 200,
+          "bytes": 61583
+        },
+        "assets/import.worker-4ZIJcZ3b.js": {
+          "status": 200,
+          "bytes": 103713
+        },
+        "assets/manifold-BE4c7gO-.wasm": {
+          "status": 200,
+          "bytes": 541470
+        },
+        "manifest.webmanifest": {
+          "status": 200,
+          "bytes": 554
+        },
+        "sw.js": {
+          "status": 200,
+          "bytes": 1741
+        }
+      }
+    }
+  ],
+  "summary": {
+    "passed": 68,
+    "failed": 0,
+    "total": 68
+  },
+  "pass": true
+}

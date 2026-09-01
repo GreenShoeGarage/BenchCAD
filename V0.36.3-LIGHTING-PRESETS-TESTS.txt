@@ -1,0 +1,60 @@
+BENCHCAD v0.36.3 modeling-light presets browser validation
+Result: 55/55 passed
+
+Scenarios: desktop workflow, Presentation selection, high-DPR Performance mode, and 390 px mobile access.
+
+PASS — [main] dashboard opens
+PASS — [main] dashboard closes
+PASS — [main] workspace renders
+PASS — [main] geometry reaches ready
+PASS — [main] lighting trigger visible
+PASS — [main] Workbench default — workbench
+PASS — [main] shortcut advertised — Lighting: Workbench · Shift+L
+PASS — [main] menu opens
+PASS — [main] menu includes Workbench
+PASS — [main] menu includes Flat / CAD
+PASS — [main] menu includes Technical
+PASS — [main] menu includes Presentation
+PASS — [main] menu includes Performance
+PASS — [main] menu includes reset
+PASS — [main] Flat/CAD applies — flat
+PASS — [main] reset restores Workbench
+PASS — [main] Shift+L cycles with toolbar focus — technical
+PASS — [main] preference persists — {'leftOpen': True, 'rightOpen': True, 'timelineOpen': True, 'outlineOpen': True, 'theme': 'dark', 'mode': 'maker', 'viewportDisplay': 'shadedEdges', 'lightingPreset': 'technical'}
+PASS — [main] three modeling frames distinct — ['564aee1e0abece6cb015ca8a53311d8606d38d944cc6ea06c1453ef859333ecc', 'fa05e7fa2ac8555d22763e93d008573eacf0289ee16c9fddb2ea3942bbfa6dc0', '79e6681f8f5a7af704021abb8e1f274c3785c4ceaf137827619c08e264489ae5']
+PASS — [main] Flat/CAD visibly differs from Workbench — 682362
+PASS — [main] Drawing workspace renders
+PASS — [main] no page errors — []
+PASS — [main] no console errors — []
+PASS — [main] no application warnings — []
+PASS — [presentation] dashboard opens
+PASS — [presentation] dashboard closes
+PASS — [presentation] workspace renders
+PASS — [presentation] geometry reaches ready
+PASS — [presentation] Presentation applies — presentation
+PASS — [presentation] Presentation trigger updates
+PASS — [presentation] interface responsive
+PASS — [presentation] Presentation persists — {'leftOpen': True, 'rightOpen': True, 'timelineOpen': True, 'outlineOpen': True, 'theme': 'dark', 'mode': 'maker', 'viewportDisplay': 'shadedEdges', 'lightingPreset': 'presentation'}
+PASS — [presentation] no page errors — []
+PASS — [presentation] no console errors — []
+PASS — [presentation] no application warnings — []
+PASS — [performance] dashboard opens
+PASS — [performance] dashboard closes
+PASS — [performance] workspace renders
+PASS — [performance] geometry reaches ready
+PASS — [performance] Performance applies — performance
+PASS — [performance] backing buffer reduced at DPR 2 — {'before': {'width': 1392, 'height': 1008, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}, 'after': {'width': 870, 'height': 630, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}}
+PASS — [performance] interface responsive
+PASS — [performance] no page errors — []
+PASS — [performance] no console errors — []
+PASS — [performance] no application warnings — []
+PASS — [mobile] dashboard opens
+PASS — [mobile] dashboard closes
+PASS — [mobile] workspace renders
+PASS — [mobile] geometry reaches ready
+PASS — [mobile] lighting trigger accessible at 390px
+PASS — [mobile] menu opens at 390px
+PASS — [mobile] all presets remain listed
+PASS — [mobile] no page errors — []
+PASS — [mobile] no console errors — []
+PASS — [mobile] no application warnings — []

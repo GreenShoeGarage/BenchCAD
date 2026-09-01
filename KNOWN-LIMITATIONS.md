@@ -1,6 +1,6 @@
-# BENCHCAD v0.36.2 Known Limitations
+# BENCHCAD v0.36.3 Known Limitations
 
-BENCHCAD v0.36.2 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
+BENCHCAD v0.36.3 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
 
 ## Geometry and topology
 
@@ -96,32 +96,36 @@ Dense meshes, many views, hidden-line depth tests, section reconstruction, and r
 
 ## Viewport rendering and inspection
 
-BENCHCAD v0.36.2 improves hollow-part legibility, but the viewport remains an engineering work view rather than a photorealistic or analytic topology renderer.
+BENCHCAD v0.36.3 prioritizes modeling readability, but the viewport remains an engineering work view rather than a photorealistic or calibrated renderer.
 
-- There is no path tracing, ray tracing, screen-space ambient occlusion, environment-map library, or texture/material authoring system in this release.
-- Ordinary **Shaded + edges** linework comes from the displayed triangle mesh. Tessellation, smoothing, and edge-angle thresholds can affect which ordinary crease lines appear.
-- Shell-cavity traces are classified from local concavity at shared edges in the tessellated reconstructed mesh. They are not persistent analytic boundary-representation edge identities.
-- Cavity tracing is intentionally conservative. Some rounded, blended, noisy, non-manifold, imported, or unusual concave topology may not produce the line a user expects.
-- Cavity overlays stop at 6,000 segments and are skipped above 220,000 triangles. Ordinary feature-edge overlays remain guarded above 180,000 triangles for dense unselected bodies.
-- **Interior inspect** ghosts exterior faces, emphasizes inner surfaces, and adds through-body cavity traces. It is not a true clipped section, wall-thickness analysis, screen-space ambient occlusion calculation, or manufacturing result.
-- **X-ray inspect** exposes ordinary through-body feature edges rather than specifically classifying all interior design intent.
-- **Wireframe** displays mesh topology rather than analytic design edges.
-- Transparent Interior and X-ray bodies can show depth-sorting artifacts inherent to real-time transparency.
-- Color and contrast depend on the monitor, browser color pipeline, theme, and body color. Technical mode is provided when neutral material contrast is more useful than authored color.
+- Display styles and lighting presets are independent browser-local preferences. They do not change authoritative geometry or exported files.
+- **Workbench** is intentionally matte and neutral. Its soft contact shadow is an orientation cue, not a physically calibrated light simulation.
+- **Flat / CAD** and **Performance** use diffuse Lambert materials and disable cast shadows. Fine curvature can look flatter by design.
+- **Technical** suppresses authored color drama to prioritize linework and topology.
+- **Presentation** adds warmer highlights and stronger face contrast, but does not provide ray-traced reflections, clearcoat simulation, studio environments, or photorealistic output.
+- **Performance** caps renderer pixel ratio at 1.25. High-DPR displays may show slightly softer edges in exchange for lower pixel load.
+- There is no path tracing, ray tracing, screen-space ambient occlusion, environment-map library, texture/material authoring system, or measured photometric model.
+- Ordinary Shaded + edges linework comes from the displayed triangle mesh. Tessellation, smoothing, and edge-angle thresholds can affect which crease lines appear.
+- Shell-cavity traces are classified from local concavity at shared edges in the tessellated reconstructed mesh. They are not persistent analytic boundary-representation identities.
+- Cavity tracing is conservative and bounded at 6,000 segments; cavity extraction is skipped above 220,000 triangles and ordinary feature-edge extraction is guarded above 180,000 triangles for dense unselected bodies.
+- Interior inspect is not a clipped section, wall-thickness analysis, ambient-occlusion calculation, or manufacturing result.
+- Transparent Interior and X-ray bodies can show ordinary real-time depth-sorting artifacts.
+- Color and contrast vary with monitor calibration, browser color handling, theme, and body color.
+
 ## Interface and responsive behavior
 
-The v0.36.2 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
+The v0.36.3 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
 
 - At constrained widths, modeling and drawing command groups scroll horizontally inside their own toolbar rather than shrinking or overlapping.
 - Tablet and mobile layouts expose Shapes, Inspect, and History as drawers; not every panel is visible simultaneously.
 - Panel, outline, theme, and workspace-mode preferences are stored in browser-local storage and can be removed by site-data cleanup.
 - Canvas Focus is intentionally session-only so a later visit does not appear to be missing panels.
 - Touch viewing and light editing are supported, but precision topology selection and dense drafting remain best with a mouse, trackpad, or stylus.
-- The v0.36.2 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
+- The v0.36.3 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
 
 ## Browser qualification
 
-The v0.36.2 production workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
+The v0.36.3 lighting workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
 
 ## Local storage and offline use
 

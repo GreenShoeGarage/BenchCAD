@@ -1,3 +1,53 @@
+# BENCHCAD Release Notes
+
+## v0.36.3 — Modeling-First Lighting Presets
+
+This maintenance release separates viewport geometry presentation from lighting so a visually attractive scene no longer has to be the only working environment.
+
+### Independent lighting menu
+
+- Added a sparkles-menu beside the viewport display-style control.
+- Added Workbench, Flat / CAD, Technical, Presentation, and Performance presets.
+- Kept Shaded + edges, Shaded, Technical, Interior inspect, X-ray inspect, and Wireframe as an independent display-style layer.
+- Added a combined reset command returning to Shaded + edges + Workbench.
+- Added Shift+L cycling and browser-local preference persistence.
+- Allowed Shift+L from toolbar/menu-button focus while protecting text-entry fields.
+
+### Modeling-first defaults
+
+- Made Workbench the lighting default.
+- Reduced highlight intensity and material gloss compared with the prior presentation-oriented renderer.
+- Preserved a subtle contact shadow without letting it dominate face readability.
+- Kept Flat / CAD fully diffuse with no cast shadows or specular BRDF.
+- Added a cool Technical light for edge-led inspection.
+- Retained a richer but lighter-weight Presentation option for screenshots.
+
+### Performance behavior
+
+- Added a simplified diffuse Performance preset with no cast shadows.
+- Capped Performance renderer pixel ratio at 1.25.
+- Kept the shadow pipeline initialized while presets control casters/receivers, avoiding unnecessary WebGL subsystem reinitialization.
+- Reduced the real-time shadow-map resolution to 1024 × 1024 for the subtle Workbench contact shadow.
+
+### Compatibility
+
+- Application version advanced to 0.36.3.
+- Project schema remains 9.
+- Drawing schema remains 5.
+- Existing projects require no migration.
+- Lighting preferences remain outside the project document and do not affect exported geometry.
+
+### Validation
+
+- 55/55 focused headed-browser checks passed.
+- Workbench, Flat / CAD, and Technical produced distinct WebGL frames.
+- The high-DPR fixture reduced its backing buffer from 1392 × 1008 to 870 × 630 in Performance mode.
+- Presentation and Performance remained responsive in isolated WebGL sessions.
+- Mobile menu access and Technical Drawings workspace smoke tests passed.
+- No application page errors, console errors, or application warnings were recorded.
+
+---
+
 # BENCHCAD v0.36.2 — Shell Interior Edge Visibility
 
 Version 0.36.2 is a focused viewport-maintenance release built on the unchanged project-schema-9 and drawing-schema-5 core. It addresses the remaining readability problem in hollow parts: a correct shell could still look like a smooth open box with its inner floor perimeter and vertical cavity corners nearly invisible.

@@ -1,0 +1,73 @@
+# BENCHCAD v0.36.3 package validation
+
+Result: PASS
+Checks: 68/68 passed
+
+[PASS] required file: index.html
+[PASS] required file: sw.js
+[PASS] required file: manifest.webmanifest
+[PASS] required file: VERSION.txt
+[PASS] required file: assets/benchcad-v0.36.3.js
+[PASS] required file: assets/benchcad-v0.36.3.css
+[PASS] required file: assets/geometry.worker-BwAX3YFX.js
+[PASS] required file: assets/import.worker-4ZIJcZ3b.js
+[PASS] required file: assets/manifold-BE4c7gO-.wasm
+[PASS] application version is 0.36.3
+[PASS] project schema remains 9
+[PASS] drawing schema remains 5
+[PASS] index uses relative v0.36.3 JS
+[PASS] index uses relative v0.36.3 CSS
+[PASS] manifest uses relative start and scope
+[PASS] service worker cache version updated
+[PASS] node syntax: assets/benchcad-v0.36.3.js
+[PASS] node syntax: assets/geometry.worker-BwAX3YFX.js
+[PASS] node syntax: assets/import.worker-4ZIJcZ3b.js
+[PASS] node syntax: sw.js
+[PASS] Manifold asset has WebAssembly magic
+[PASS] service worker app shell entries exist
+[PASS] service worker includes both workers and wasm
+[PASS] current runtime references contain no old main bundle names
+[PASS] lighting preset implemented: workbench
+[PASS] lighting preset implemented: flat
+[PASS] lighting preset implemented: technical
+[PASS] lighting preset implemented: presentation
+[PASS] lighting preset implemented: performance
+[PASS] lighting menu label: Workbench
+[PASS] lighting menu label: Flat / CAD
+[PASS] lighting menu label: Technical
+[PASS] lighting menu label: Presentation
+[PASS] lighting menu label: Performance
+[PASS] Workbench is default lighting preset
+[PASS] lighting cycle order is deterministic
+[PASS] Shift+L is advertised
+[PASS] lighting preference is persisted
+[PASS] display and lighting reset is implemented
+[PASS] viewport exposes lighting data attribute
+[PASS] Flat/CAD uses no tone mapping
+[PASS] Workbench and technical use ACES tone mapping
+[PASS] Flat and Performance use Lambert materials
+[PASS] modeling and presentation presets use Standard materials
+[PASS] Performance caps DPR at 1.25
+[PASS] shadow map resolution is bounded at 1024
+[PASS] lighting trigger uses Sparkles icon
+[PASS] lighting menu CSS exists
+[PASS] all referenced Lucide icons are bundled
+[PASS] browser suite passed
+[PASS] browser suite has 55 checks
+[PASS] four isolated browser scenarios passed
+[PASS] retained validation evidence: ACTUAL-WORKER-TESTS.json
+[PASS] retained validation evidence: V0.36.2-INTERIOR-VISIBILITY-TESTS.json
+[PASS] retained validation evidence: V0.36.2-DRAWING-REGRESSION.json
+[PASS] document current version: README.md
+[PASS] document current version: RELEASE-README.md
+[PASS] document current version: RELEASE-NOTES.md
+[PASS] document current version: KNOWN-LIMITATIONS.md
+[PASS] document current version: PACKAGE-CONTENTS.md
+[PASS] documentation image: benchcad-lighting-presets.png
+[PASS] documentation image: benchcad-lighting-workbench.png
+[PASS] documentation image: benchcad-lighting-flat.png
+[PASS] documentation image: benchcad-lighting-technical.png
+[PASS] documentation image: benchcad-lighting-mobile.png
+[PASS] static internal checksums verify
+[PASS] static index is at staging root
+[PASS] real HTTP nested /projects/benchcad/ deployment resolves runtime assets

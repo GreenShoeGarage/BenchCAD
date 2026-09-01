@@ -1,9 +1,9 @@
-const CACHE_NAME = "benchcad-v0.36.2-interior-visibility";
+const CACHE_NAME = "benchcad-v0.36.3-lighting-presets";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./assets/benchcad-v0.36.2.js",
-  "./assets/benchcad-v0.36.2.css",
+  "./assets/benchcad-v0.36.3.js",
+  "./assets/benchcad-v0.36.3.css",
   "./assets/geometry.worker-BwAX3YFX.js",
   "./assets/import.worker-4ZIJcZ3b.js",
   "./assets/manifold-BE4c7gO-.wasm",

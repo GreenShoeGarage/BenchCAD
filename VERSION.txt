@@ -1,4 +1,4 @@
-BENCHCAD v0.36.2
+BENCHCAD 0.36.3
 Project schema: 9
 Drawing schema: 5
-Release: shell interior visibility and cavity-edge inspection
+Release: Modeling-light presets and workbench-default rendering

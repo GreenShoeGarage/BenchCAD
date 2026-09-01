@@ -1,0 +1,747 @@
+{
+  "suite": "BENCHCAD v0.36.3 modeling-light presets browser validation",
+  "applicationVersion": "0.36.3",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "environment": {
+    "browser": "Chromium headed under Xvfb",
+    "webgl": "Three.js WebGL renderer using the container software WebGL implementation",
+    "geometryWorker": "Protocol-compatible deterministic test adapter for UI-focused validation",
+    "storage": "In-memory localStorage adapter because the test surface uses an inline synthetic base",
+    "note": "Production worker, WebAssembly, static paths, and syntax are covered by the package gate."
+  },
+  "scenarios": [
+    {
+      "scenario": "main",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "lighting trigger visible",
+          "pass": true
+        },
+        {
+          "name": "Workbench default",
+          "pass": true,
+          "detail": "workbench"
+        },
+        {
+          "name": "shortcut advertised",
+          "pass": true,
+          "detail": "Lighting: Workbench \u00b7 Shift+L"
+        },
+        {
+          "name": "menu opens",
+          "pass": true
+        },
+        {
+          "name": "menu includes Workbench",
+          "pass": true
+        },
+        {
+          "name": "menu includes Flat / CAD",
+          "pass": true
+        },
+        {
+          "name": "menu includes Technical",
+          "pass": true
+        },
+        {
+          "name": "menu includes Presentation",
+          "pass": true
+        },
+        {
+          "name": "menu includes Performance",
+          "pass": true
+        },
+        {
+          "name": "menu includes reset",
+          "pass": true
+        },
+        {
+          "name": "Flat/CAD applies",
+          "pass": true,
+          "detail": "flat"
+        },
+        {
+          "name": "reset restores Workbench",
+          "pass": true
+        },
+        {
+          "name": "Shift+L cycles with toolbar focus",
+          "pass": true,
+          "detail": "technical"
+        },
+        {
+          "name": "preference persists",
+          "pass": true,
+          "detail": {
+            "leftOpen": true,
+            "rightOpen": true,
+            "timelineOpen": true,
+            "outlineOpen": true,
+            "theme": "dark",
+            "mode": "maker",
+            "viewportDisplay": "shadedEdges",
+            "lightingPreset": "technical"
+          }
+        },
+        {
+          "name": "three modeling frames distinct",
+          "pass": true,
+          "detail": [
+            "564aee1e0abece6cb015ca8a53311d8606d38d944cc6ea06c1453ef859333ecc",
+            "fa05e7fa2ac8555d22763e93d008573eacf0289ee16c9fddb2ea3942bbfa6dc0",
+            "79e6681f8f5a7af704021abb8e1f274c3785c4ceaf137827619c08e264489ae5"
+          ]
+        },
+        {
+          "name": "Flat/CAD visibly differs from Workbench",
+          "pass": true,
+          "detail": 682362
+        },
+        {
+          "name": "Drawing workspace renders",
+          "pass": true
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {
+        "workbench": {
+          "sha256": "564aee1e0abece6cb015ca8a53311d8606d38d944cc6ea06c1453ef859333ecc",
+          "size": [
+            1144,
+            664
+          ]
+        },
+        "flat": {
+          "sha256": "fa05e7fa2ac8555d22763e93d008573eacf0289ee16c9fddb2ea3942bbfa6dc0",
+          "size": [
+            1144,
+            664
+          ]
+        },
+        "technical": {
+          "sha256": "79e6681f8f5a7af704021abb8e1f274c3785c4ceaf137827619c08e264489ae5",
+          "size": [
+            1144,
+            664
+          ]
+        },
+        "changedPixels": 682362
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 24,
+        "failed": 0,
+        "total": 24
+      },
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "Presentation applies",
+          "pass": true,
+          "detail": "presentation"
+        },
+        {
+          "name": "Presentation trigger updates",
+          "pass": true
+        },
+        {
+          "name": "interface responsive",
+          "pass": true
+        },
+        {
+          "name": "Presentation persists",
+          "pass": true,
+          "detail": {
+            "leftOpen": true,
+            "rightOpen": true,
+            "timelineOpen": true,
+            "outlineOpen": true,
+            "theme": "dark",
+            "mode": "maker",
+            "viewportDisplay": "shadedEdges",
+            "lightingPreset": "presentation"
+          }
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {},
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 11,
+        "failed": 0,
+        "total": 11
+      },
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "Performance applies",
+          "pass": true,
+          "detail": "performance"
+        },
+        {
+          "name": "backing buffer reduced at DPR 2",
+          "pass": true,
+          "detail": {
+            "before": {
+              "width": 1392,
+              "height": 1008,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            },
+            "after": {
+              "width": 870,
+              "height": 630,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            }
+          }
+        },
+        {
+          "name": "interface responsive",
+          "pass": true
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {
+        "before": {
+          "width": 1392,
+          "height": 1008,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        },
+        "after": {
+          "width": 870,
+          "height": 630,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        }
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "lighting trigger accessible at 390px",
+          "pass": true
+        },
+        {
+          "name": "menu opens at 390px",
+          "pass": true
+        },
+        {
+          "name": "all presets remain listed",
+          "pass": true
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {},
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      "pass": true
+    }
+  ],
+  "checks": [
+    {
+      "scenario": "main",
+      "name": "dashboard opens",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "dashboard closes",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "workspace renders",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "geometry reaches ready",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "lighting trigger visible",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "Workbench default",
+      "pass": true,
+      "detail": "workbench"
+    },
+    {
+      "scenario": "main",
+      "name": "shortcut advertised",
+      "pass": true,
+      "detail": "Lighting: Workbench \u00b7 Shift+L"
+    },
+    {
+      "scenario": "main",
+      "name": "menu opens",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes Workbench",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes Flat / CAD",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes Technical",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes Presentation",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes Performance",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "menu includes reset",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "Flat/CAD applies",
+      "pass": true,
+      "detail": "flat"
+    },
+    {
+      "scenario": "main",
+      "name": "reset restores Workbench",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "Shift+L cycles with toolbar focus",
+      "pass": true,
+      "detail": "technical"
+    },
+    {
+      "scenario": "main",
+      "name": "preference persists",
+      "pass": true,
+      "detail": {
+        "leftOpen": true,
+        "rightOpen": true,
+        "timelineOpen": true,
+        "outlineOpen": true,
+        "theme": "dark",
+        "mode": "maker",
+        "viewportDisplay": "shadedEdges",
+        "lightingPreset": "technical"
+      }
+    },
+    {
+      "scenario": "main",
+      "name": "three modeling frames distinct",
+      "pass": true,
+      "detail": [
+        "564aee1e0abece6cb015ca8a53311d8606d38d944cc6ea06c1453ef859333ecc",
+        "fa05e7fa2ac8555d22763e93d008573eacf0289ee16c9fddb2ea3942bbfa6dc0",
+        "79e6681f8f5a7af704021abb8e1f274c3785c4ceaf137827619c08e264489ae5"
+      ]
+    },
+    {
+      "scenario": "main",
+      "name": "Flat/CAD visibly differs from Workbench",
+      "pass": true,
+      "detail": 682362
+    },
+    {
+      "scenario": "main",
+      "name": "Drawing workspace renders",
+      "pass": true
+    },
+    {
+      "scenario": "main",
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "main",
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "main",
+      "name": "no application warnings",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "presentation",
+      "name": "dashboard opens",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "dashboard closes",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "workspace renders",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "geometry reaches ready",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "Presentation applies",
+      "pass": true,
+      "detail": "presentation"
+    },
+    {
+      "scenario": "presentation",
+      "name": "Presentation trigger updates",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "interface responsive",
+      "pass": true
+    },
+    {
+      "scenario": "presentation",
+      "name": "Presentation persists",
+      "pass": true,
+      "detail": {
+        "leftOpen": true,
+        "rightOpen": true,
+        "timelineOpen": true,
+        "outlineOpen": true,
+        "theme": "dark",
+        "mode": "maker",
+        "viewportDisplay": "shadedEdges",
+        "lightingPreset": "presentation"
+      }
+    },
+    {
+      "scenario": "presentation",
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "presentation",
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "presentation",
+      "name": "no application warnings",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "performance",
+      "name": "dashboard opens",
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "name": "dashboard closes",
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "name": "workspace renders",
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "name": "geometry reaches ready",
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "name": "Performance applies",
+      "pass": true,
+      "detail": "performance"
+    },
+    {
+      "scenario": "performance",
+      "name": "backing buffer reduced at DPR 2",
+      "pass": true,
+      "detail": {
+        "before": {
+          "width": 1392,
+          "height": 1008,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        },
+        "after": {
+          "width": 870,
+          "height": 630,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        }
+      }
+    },
+    {
+      "scenario": "performance",
+      "name": "interface responsive",
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "performance",
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "performance",
+      "name": "no application warnings",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "mobile",
+      "name": "dashboard opens",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "dashboard closes",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "workspace renders",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "geometry reaches ready",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "lighting trigger accessible at 390px",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "menu opens at 390px",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "all presets remain listed",
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "mobile",
+      "name": "no console errors",
+      "pass": true,
+      "detail": []
+    },
+    {
+      "scenario": "mobile",
+      "name": "no application warnings",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "summary": {
+    "passed": 55,
+    "failed": 0,
+    "total": 55
+  },
+  "pass": true,
+  "artifacts": [
+    "benchcad-v0.36.3-lighting-menu.png",
+    "benchcad-v0.36.3-lighting-workbench.png",
+    "benchcad-v0.36.3-lighting-flat.png",
+    "benchcad-v0.36.3-lighting-technical.png",
+    "benchcad-v0.36.3-lighting-mobile.png"
+  ]
+}

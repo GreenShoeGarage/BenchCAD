@@ -1,7 +1,7 @@
 {
   "name": "BENCHCAD",
   "short_name": "BENCHCAD",
-  "description": "Local-first CAD with editable history, topology-derived shell-cavity edges, Interior and X-ray inspection, manufacturing screening, DXF workflows, and associative technical drawings.",
+  "description": "Local-first CAD with editable history, independent modeling-light presets, topology-derived shell-cavity edges, Interior and X-ray inspection, manufacturing screening, DXF workflows, and associative technical drawings.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
