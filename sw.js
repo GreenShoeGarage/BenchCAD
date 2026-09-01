@@ -1,9 +1,9 @@
-const CACHE_NAME = "benchcad-v0.36.0-uiux-consolidation";
+const CACHE_NAME = "benchcad-v0.36.1-viewport-clarity";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./assets/benchcad-v0.36.0.js",
-  "./assets/benchcad-v0.36.0.css",
+  "./assets/benchcad-v0.36.1.js",
+  "./assets/benchcad-v0.36.1.css",
   "./assets/geometry.worker-BwAX3YFX.js",
   "./assets/import.worker-4ZIJcZ3b.js",
   "./assets/manifold-BE4c7gO-.wasm",

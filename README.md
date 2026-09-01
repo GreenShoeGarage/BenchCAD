@@ -4,7 +4,7 @@
 
 **Local-first browser CAD with approachable solid modeling, exact dimensions, and an editable construction history.**
 
-![Release](https://img.shields.io/badge/release-v0.36.0-ef9f3d)
+![Release](https://img.shields.io/badge/release-v0.36.1-ef9f3d)
 ![Project schema](https://img.shields.io/badge/project%20schema-9-4bc6d3)
 ![Drawing schema](https://img.shields.io/badge/drawing%20schema-5-4bc6d3)
 ![Deployment](https://img.shields.io/badge/deployment-static%20files-54727a)
@@ -26,7 +26,7 @@ The application runs entirely in the browser. It requires no account, backend, c
 
 | Item | Value |
 |---|---|
-| Application | **BENCHCAD v0.36.0** |
+| Application | **BENCHCAD v0.36.1** |
 | Project schema | **9** |
 | Drawing schema | **5** |
 | Release stage | Active pre-1.0 development |
@@ -34,7 +34,7 @@ The application runs entirely in the browser. It requires no account, backend, c
 | Runtime services | None required |
 | Tested runtime | Chromium with the packaged Three.js viewport and Manifold WebAssembly kernel |
 | Additional browser qualification | Firefox and Safari/WebKit scheduled for public-beta hardening |
-| Complete package checksum | See `BENCHCAD-v0.36.0-complete.zip.sha256` distributed beside the ZIP |
+| Complete package checksum | See `BENCHCAD-v0.36.1-complete.zip.sha256` distributed beside the ZIP |
 
 ## What BENCHCAD does
 
@@ -46,6 +46,17 @@ The application runs entirely in the browser. It requires no account, backend, c
 - Treats geometry as **solid** or **hole** and supports union, subtraction, and intersection.
 - Includes shell, split-body, extrusion, revolve, thin-extrude, rib/web, and thread-metadata workflows.
 - Uses the Manifold WebAssembly geometry kernel for exact-solid reconstruction where supported.
+
+### Viewport rendering and inspection
+
+- Uses **Shaded + edges** by default so silhouettes, shell lips, bores, pockets, and internal wall intersections remain readable.
+- Offers **Shaded**, **Technical**, **X-ray inspect**, and **Wireframe** display styles from the eye menu in the viewport toolbar.
+- Uses physically based materials, ACES tone mapping, balanced key/fill/rim lighting, and contact shadows for stronger depth cues without changing model geometry.
+- Draws geometry-derived feature edges rather than decorative screen-space outlines. Edge extraction is capped for very dense unselected meshes so a display preference cannot freeze the workspace.
+- Gives selected bodies a distinct cyan outline and makes hidden feature edges visible in X-ray mode.
+- Stores the chosen viewport style as a browser-local interface preference; it is not written into or allowed to alter the project model.
+
+![BENCHCAD X-ray shell inspection](docs/images/benchcad-viewport-xray.png)
 
 ### Editable construction history
 
@@ -286,25 +297,29 @@ After one successful hosted load, the application can reopen from cache. The web
 
 ## Browser support
 
-The v0.36.0 production workflow was exercised in Chromium with the actual Three.js renderer, geometry worker, import worker, and packaged Manifold WebAssembly kernel.
+The v0.36.1 production workflow was exercised in Chromium with the actual Three.js renderer, geometry worker, import worker, and packaged Manifold WebAssembly kernel.
 
-Firefox and Safari/WebKit are design targets, but real-runtime qualification was not available in the v0.36.0 release environment and remains scheduled for the public-beta hardening stage. Report browser-specific behavior with the exact browser version and operating system.
+Firefox and Safari/WebKit are design targets, but real-runtime qualification was not available in the v0.36.1 release environment and remains scheduled for the public-beta hardening stage. Report browser-specific behavior with the exact browser version and operating system.
 
 ## Release validation
 
-The v0.36.0 package includes machine-readable validation evidence:
+The v0.36.1 package includes machine-readable validation evidence:
 
 | Report | Coverage |
 |---|---|
+| `VIEWPORT-RENDERING-TESTS.json` | Five viewport styles, shelled-body reconstruction, distinct rendered frames, responsive controls, and console cleanliness |
+| `V0.36.1-PACKAGE-TESTS.json` | Current release identity, schemas, syntax, service-worker coverage, screenshots, nested hosting, and runtime assets |
 | `UIUX-CONSOLIDATION-TESTS.json` | Responsive layout, command consolidation, drawers, Canvas Focus, and interaction checks |
 | `ACTUAL-WORKER-TESTS.json` | Production bundle, Three.js viewport, geometry worker, and Manifold WebAssembly checks |
 | `V0.36.0-DRAWING-REGRESSION.json` | Technical Drawings 2.0 regression and cross-format primitive parity |
-| `STATIC-PACKAGE-TESTS.json` | Static shell, relative paths, schemas, syntax, service-worker coverage, and packaged assets |
+| `STATIC-PACKAGE-TESTS.json` | Retained v0.36.0 static-shell, relative-path, schema, syntax, service-worker, and asset checks |
 | `BATCH28D-TESTS.json` | Retained Detail-view and drawing-output qualification |
 | `SHA256SUMS.txt` | Release-file checksums |
 
 Release summary:
 
+- **30/30** viewport-rendering and shell-inspection checks passed.
+- **72/72** current v0.36.1 package and nested-hosting checks passed.
 - **33/33** responsive UI/UX checks passed.
 - **7/7** production worker/WebAssembly checks passed.
 - **28/28** retained drawing-browser regressions passed.
@@ -315,7 +330,7 @@ See `RELEASE-NOTES.md` for the release history and `KNOWN-LIMITATIONS.md` for th
 
 ## Repository layout
 
-This complete v0.36.0 static distribution and GitHub documentation package is organized as follows:
+This complete v0.36.1 static distribution and GitHub documentation package is organized as follows:
 
 ```text
 .
@@ -324,8 +339,8 @@ This complete v0.36.0 static distribution and GitHub documentation package is or
 ├── manifest.webmanifest
 ├── favicon.svg
 ├── assets/
-│   ├── benchcad-v0.36.0.js
-│   ├── benchcad-v0.36.0.css
+│   ├── benchcad-v0.36.1.js
+│   ├── benchcad-v0.36.1.css
 │   ├── geometry.worker-*.js
 │   ├── import.worker-*.js
 │   └── manifold-*.wasm
@@ -334,7 +349,9 @@ This complete v0.36.0 static distribution and GitHub documentation package is or
 ├── docs/
 │   └── images/
 │       ├── benchcad-model-workspace.png
-│       └── benchcad-drawing-workspace.png
+│       ├── benchcad-drawing-workspace.png
+│       ├── benchcad-viewport-shaded-edges.png
+│       └── benchcad-viewport-xray.png
 ├── RELEASE-NOTES.md
 ├── KNOWN-LIMITATIONS.md
 ├── VERSION.txt
@@ -405,7 +422,7 @@ Changes to BENCHCAD should preserve these constraints:
 
 ## License
 
-The v0.36.0 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
+The v0.36.1 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
 
 Bundled third-party software remains subject to its respective licenses and notices. Major technologies represented in the distribution include React, Three.js, Manifold, Lucide, Radix UI, JSZip, and related supporting packages. A formal public release should include a reviewed `THIRD_PARTY_NOTICES.md` generated from the actual dependency manifest.
 

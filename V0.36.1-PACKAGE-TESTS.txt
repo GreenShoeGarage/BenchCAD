@@ -1,0 +1,77 @@
+BENCHCAD v0.36.1 PACKAGE VALIDATION
+
+Result: PASS
+Checks: 72/72 passed
+
+- PASS — required file: index.html — 849 bytes
+- PASS — required file: sw.js — 1741 bytes
+- PASS — required file: manifest.webmanifest — 501 bytes
+- PASS — required file: favicon.svg — 712 bytes
+- PASS — required file: file.svg — 392 bytes
+- PASS — required file: globe.svg — 1036 bytes
+- PASS — required file: window.svg — 386 bytes
+- PASS — required file: assets/benchcad-v0.36.1.js — 5500221 bytes
+- PASS — required file: assets/benchcad-v0.36.1.css — 289344 bytes
+- PASS — required file: assets/geometry.worker-BwAX3YFX.js — 61583 bytes
+- PASS — required file: assets/import.worker-4ZIJcZ3b.js — 103713 bytes
+- PASS — required file: assets/manifold-BE4c7gO-.wasm — 541470 bytes
+- PASS — required file: README.md — 22229 bytes
+- PASS — required file: RELEASE-README.md — 9421 bytes
+- PASS — required file: RELEASE-NOTES.md — 15416 bytes
+- PASS — required file: KNOWN-LIMITATIONS.md — 8194 bytes
+- PASS — required file: PACKAGE-CONTENTS.md — 1702 bytes
+- PASS — required file: VERSION.txt — 97 bytes
+- PASS — required file: VIEWPORT-RENDERING-TESTS.json — 3897 bytes
+- PASS — required file: VIEWPORT-RENDERING-TESTS.txt — 1132 bytes
+- PASS — required file: docs/images/benchcad-model-workspace.png — 314515 bytes
+- PASS — required file: docs/images/benchcad-drawing-workspace.png — 130363 bytes
+- PASS — required file: docs/images/benchcad-viewport-shaded-edges.png — 165430 bytes
+- PASS — required file: docs/images/benchcad-viewport-xray.png — 113276 bytes
+- PASS — index references v0.36.1 JavaScript
+- PASS — index references v0.36.1 stylesheet
+- PASS — index has only relative application-shell URLs
+- PASS — application version is 0.36.1
+- PASS — project schema remains 9
+- PASS — drawing schema remains 5
+- PASS — default display mode is Shaded + edges — compiled state initializer and display label present
+- PASS — display mode available: Shaded
+- PASS — display mode available: Technical
+- PASS — display mode available: X-ray inspect
+- PASS — display mode available: Wireframe
+- PASS — physical body material is packaged
+- PASS — ACES tone mapping is configured
+- PASS — sRGB output is configured
+- PASS — PCFShadowMap is configured
+- PASS — custom renderer does not select PCFSoftShadowMap
+- PASS — geometry-derived feature edges are packaged
+- PASS — dense unselected edge cap is 180000 triangles
+- PASS — viewport style preference is browser-local
+- PASS — viewport display CSS is packaged
+- PASS — service worker cache namespace is v0.36.1
+- PASS — service worker precaches ./assets/benchcad-v0.36.1.js
+- PASS — service worker precaches ./assets/benchcad-v0.36.1.css
+- PASS — service worker precaches ./assets/geometry.worker-BwAX3YFX.js
+- PASS — service worker precaches ./assets/import.worker-4ZIJcZ3b.js
+- PASS — service worker precaches ./assets/manifold-BE4c7gO-.wasm
+- PASS — manifest start URL is relative
+- PASS — manifest scope is relative
+- PASS — no stale v0.36.0 application bundle file
+- PASS — no stale v0.36.0 stylesheet file
+- PASS — viewport browser suite passed — {"passed": 30, "failed": 0, "total": 30}
+- PASS — viewport browser suite is 30/30 — {"passed": 30, "failed": 0, "total": 30}
+- PASS — viewport suite used actual geometry worker
+- PASS — shell geometry completed without error
+- PASS — five display modes produced distinct frames
+- PASS — browser suite reported no page errors
+- PASS — browser suite reported no console errors
+- PASS — browser suite reported no console warnings
+- PASS — screenshot dimensions valid: docs/images/benchcad-viewport-shaded-edges.png — 1064x714
+- PASS — screenshot dimensions valid: docs/images/benchcad-viewport-xray.png — 1064x714
+- PASS — screenshot matches browser frame: shadedEdges — 14956b38f488571f2d977f24e86aba8f87dcb5cd8db559d3d9595c395745c220
+- PASS — screenshot matches browser frame: xray — 70b2b3d894853b381cee8c6450da18aae93e00e3ea652910d13c083ceec2d06d
+- PASS — JavaScript syntax: assets/benchcad-v0.36.1.js
+- PASS — JavaScript syntax: assets/geometry.worker-BwAX3YFX.js
+- PASS — JavaScript syntax: assets/import.worker-4ZIJcZ3b.js
+- PASS — JavaScript syntax: sw.js
+- PASS — nested /projects/benchcad asset graph loads over HTTP
+- PASS — WebAssembly served with application/wasm — application/wasm

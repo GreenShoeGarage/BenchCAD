@@ -1,6 +1,6 @@
-# BENCHCAD v0.36.0 Known Limitations
+# BENCHCAD v0.36.1 Known Limitations
 
-BENCHCAD v0.36.0 retains the completed the Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
+BENCHCAD v0.36.1 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
 
 ## Geometry and topology
 
@@ -94,20 +94,32 @@ BENCHCAD provides first-angle and third-angle projection placement and common dr
 
 Dense meshes, many views, hidden-line depth tests, section reconstruction, and reference-rich annotations can be computationally expensive. Batch 29 will focus on incremental reconstruction, caching, worker scheduling, level of detail, cancellation, and memory diagnostics.
 
+## Viewport rendering and inspection
+
+BENCHCAD v0.36.1 improves geometry legibility, but the viewport is still an engineering work view rather than a photorealistic renderer.
+
+- There is no path tracing, ray tracing, screen-space ambient occlusion, environment-map library, or texture/material authoring system in this release.
+- **Shaded + edges** derives feature edges from the displayed triangle mesh. Tessellation, smoothing, and edge-angle thresholds can therefore affect which lines appear.
+- Feature-edge extraction is skipped for unselected bodies above 180,000 triangles to prevent a display preference from causing a large-model freeze. Selecting the body still permits its emphasized outline.
+- **X-ray inspect** ghosts surfaces and draws through-body feature edges. It is an inspection aid, not a true clipped section, wall-thickness analysis, or hidden-line engineering drawing.
+- **Wireframe** displays mesh topology rather than analytic design edges.
+- Transparent bodies and overlapping X-ray bodies can still produce depth-sorting artifacts inherent to real-time transparency.
+- Color and contrast depend on the monitor, browser color pipeline, theme, and body color. Technical mode is provided when neutral material contrast is more useful than authored color.
+
 ## Interface and responsive behavior
 
-The v0.36.0 cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
+The v0.36.1 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
 
 - At constrained widths, modeling and drawing command groups scroll horizontally inside their own toolbar rather than shrinking or overlapping.
 - Tablet and mobile layouts expose Shapes, Inspect, and History as drawers; not every panel is visible simultaneously.
 - Panel, outline, theme, and workspace-mode preferences are stored in browser-local storage and can be removed by site-data cleanup.
 - Canvas Focus is intentionally session-only so a later visit does not appear to be missing panels.
 - Touch viewing and light editing are supported, but precision topology selection and dense drafting remain best with a mouse, trackpad, or stylus.
-- Chromium may report an inherited Three.js `PCFSoftShadowMap` deprecation warning. The renderer maps it to `PCFShadowMap`; this is non-blocking.
+- The v0.36.1 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
 
 ## Browser qualification
 
-The v0.36.0 production workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
+The v0.36.1 production workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
 
 ## Local storage and offline use
 

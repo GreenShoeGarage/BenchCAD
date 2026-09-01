@@ -1,0 +1,96 @@
+{
+  "suite": "BENCHCAD v0.36.1 viewport legibility and shell inspection smoke",
+  "checks": {
+    "application_rendered": true,
+    "version_visible": true,
+    "real_geometry_worker_created": true,
+    "default_shaded_edges": true,
+    "display_menu_trigger_present": true,
+    "fresh_project_active": true,
+    "box_created": true,
+    "shell_command_available": true,
+    "shell_feature_created": true,
+    "shell_has_no_geometry_error": true,
+    "mode_shaded_class": true,
+    "mode_shaded_label": true,
+    "mode_technical_class": true,
+    "mode_technical_label": true,
+    "mode_xray_class": true,
+    "mode_xray_label": true,
+    "mode_wireframe_class": true,
+    "mode_wireframe_label": true,
+    "mode_shadedEdges_class": true,
+    "mode_shadedEdges_label": true,
+    "all_five_modes_render_distinct_frames": true,
+    "no_document_overflow_1200": true,
+    "display_trigger_visible_1200": true,
+    "no_document_overflow_1024": true,
+    "display_trigger_visible_1024": true,
+    "no_document_overflow_820": true,
+    "display_trigger_visible_820": true,
+    "no_document_overflow_390": true,
+    "display_trigger_visible_390": true,
+    "legacy_pcfsoft_shadow_warning_removed": true
+  },
+  "details": {
+    "real_geometry_worker_created": [
+      "geometry"
+    ],
+    "default_shaded_edges": "cad-viewport display-shadedEdges mode-select topology-body ",
+    "display_menu_trigger_present": "Viewport display style: Shaded + edges",
+    "fresh_project_active": "0 BODIES \u00b7 0 FEATURES \u00b7 MM",
+    "box_created": "1 BODIES \u00b7 1 FEATURES \u00b7 MM",
+    "mode_shaded_class": "cad-viewport display-shaded mode-select topology-body ",
+    "mode_shaded_label": "Viewport display style: Shaded",
+    "mode_technical_class": "cad-viewport display-technical mode-select topology-body ",
+    "mode_technical_label": "Viewport display style: Technical",
+    "mode_xray_class": "cad-viewport display-xray mode-select topology-body ",
+    "mode_xray_label": "Viewport display style: X-ray inspect",
+    "mode_wireframe_class": "cad-viewport display-wireframe mode-select topology-body ",
+    "mode_wireframe_label": "Viewport display style: Wireframe",
+    "mode_shadedEdges_class": "cad-viewport display-shadedEdges mode-select topology-body ",
+    "mode_shadedEdges_label": "Viewport display style: Shaded + edges",
+    "frameHashes": {
+      "shadedEdges": "14956b38f488571f2d977f24e86aba8f87dcb5cd8db559d3d9595c395745c220",
+      "shaded": "df39545e5456062c6f590bde6ef829511548a7c8ecdca6a99bfb9c3de35fd77e",
+      "technical": "e0916596540d14a403aad23f67bcce61c8c45983f640017c75328606ac0c3679",
+      "xray": "70b2b3d894853b381cee8c6450da18aae93e00e3ea652910d13c083ceec2d06d",
+      "wireframe": "de457de99d1fc6eb539665af4111bca91ea4489fc6624dc84e1858e865a7891b"
+    },
+    "all_five_modes_render_distinct_frames": {
+      "shadedEdges": "14956b38f488571f2d977f24e86aba8f87dcb5cd8db559d3d9595c395745c220",
+      "shaded": "df39545e5456062c6f590bde6ef829511548a7c8ecdca6a99bfb9c3de35fd77e",
+      "technical": "e0916596540d14a403aad23f67bcce61c8c45983f640017c75328606ac0c3679",
+      "xray": "70b2b3d894853b381cee8c6450da18aae93e00e3ea652910d13c083ceec2d06d",
+      "wireframe": "de457de99d1fc6eb539665af4111bca91ea4489fc6624dc84e1858e865a7891b"
+    },
+    "no_document_overflow_1200": {
+      "scrollWidth": 1200,
+      "innerWidth": 1200
+    },
+    "no_document_overflow_1024": {
+      "scrollWidth": 1024,
+      "innerWidth": 1024
+    },
+    "no_document_overflow_820": {
+      "scrollWidth": 820,
+      "innerWidth": 820
+    },
+    "no_document_overflow_390": {
+      "scrollWidth": 390,
+      "innerWidth": 390
+    },
+    "legacy_pcfsoft_shadow_warning_removed": []
+  },
+  "pageErrors": [],
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "hardConsoleErrors": [],
+  "failedChecks": [],
+  "summary": {
+    "passed": 30,
+    "failed": 0,
+    "total": 30
+  },
+  "pass": true
+}

@@ -1,4 +1,4 @@
-BENCHCAD 0.36.0
+BENCHCAD 0.36.1
 Project schema 9
 Drawing schema 5
-Release: UI/UX consolidation
+Release: Viewport clarity and shell inspection

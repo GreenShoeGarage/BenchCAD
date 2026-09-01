@@ -1,4 +1,4 @@
-/* BENCHCAD v0.35.0 · Batch 28D offline bundle */
+/* BENCHCAD v0.36.1 · Viewport clarity offline bundle */
 (()=>{
 'use strict';
 const process={env:{NODE_ENV:'production'}};
@@ -80934,7 +80934,7 @@ exports.migrateProject = migrateProject;
 exports.canReorderFeature = canReorderFeature;
 exports.reorderFeature = reorderFeature;
 const benchcad_kernel_1 = require("./benchcad-kernel");
-exports.APP_VERSION = "0.36.0";
+exports.APP_VERSION = "0.36.1";
 exports.SCHEMA_VERSION = 9;
 exports.ORIGIN_WORKPLANE_ID = "origin-workplane-XY";
 exports.ORIGIN_WORKPLANE_IDS = [
@@ -85052,6 +85052,121 @@ function exportGroupFor(bodyGroup, ids) {
     group.updateMatrixWorld(true);
     return { group, meshData };
 }
+const EDGE_TRIANGLE_LIMIT = 180000;
+function bodyDisplayOpacity(body, displayMode) {
+    const authored = Math.max(0.05, Math.min(1, body.opacity ?? 1));
+    if (body.role === "hole")
+        return Math.min(authored, displayMode === "xray" ? 0.16 : 0.22);
+    if (displayMode === "xray")
+        return Math.min(authored, 0.2);
+    return authored;
+}
+function bodyDisplayColor(body, displayMode, selected) {
+    if (body.role === "hole")
+        return new THREE.Color("#68dbe8");
+    const color = new THREE.Color(body.color);
+    if (displayMode === "technical") {
+        return color.lerp(new THREE.Color("#c9d4d5"), selected ? 0.58 : 0.72);
+    }
+    if (displayMode === "xray") {
+        return color.lerp(new THREE.Color("#8de7ef"), selected ? 0.38 : 0.55);
+    }
+    return color;
+}
+function bodyMaterial(body, displayMode, selected) {
+    const opacity = bodyDisplayOpacity(body, displayMode);
+    const color = bodyDisplayColor(body, displayMode, selected);
+    const doubleSided = body.shape === "Imported mesh" || displayMode === "xray" || body.role === "hole";
+    if (displayMode === "wireframe") {
+        return new THREE.MeshBasicMaterial({
+            color: body.role === "hole" ? "#77e7f2" : color,
+            transparent: true,
+            opacity: Math.min(opacity, body.role === "hole" ? 0.76 : 0.9),
+            depthWrite: false,
+            wireframe: true,
+            side: THREE.DoubleSide,
+        });
+    }
+    return new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: displayMode === "technical" ? 0.68 : displayMode === "xray" ? 0.58 : 0.48,
+        metalness: 0.015,
+        clearcoat: displayMode === "technical" || displayMode === "xray" ? 0.03 : 0.16,
+        clearcoatRoughness: 0.72,
+        transparent: opacity < 0.999,
+        opacity,
+        depthWrite: opacity >= 0.999 && displayMode !== "xray" && body.role !== "hole",
+        side: doubleSided ? THREE.DoubleSide : THREE.FrontSide,
+        dithering: true,
+    });
+}
+function readableEdgeColor(body, displayMode) {
+    if (body.role === "hole")
+        return "#8debf3";
+    if (displayMode === "technical")
+        return "#18252a";
+    if (displayMode === "xray")
+        return "#c1f8ff";
+    const color = new THREE.Color(body.color);
+    const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+    return luminance > 0.34 ? "#172328" : "#d7e9ec";
+}
+function expandedOutlineGeometry(source) {
+    const geometry = source.clone();
+    if (!geometry.getAttribute("normal"))
+        geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    const position = geometry.getAttribute("position");
+    const normal = geometry.getAttribute("normal");
+    const diagonal = geometry.boundingBox
+        ? geometry.boundingBox.getSize(new THREE.Vector3()).length()
+        : 40;
+    const offset = Math.max(0.035, Math.min(0.28, diagonal * 0.0028));
+    for (let index = 0; index < position.count; index += 1) {
+        position.setXYZ(index, position.getX(index) + normal.getX(index) * offset, position.getY(index) + normal.getY(index) * offset, position.getZ(index) + normal.getZ(index) * offset);
+    }
+    position.needsUpdate = true;
+    geometry.computeBoundingSphere();
+    return geometry;
+}
+function featureEdgeObjects(geometry, body, displayMode, selectionId, selected) {
+    const objects = [];
+    const triangleCount = geometry.index
+        ? geometry.index.count / 3
+        : geometry.getAttribute("position").count / 3;
+    const edgeMode = displayMode === "shadedEdges" ||
+        displayMode === "technical" ||
+        displayMode === "xray" ||
+        body.role === "hole";
+    if (!edgeMode || (!selected && triangleCount > EDGE_TRIANGLE_LIMIT))
+        return objects;
+    const edgeGeometry = new THREE.EdgesGeometry(geometry, displayMode === "technical" ? 10 : 18);
+    const visible = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({
+        color: readableEdgeColor(body, displayMode),
+        transparent: true,
+        opacity: selected ? 0.94 : displayMode === "xray" ? 0.78 : 0.7,
+        depthTest: true,
+        depthWrite: false,
+    }));
+    visible.userData.selectionId = selectionId;
+    visible.userData.viewportFeatureEdges = true;
+    visible.renderOrder = 3;
+    objects.push(visible);
+    if (displayMode === "xray") {
+        const hidden = new THREE.LineSegments(edgeGeometry.clone(), new THREE.LineBasicMaterial({
+            color: "#72dce8",
+            transparent: true,
+            opacity: selected ? 0.28 : 0.17,
+            depthTest: false,
+            depthWrite: false,
+        }));
+        hidden.userData.selectionId = selectionId;
+        hidden.userData.viewportHiddenEdges = true;
+        hidden.renderOrder = 2;
+        objects.push(hidden);
+    }
+    return objects;
+}
 async function threeMfBlob(meshes, units) {
     const zip = new jszip_1.default();
     zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>');
@@ -85063,7 +85178,7 @@ async function threeMfBlob(meshes, units) {
         compression: "DEFLATE",
     });
 }
-exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, components, occurrences, activeOccurrenceId, isolatedOccurrenceId, booleanMeshes, workplanes, activeWorkplane, selectedIds, perspective, wireframe, showGrid, boxSelectMode, topologyMode, selectedTopologyIds, transformMode, translationSnap, rotationSnap, scaleSnap, onSelect, onTopologySelect, onBoxSelect, onDropShape, onViewChange, onTransformCommit, }, ref) {
+exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, components, occurrences, activeOccurrenceId, isolatedOccurrenceId, booleanMeshes, workplanes, activeWorkplane, selectedIds, perspective, displayMode, showGrid, boxSelectMode, topologyMode, selectedTopologyIds, transformMode, translationSnap, rotationSnap, scaleSnap, onSelect, onTopologySelect, onBoxSelect, onDropShape, onViewChange, onTransformCommit, }, ref) {
     const mountRef = (0, react_1.useRef)(null);
     const stateRef = (0, react_1.useRef)(null);
     const onSelectRef = (0, react_1.useRef)(onSelect);
@@ -85320,18 +85435,22 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         if (!mount)
             return;
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color("#0f1518");
-        scene.fog = new THREE.Fog("#0f1518", 170, 340);
+        scene.background = new THREE.Color("#0d1518");
+        scene.fog = new THREE.Fog("#0d1518", 240, 520);
         const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1000);
         camera.position.set(85, 72, 82);
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: false,
             preserveDrawingBuffer: true,
+            powerPreference: "high-performance",
         });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.08;
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.type = THREE.PCFShadowMap;
         mount.appendChild(renderer.domElement);
         const controls = new OrbitControls_js_1.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -85344,12 +85463,24 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         transform.setSize(0.84);
         scene.add(transform.getHelper());
         stateRef.current = { camera, controls, renderer, scene, transform };
-        scene.add(new THREE.HemisphereLight("#d9ecf1", "#283034", 2.25));
-        const key = new THREE.DirectionalLight("#fff0cf", 3.2);
-        key.position.set(70, 100, 45);
+        scene.add(new THREE.HemisphereLight("#dbeef2", "#172024", 0.92));
+        scene.add(new THREE.AmbientLight("#b9ccd0", 0.16));
+        const key = new THREE.DirectionalLight("#fff0d5", 3.05);
+        key.position.set(75, 110, 55);
+        key.target.position.set(0, 8, 0);
         key.castShadow = true;
         key.shadow.mapSize.set(2048, 2048);
-        scene.add(key);
+        key.shadow.normalBias = 0.035;
+        key.shadow.bias = -0.00012;
+        scene.add(key, key.target);
+        const fill = new THREE.DirectionalLight("#bce9f3", 1.15);
+        fill.position.set(-90, 55, -65);
+        fill.target.position.set(0, 10, 0);
+        scene.add(fill, fill.target);
+        const rim = new THREE.DirectionalLight("#ffd6a0", 1.35);
+        rim.position.set(-30, 85, 110);
+        rim.target.position.set(0, 12, 0);
+        scene.add(rim, rim.target);
         const grid = new THREE.GridHelper(240, 48, "#537078", "#27383d");
         grid.name = "bench-grid";
         scene.add(grid);
@@ -85357,7 +85488,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         axes.name = "origin-axes";
         axes.position.y = 0.05;
         scene.add(axes);
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({ opacity: 0.28 }));
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({ opacity: 0.22 }));
         plane.rotation.x = -Math.PI / 2;
         plane.receiveShadow = true;
         plane.name = "shadow-plane";
@@ -85714,33 +85845,34 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
             holder.scale.set(bodyMirror[0], bodyMirror[2], bodyMirror[1]);
             if (!calculated)
                 holder.rotation.set(THREE.MathUtils.degToRad(body.rotation[0]), THREE.MathUtils.degToRad(body.rotation[2]), THREE.MathUtils.degToRad(body.rotation[1]));
-            const bodyOpacity = Math.max(0.05, Math.min(1, body.opacity ?? 1));
-            const displayOpacity = body.role === "hole" ? Math.min(bodyOpacity, 0.34) : bodyOpacity;
-            const material = new THREE.MeshStandardMaterial({
-                color: body.role === "hole" ? "#6bd7e5" : body.color,
-                roughness: 0.72,
-                metalness: 0.02,
-                transparent: displayOpacity < 0.999,
-                opacity: displayOpacity,
-                depthWrite: displayOpacity >= 0.999,
-                wireframe: wireframe || body.role === "hole",
-                side: body.shape === "Imported mesh" ? THREE.DoubleSide : THREE.FrontSide,
-            });
+            const material = bodyMaterial(body, displayMode, selected);
             const mesh = new THREE.Mesh(geometry, material);
             mesh.userData.selectionId = selectionId;
             const topology = (0, benchcad_topology_1.analyzeMeshTopology)(body.id, geometry.getAttribute("position").array, geometry.index?.array, selectionId);
             mesh.userData.topology = topology;
             mesh.userData.topologyMesh = true;
-            mesh.castShadow = body.role === "solid";
-            mesh.receiveShadow = true;
+            mesh.castShadow =
+                body.role === "solid" &&
+                    displayMode !== "xray" &&
+                    displayMode !== "wireframe";
+            mesh.receiveShadow = displayMode !== "xray" && displayMode !== "wireframe";
             holder.add(mesh);
             const threadAnnotations = threadAnnotationObject(body);
             if (threadAnnotations)
                 holder.add(threadAnnotations);
+            featureEdgeObjects(geometry, body, displayMode, selectionId, selected).forEach((object) => mesh.add(object));
             if (selected) {
-                const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geometry), new THREE.LineBasicMaterial({ color: "#80efff" }));
-                edge.userData.selectionId = selectionId;
-                holder.add(edge);
+                const outline = new THREE.Mesh(expandedOutlineGeometry(geometry), new THREE.MeshBasicMaterial({
+                    color: "#78efff",
+                    transparent: true,
+                    opacity: displayMode === "xray" ? 0.96 : 0.86,
+                    side: THREE.BackSide,
+                    depthWrite: false,
+                    depthTest: true,
+                }));
+                outline.userData.viewportSelectionOutline = true;
+                outline.renderOrder = 1;
+                holder.add(outline);
             }
             topology.faces
                 .filter((face) => selectedTopologyIds.includes(face.id))
@@ -85880,7 +86012,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         selectedIds,
         selectedTopologyIds,
         topologyMode,
-        wireframe,
+        displayMode,
         transformMode,
     ]);
     (0, react_1.useEffect)(() => {
@@ -85890,10 +86022,15 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         const grid = state.scene.getObjectByName("bench-grid");
         if (grid)
             grid.visible = showGrid;
+        const shadowPlane = state.scene.getObjectByName("shadow-plane");
+        const shadowsEnabled = displayMode !== "xray" && displayMode !== "wireframe";
+        if (shadowPlane)
+            shadowPlane.visible = shadowsEnabled;
+        state.renderer.shadowMap.enabled = shadowsEnabled;
         state.camera.fov = perspective ? 42 : 9;
         state.camera.updateProjectionMatrix();
-    }, [perspective, showGrid]);
-    return ((0, jsx_runtime_1.jsxs)("div", { ref: mountRef, className: `cad-viewport mode-${transformMode} topology-${topologyMode} ${boxSelectMode ? "box-select-mode" : ""}`, "aria-label": "Interactive three-dimensional model viewport", onDragOver: (event) => event.preventDefault(), onDrop: (event) => {
+    }, [displayMode, perspective, showGrid]);
+    return ((0, jsx_runtime_1.jsxs)("div", { ref: mountRef, className: `cad-viewport display-${displayMode} mode-${transformMode} topology-${topologyMode} ${boxSelectMode ? "box-select-mode" : ""}`, "data-display-mode": displayMode, "aria-label": "Interactive three-dimensional model viewport", onDragOver: (event) => event.preventDefault(), onDrop: (event) => {
             event.preventDefault();
             const shape = event.dataTransfer.getData("application/x-benchcad-shape");
             if (shape)
@@ -107842,6 +107979,7 @@ function applySelectionBehavior(current, incoming, behavior) {
 "use client";
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.VIEWPORT_DISPLAY_LABELS = void 0;
 exports.BenchCadApp = BenchCadApp;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
@@ -107946,6 +108084,13 @@ function NumberField({ label, value, suffix, onCommit, min = -10000, max, disabl
 function ParametricNumberField({ label, value, suffix, onCommit, onOpenBinding, binding, min = -10000, max, disabled = false, bindingDisabled = false, }) {
     return ((0, jsx_runtime_1.jsxs)("div", { className: `parameter-number-field ${binding ? "is-bound" : ""} ${binding?.status === "error" ? "has-error" : ""}`, children: [(0, jsx_runtime_1.jsx)(NumberField, { label: label, value: value, suffix: suffix, min: min, max: max, disabled: disabled, onCommit: onCommit }), (0, jsx_runtime_1.jsx)("button", { type: "button", className: "parameter-link-button", onClick: onOpenBinding, disabled: disabled || bindingDisabled, "aria-label": `${binding ? "Edit" : "Add"} parameter expression for ${label}`, title: bindingDisabled ? "Select the current body rather than an earlier timeline feature to add a parameter link" : binding ? `Driven by ${binding.expression}` : "Drive this value with a named parameter or expression", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}) }), binding && ((0, jsx_runtime_1.jsxs)("code", { className: "parameter-expression", title: binding.error ?? binding.expression, children: [binding.status === "error" ? "! " : "= ", binding.expression] }))] }));
 }
+exports.VIEWPORT_DISPLAY_LABELS = {
+    shadedEdges: "Shaded + edges",
+    shaded: "Shaded",
+    technical: "Technical",
+    xray: "X-ray inspect",
+    wireframe: "Wireframe",
+};
 function BenchCadApp() {
     const initialProject = (0, react_1.useMemo)(() => cloneProject(benchcad_model_1.SAMPLE_PROJECTS[0].project), []);
     const [project, setProject] = (0, react_1.useState)(initialProject);
@@ -107984,7 +108129,7 @@ function BenchCadApp() {
     const [playSpeed, setPlaySpeed] = (0, react_1.useState)(1);
     const [perspective, setPerspective] = (0, react_1.useState)(true);
     const [activeStandardView, setActiveStandardView] = (0, react_1.useState)("home");
-    const [wireframe, setWireframe] = (0, react_1.useState)(false);
+    const [viewportDisplay, setViewportDisplay] = (0, react_1.useState)("shadedEdges");
     const [showGrid, setShowGrid] = (0, react_1.useState)(true);
     const [measureMode, setMeasureMode] = (0, react_1.useState)(false);
     const [analysisScope, setAnalysisScope] = (0, react_1.useState)("selection");
@@ -108490,6 +108635,8 @@ function BenchCadApp() {
                     setTheme(preferences.theme);
                 if (["maker", "advanced"].includes(preferences.mode ?? ""))
                     setMode(preferences.mode);
+                if (["shadedEdges", "shaded", "technical", "xray", "wireframe"].includes(preferences.viewportDisplay ?? ""))
+                    setViewportDisplay(preferences.viewportDisplay);
             }
         }
         catch {
@@ -108503,12 +108650,12 @@ function BenchCadApp() {
         if (!uiPreferencesLoaded)
             return;
         try {
-            window.localStorage.setItem("benchcad-ui-preferences-v1", JSON.stringify({ leftOpen, rightOpen, timelineOpen, outlineOpen, theme, mode }));
+            window.localStorage.setItem("benchcad-ui-preferences-v1", JSON.stringify({ leftOpen, rightOpen, timelineOpen, outlineOpen, theme, mode, viewportDisplay }));
         }
         catch {
             // Private browsing or a full storage quota may prevent preference persistence.
         }
-    }, [leftOpen, mode, outlineOpen, rightOpen, theme, timelineOpen, uiPreferencesLoaded]);
+    }, [leftOpen, mode, outlineOpen, rightOpen, theme, timelineOpen, uiPreferencesLoaded, viewportDisplay]);
     (0, react_1.useEffect)(() => {
         const onKey = (event) => {
             const modifier = event.metaKey || event.ctrlKey;
@@ -111753,7 +111900,7 @@ function BenchCadApp() {
                                                                 return ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !canAlign, children: ["Align / distribute ", axisName] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubContent, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "min"), children: "Align minimum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "center"), children: "Align centers" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "max"), children: "Align maximum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: selectedBodies.length < 3, onClick: () => alignSelection(axis, "distribute"), children: "Distribute equal gaps" })] })] }, axisName));
                                                             }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("linear"), children: "Linear pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("circular"), children: "Circular pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("grid"), children: "Grid pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), [0, 1, 2].map((axis) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createMirror(axis), children: ["Mirror across ", ["X", "Y", "Z"][axis], " = 0"] }, axis)))] })] }), (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedOccurrenceJoint ? "active" : ""}`, onClick: openJointDialog, disabled: !atEnd || !selectedOccurrence, title: selectedOccurrenceJoint
                                                     ? "Inspect the joint controlling this occurrence"
-                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Wireframe", active: wireframe, onClick: () => setWireframe((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, wireframe: wireframe, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
+                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-display-trigger ${viewportDisplay !== "shadedEdges" ? "is-active" : ""}`, title: `Viewport style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, "aria-label": `Viewport display style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shadedEdges"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded + edges" }), (0, jsx_runtime_1.jsx)("small", { children: "Best everyday shape and cavity readability" })] }), viewportDisplay === "shadedEdges" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shaded"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded" }), (0, jsx_runtime_1.jsx)("small", { children: "Clean surfaces without feature-edge overlays" })] }), viewportDisplay === "shaded" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral material with high-contrast edges" })] }), viewportDisplay === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("xray"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "X-ray inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghosted surfaces with through-body edges" })] }), viewportDisplay === "xray" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("wireframe"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Wireframe" }), (0, jsx_runtime_1.jsx)("small", { children: "Triangle mesh inspection" })] }), viewportDisplay === "wireframe" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] })] })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, displayMode: viewportDisplay, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
                                                     ? setLeftOpen(true)
                                                     : selectBody(activeWorkplane.id, false), title: "Active placement and sketch workplane", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", (0, jsx_runtime_1.jsx)("span", { children: "WORKPLANE" }), " ", activeWorkplane.name] }), midpointSplitActive && ((0, jsx_runtime_1.jsxs)("div", { className: "split-pick-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["SPLIT BODY \u00B7 ", topologySelections.length + 1, "/2"] }), topologySelections.length
                                                                 ? "Click a parallel face on the same body"

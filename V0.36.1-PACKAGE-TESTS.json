@@ -1,0 +1,375 @@
+{
+  "suite": "BENCHCAD v0.36.1 static package, rendering identity, and subdirectory deployment validation",
+  "applicationVersion": "0.36.1",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "checks": [
+    {
+      "name": "required file: index.html",
+      "pass": true,
+      "detail": "849 bytes"
+    },
+    {
+      "name": "required file: sw.js",
+      "pass": true,
+      "detail": "1741 bytes"
+    },
+    {
+      "name": "required file: manifest.webmanifest",
+      "pass": true,
+      "detail": "501 bytes"
+    },
+    {
+      "name": "required file: favicon.svg",
+      "pass": true,
+      "detail": "712 bytes"
+    },
+    {
+      "name": "required file: file.svg",
+      "pass": true,
+      "detail": "392 bytes"
+    },
+    {
+      "name": "required file: globe.svg",
+      "pass": true,
+      "detail": "1036 bytes"
+    },
+    {
+      "name": "required file: window.svg",
+      "pass": true,
+      "detail": "386 bytes"
+    },
+    {
+      "name": "required file: assets/benchcad-v0.36.1.js",
+      "pass": true,
+      "detail": "5500221 bytes"
+    },
+    {
+      "name": "required file: assets/benchcad-v0.36.1.css",
+      "pass": true,
+      "detail": "289344 bytes"
+    },
+    {
+      "name": "required file: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": "61583 bytes"
+    },
+    {
+      "name": "required file: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": "103713 bytes"
+    },
+    {
+      "name": "required file: assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": "541470 bytes"
+    },
+    {
+      "name": "required file: README.md",
+      "pass": true,
+      "detail": "22229 bytes"
+    },
+    {
+      "name": "required file: RELEASE-README.md",
+      "pass": true,
+      "detail": "9421 bytes"
+    },
+    {
+      "name": "required file: RELEASE-NOTES.md",
+      "pass": true,
+      "detail": "15416 bytes"
+    },
+    {
+      "name": "required file: KNOWN-LIMITATIONS.md",
+      "pass": true,
+      "detail": "8194 bytes"
+    },
+    {
+      "name": "required file: PACKAGE-CONTENTS.md",
+      "pass": true,
+      "detail": "1702 bytes"
+    },
+    {
+      "name": "required file: VERSION.txt",
+      "pass": true,
+      "detail": "97 bytes"
+    },
+    {
+      "name": "required file: VIEWPORT-RENDERING-TESTS.json",
+      "pass": true,
+      "detail": "3897 bytes"
+    },
+    {
+      "name": "required file: VIEWPORT-RENDERING-TESTS.txt",
+      "pass": true,
+      "detail": "1132 bytes"
+    },
+    {
+      "name": "required file: docs/images/benchcad-model-workspace.png",
+      "pass": true,
+      "detail": "314515 bytes"
+    },
+    {
+      "name": "required file: docs/images/benchcad-drawing-workspace.png",
+      "pass": true,
+      "detail": "130363 bytes"
+    },
+    {
+      "name": "required file: docs/images/benchcad-viewport-shaded-edges.png",
+      "pass": true,
+      "detail": "165430 bytes"
+    },
+    {
+      "name": "required file: docs/images/benchcad-viewport-xray.png",
+      "pass": true,
+      "detail": "113276 bytes"
+    },
+    {
+      "name": "index references v0.36.1 JavaScript",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index references v0.36.1 stylesheet",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index has only relative application-shell URLs",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "application version is 0.36.1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "project schema remains 9",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing schema remains 5",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "default display mode is Shaded + edges",
+      "pass": true,
+      "detail": "compiled state initializer and display label present"
+    },
+    {
+      "name": "display mode available: Shaded",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "display mode available: Technical",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "display mode available: X-ray inspect",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "display mode available: Wireframe",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "physical body material is packaged",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "ACES tone mapping is configured",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sRGB output is configured",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "PCFShadowMap is configured",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "custom renderer does not select PCFSoftShadowMap",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "geometry-derived feature edges are packaged",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "dense unselected edge cap is 180000 triangles",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "viewport style preference is browser-local",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "viewport display CSS is packaged",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker cache namespace is v0.36.1",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/benchcad-v0.36.1.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/benchcad-v0.36.1.css",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest start URL is relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest scope is relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no stale v0.36.0 application bundle file",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no stale v0.36.0 stylesheet file",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "viewport browser suite passed",
+      "pass": true,
+      "detail": "{\"passed\": 30, \"failed\": 0, \"total\": 30}"
+    },
+    {
+      "name": "viewport browser suite is 30/30",
+      "pass": true,
+      "detail": "{\"passed\": 30, \"failed\": 0, \"total\": 30}"
+    },
+    {
+      "name": "viewport suite used actual geometry worker",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "shell geometry completed without error",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "five display modes produced distinct frames",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "browser suite reported no page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "browser suite reported no console errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "browser suite reported no console warnings",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "screenshot dimensions valid: docs/images/benchcad-viewport-shaded-edges.png",
+      "pass": true,
+      "detail": "1064x714"
+    },
+    {
+      "name": "screenshot dimensions valid: docs/images/benchcad-viewport-xray.png",
+      "pass": true,
+      "detail": "1064x714"
+    },
+    {
+      "name": "screenshot matches browser frame: shadedEdges",
+      "pass": true,
+      "detail": "14956b38f488571f2d977f24e86aba8f87dcb5cd8db559d3d9595c395745c220"
+    },
+    {
+      "name": "screenshot matches browser frame: xray",
+      "pass": true,
+      "detail": "70b2b3d894853b381cee8c6450da18aae93e00e3ea652910d13c083ceec2d06d"
+    },
+    {
+      "name": "JavaScript syntax: assets/benchcad-v0.36.1.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: sw.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "nested /projects/benchcad asset graph loads over HTTP",
+      "pass": true,
+      "detail": "{\"assets/benchcad-v0.36.1.css\": {\"content_type\": \"text/css\", \"sample_bytes\": 64, \"status\": 200}, \"assets/benchcad-v0.36.1.js\": {\"content_type\": \"text/javascript\", \"sample_bytes\": 64, \"status\": 200}, \"assets/geometry.worker-BwAX3YFX.js\": {\"content_type\": \"text/javascript\", \"sample_bytes\": 64, \"status\": 200}, \"assets/import.worker-4ZIJcZ3b.js\": {\"content_type\": \"text/javascript\", \"sample_bytes\": 64, \"status\": 200}, \"assets/manifold-BE4c7gO-.wasm\": {\"content_type\": \"application/wasm\", \"sample_bytes\": 64, \"status\": 200}, \"favicon.svg\": {\"content_type\": \"image/svg+xml\", \"sample_bytes\": 64, \"status\": 200}, \"index.html\": {\"content_type\": \"text/html\", \"sample_bytes\": 64, \"status\": 200}, \"manifest.webmanifest\": {\"content_type\": \"application/manifest+json\", \"sample_bytes\": 64, \"status\": 200}, \"sw.js\": {\"content_type\": \"text/javascript\", \"sample_bytes\": 64, \"status\": 200}}"
+    },
+    {
+      "name": "WebAssembly served with application/wasm",
+      "pass": true,
+      "detail": "application/wasm"
+    }
+  ],
+  "summary": {
+    "passed": 72,
+    "failed": 0,
+    "total": 72
+  },
+  "failedChecks": [],
+  "pass": true
+}

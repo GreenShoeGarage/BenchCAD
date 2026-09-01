@@ -1,0 +1,36 @@
+BENCHCAD v0.36.1 VIEWPORT RENDERING TESTS
+
+Result: PASS
+Checks: 30/30 passed
+
+Validated:
+- PASS — application rendered
+- PASS — version visible
+- PASS — real geometry worker created
+- PASS — default shaded edges
+- PASS — display menu trigger present
+- PASS — fresh project active
+- PASS — box created
+- PASS — shell command available
+- PASS — shell feature created
+- PASS — shell has no geometry error
+- PASS — mode shaded class
+- PASS — mode shaded label
+- PASS — mode technical class
+- PASS — mode technical label
+- PASS — mode xray class
+- PASS — mode xray label
+- PASS — mode wireframe class
+- PASS — mode wireframe label
+- PASS — mode shadedEdges class
+- PASS — mode shadedEdges label
+- PASS — all five modes render distinct frames
+- PASS — no document overflow 1200
+- PASS — display trigger visible 1200
+- PASS — no document overflow 1024
+- PASS — display trigger visible 1024
+- PASS — no document overflow 820
+- PASS — display trigger visible 820
+- PASS — no document overflow 390
+- PASS — display trigger visible 390
+- PASS — legacy pcfsoft shadow warning removed
