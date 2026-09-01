@@ -1,0 +1,46 @@
+BENCHCAD v0.31.0 — Batch 27 validation scope
+
+AUTOMATED RELEASE CHECKS
+- Main application JavaScript syntax
+- Geometry-worker JavaScript syntax
+- Import-worker JavaScript syntax
+- Service-worker JavaScript syntax
+- Native bundle dependency resolution with zero unresolved stubs
+- Relative runtime asset graph and nested-subdirectory paths
+- Service-worker precache coverage for every runtime asset
+- Manifest JSON validity and relative start URL/scope
+- Named expression arithmetic and operator precedence
+- Parentheses, exponentiation, unary operators, and supported functions
+- Millimeter, centimeter, inch, meter, degree, and radian literals
+- Duplicate-name, unknown-reference, cycle, division-by-zero, and non-finite-result rejection
+- Body dimension, position, and rotation binding application
+- Direct numeric edit removes only the edited parameter binding
+- Parameter serialization, project parse, and schema-v4 to schema-v5 migration
+- ASCII DXF unit header and inch-to-millimeter round trip
+- LINE, POLYLINE, LWPOLYLINE, CIRCLE, ARC, and POINT handling
+- Unitless DXF warning behavior and unsupported-entity reporting
+- Profile-hole and drawing-sheet DXF output
+- Closed-profile cleanup, offset, and collapse detection
+- Thin Extrude inside, center, and outside profile generation
+- Rib / Web generation from open centerlines
+- Watertight cube diagnostics and invalid-open-mesh rejection
+- Manufacturing wall, feature, overhang, draft, and interference findings
+- Blocking and non-blocking manufacturing summaries
+- Manufacturing JSON/HTML report behavior and HTML escaping
+- ZIP root structure and SHA-256 manifest
+
+BROWSER WORKFLOW HARNESS
+- Launch dashboard and enter the modeling workspace
+- Create width, wall, and inside parameters
+- Resolve inside = width - 2 * wall to 45.2
+- Bind body width to inside
+- Change width from 50 to 60 and rebuild the driven width to 55.2
+- Directly edit driven width to 70 and confirm only that binding is removed
+- Open the Manufacturing Readiness workbench and render the local report
+- Confirm no React runtime errors or undefined component types
+
+GEOMETRY/UI TESTING NOTE
+The browser harness used a deterministic viewport adapter because the release
+container does not expose WebGL. Geometry, DXF, profile, mesh, and manufacturing
+logic were exercised separately by deterministic core tests. The production
+package retains the normal Three.js/Manifold viewport and worker architecture.

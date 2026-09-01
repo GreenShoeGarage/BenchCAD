@@ -1,0 +1,4 @@
+BENCHCAD 0.31.0
+Batch 27
+Project schema 5
+Static release

@@ -1,12 +1,25 @@
-const CACHE_NAME = "benchcad-v0.29.1";
-const APP_SHELL = ["./", "./manifest.webmanifest", "./favicon.svg"];
+const CACHE_NAME = "benchcad-v0.31.0-batch27";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./assets/benchcad-v0.31.0.js",
+  "./assets/benchcad-v0.31.0.css",
+  "./assets/geometry.worker-BwAX3YFX.js",
+  "./assets/import.worker-4ZIJcZ3b.js",
+  "./assets/manifold-BE4c7gO-.wasm",
+  "./favicon.svg",
+  "./file.svg",
+  "./globe.svg",
+  "./manifest.webmanifest",
+  "./window.svg"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting()),
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -17,16 +30,17 @@ self.addEventListener("activate", (event) => {
       .then((names) =>
         Promise.all(
           names
-            .filter((name) => name !== CACHE_NAME)
-            .map((name) => caches.delete(name)),
-        ),
+            .filter((name) => name.startsWith("benchcad-") && name !== CACHE_NAME)
+            .map((name) => caches.delete(name))
+        )
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
@@ -34,11 +48,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (response.ok)
+          if (response.ok) {
             caches.open(CACHE_NAME).then((cache) => cache.put("./", response.clone()));
+          }
           return response;
         })
-        .catch(() => caches.match("./")),
+        .catch(() => caches.match("./"))
     );
     return;
   }
@@ -48,12 +63,11 @@ self.addEventListener("fetch", (event) => {
       (cached) =>
         cached ||
         fetch(event.request).then((response) => {
-          if (response.ok)
-            caches
-              .open(CACHE_NAME)
-              .then((cache) => cache.put(event.request, response.clone()));
+          if (response.ok) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          }
           return response;
-        }),
-    ),
+        })
+    )
   );
 });
