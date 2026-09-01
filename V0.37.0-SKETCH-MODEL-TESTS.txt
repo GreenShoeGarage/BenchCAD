@@ -1,0 +1,19 @@
+BENCHCAD v0.37.0 — SKETCH MODEL AND MIGRATION TESTS
+
+Result: 15/15 passed
+
+01. [PASS] application version — 0.37.0
+02. [PASS] project schema 10 — 10
+03. [PASS] face reference retains body
+04. [PASS] face frame top origin — [5,6,12]
+05. [PASS] face frame normal — [0,0,1]
+06. [PASS] face reference follows body resize — [5,6,17]
+07. [PASS] closed rectangle profile recognized — ["rect-1"]
+08. [PASS] sketch survives project round trip
+09. [PASS] sketch remains visible after reopen
+10. [PASS] face support survives project round trip
+11. [PASS] schema 9 migrates to 10 — 10
+12. [PASS] legacy extrusion receives positive direction — {"sketchId":"sketch-9370c9c5-8d1c-478b-af69-0e31ff936777","entityIds":["rect-1"],"distance":5,"operation":"new","direction":"positive"}
+13. [PASS] legacy sketch receives visible default
+14. [PASS] legacy sketch derives support body — body-df878592-a1ac-4268-90d9-1c55da9ba270
+15. [PASS] migration history recorded

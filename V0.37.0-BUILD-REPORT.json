@@ -1,0 +1,110 @@
+{
+  "applicationVersion": "0.37.0",
+  "projectSchema": 10,
+  "drawingSchema": 5,
+  "release": "First-class face/workplane sketching and bidirectional extrusion",
+  "validation": {
+    "firstClassSketchWorkflow": {
+      "passed": 39,
+      "total": 39
+    },
+    "productionGeometryWorkerSketch": {
+      "passed": 11,
+      "total": 11
+    },
+    "sketchCommandLifecycle": {
+      "passed": 10,
+      "total": 10
+    },
+    "additionalSketchBrowser": {
+      "passed": 29,
+      "total": 29
+    },
+    "originWorkplaneSketch": {
+      "passed": 6,
+      "total": 6
+    },
+    "sketchModelAndMigration": {
+      "passed": 15,
+      "total": 15
+    },
+    "schemaMigration": {
+      "passed": 1,
+      "total": 1
+    },
+    "packageAndStaticDeployment": {
+      "passed": 132,
+      "total": 132
+    },
+    "reportedChecksAcrossSuitesNonDeduplicated": {
+      "passed": 243,
+      "total": 243
+    }
+  },
+  "browserQualification": "Headed Chromium under Xvfb with deterministic exact-mesh adapter; separate packaged production geometry-worker logic and packaged Manifold WebAssembly run.",
+  "knownBrowserLimit": "Release container blocks ordinary local-origin browser navigation; packaged app loaded under a synthetic nested HTTPS base and HTTP asset graph validated separately.",
+  "builtAt": "2026-09-01T13:35:00Z",
+  "compatibility": {
+    "staticHosting": true,
+    "subdirectoryHosting": true,
+    "backendRequired": false,
+    "compileRequiredForPrebuilt": false,
+    "migration": "Project schema 9 to 10; legacy Extrude and Thin Extrude retain Positive direction; Drawing schema remains 5."
+  },
+  "features": [
+    "Sketches on origin planes, associative workplanes, and selected planar body faces",
+    "Exact supporting-body/face underlay with explicit approximate fallback",
+    "Select-first sketch command state with Escape reset and Enter chain completion",
+    "Pending connected-line preservation when Finish Sketch is chosen",
+    "Persistent, visible, selectable, and reopenable sketches",
+    "Positive, Negative, and Symmetric profile extrusion",
+    "New-body, Join, and Cut profile operations with support-body target fallback",
+    "Associative downstream rebuild from edited source sketches"
+  ],
+  "runtimeFiles": {
+    "index.html": {
+      "bytes": 918,
+      "sha256": "e4ddbc1d8dadba1d87a260211339cd9d403adfae2f7896195c2a16fe3656a6a4"
+    },
+    "sw.js": {
+      "bytes": 1743,
+      "sha256": "32ebdc6f1c3763d6f71e3cc7a4e682e6b561380aee5220751dced22b0b589e43"
+    },
+    "manifest.webmanifest": {
+      "bytes": 576,
+      "sha256": "6d630288eefddcb6f079bfb5834b4fcf7c02b833c9cd20e07fb955b4ed746bd1"
+    },
+    "VERSION.txt": {
+      "bytes": 127,
+      "sha256": "10b5363a88c584b6a123efe080a6e596991b3c778756a47c216d28f5144af097"
+    },
+    "assets/benchcad-v0.37.0.js": {
+      "bytes": 5563642,
+      "sha256": "77b3d3273c76dbb4a9695fe7cc5d47b7d9b1ca5e6384fc61749650facbc222d6"
+    },
+    "assets/benchcad-v0.37.0.css": {
+      "bytes": 293065,
+      "sha256": "0e7da72dd2e0b74f3c08da5c8e15b5bd09db0112c8871f9791e4ae3f65663ee4"
+    },
+    "assets/geometry.worker-BwAX3YFX.js": {
+      "bytes": 61583,
+      "sha256": "9f4ae0b630523ab39e58e8564393a24fff0aef8b633253eb5e90e4fd33d4e274"
+    },
+    "assets/geometry.worker-BwAX3YFX.js.map": {
+      "bytes": 201888,
+      "sha256": "533d6cb62deaa6a9b083abe53b94f1d954236964e07c65aee702f4fb1c334cf0"
+    },
+    "assets/import.worker-4ZIJcZ3b.js": {
+      "bytes": 103713,
+      "sha256": "c15d5d58edbc011e19a12864dd07600b0293b30f379d43303b8b2522c20f7d2f"
+    },
+    "assets/import.worker-4ZIJcZ3b.js.map": {
+      "bytes": 243340,
+      "sha256": "4c683a7291e390ab142d7b9af78b2cfe4a61c991dacf803e381670e6a7a70928"
+    },
+    "assets/manifold-BE4c7gO-.wasm": {
+      "bytes": 541470,
+      "sha256": "73e3b419ad31294f6b1cc478173944e50efc4a34bfdeeff0107bdfc12975f11c"
+    }
+  }
+}

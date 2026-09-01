@@ -1,0 +1,30 @@
+{
+  "checks": [
+    {
+      "name": "empty-workplane start command",
+      "pass": true
+    },
+    {
+      "name": "origin workplane editor opens",
+      "pass": true
+    },
+    {
+      "name": "origin sketch starts select",
+      "pass": true
+    },
+    {
+      "name": "origin sketch has no body underlay",
+      "pass": true
+    },
+    {
+      "name": "origin XY shown",
+      "pass": true
+    },
+    {
+      "name": "cancel closes editor",
+      "pass": true
+    }
+  ],
+  "passed": 6,
+  "total": 6
+}

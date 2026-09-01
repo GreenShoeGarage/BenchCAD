@@ -1,4 +1,4 @@
-BENCHCAD 0.36.3
-Project schema: 9
+BENCHCAD 0.37.0
+Project schema: 10
 Drawing schema: 5
-Release: Modeling-light presets and workbench-default rendering
+Release: First-class face/workplane sketching and bidirectional extrusion

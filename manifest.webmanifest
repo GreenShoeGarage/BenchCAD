@@ -1,7 +1,7 @@
 {
   "name": "BENCHCAD",
   "short_name": "BENCHCAD",
-  "description": "Local-first CAD with editable history, independent modeling-light presets, topology-derived shell-cavity edges, Interior and X-ray inspection, manufacturing screening, DXF workflows, and associative technical drawings.",
+  "description": "Local-first browser CAD with first-class face and workplane sketches, persistent 3D sketch overlays, positive, negative, and symmetric profile extrusion, editable feature history, manufacturing screening, and associative technical drawings.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

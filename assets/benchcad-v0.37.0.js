@@ -1,4 +1,4 @@
-/* BENCHCAD v0.36.3 · Modeling-light presets offline bundle */
+/* BENCHCAD v0.37.0 · First-class sketch workflow offline bundle */
 (()=>{
 'use strict';
 const process={env:{NODE_ENV:'production'}};
@@ -80846,8 +80846,7 @@ function analyzeMeshTopology(bodyId, positions, meshIndices, ownerId = bodyId) {
 }
 
 },
-"lib/benchcad-model.ts":function(require,module,exports){
-"use strict";
+"lib/benchcad-model.ts":function(require,module,exports){"use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SAMPLE_PROJECTS = exports.defaultPatternParameters = exports.uid = exports.ORIGIN_WORKPLANE_IDS = exports.ORIGIN_WORKPLANE_ID = exports.SCHEMA_VERSION = exports.APP_VERSION = void 0;
 exports.drawingSheetDimensions = drawingSheetDimensions;
@@ -80934,8 +80933,8 @@ exports.migrateProject = migrateProject;
 exports.canReorderFeature = canReorderFeature;
 exports.reorderFeature = reorderFeature;
 const benchcad_kernel_1 = require("./benchcad-kernel");
-exports.APP_VERSION = "0.36.3";
-exports.SCHEMA_VERSION = 9;
+exports.APP_VERSION = "0.37.0";
+exports.SCHEMA_VERSION = 10;
 exports.ORIGIN_WORKPLANE_ID = "origin-workplane-XY";
 exports.ORIGIN_WORKPLANE_IDS = [
     "origin-workplane-XY",
@@ -81745,6 +81744,40 @@ function syncSketchProjections(sketch, bodies) {
     };
 }
 function syncSketchWorkplane(sketch, workplanes, bodies) {
+    if (sketch.faceReference) {
+        const body = bodies.find((item) => item.id === sketch.faceReference.bodyId);
+        if (!body) {
+            return {
+                ...structuredClone(sketch),
+                supportStatus: "unresolved",
+                supportIssue: "The face used by this sketch is no longer available.",
+            };
+        }
+        try {
+            const frame = resolvePlanarFaceFrame(body, sketch.faceReference, sketch.supportOffset ?? 0, Boolean(sketch.supportFlipped));
+            const dominant = frame.normal
+                .map((value, axis) => ({ axis, value: Math.abs(value) }))
+                .sort((first, second) => second.value - first.value)[0].axis;
+            return {
+                ...structuredClone(sketch),
+                plane: dominant === 2 ? "XY" : dominant === 1 ? "XZ" : "YZ",
+                origin: [...frame.origin],
+                normal: frame.normal[dominant] < 0 ? -1 : 1,
+                coordinateSpace: "local",
+                frame,
+                supportBodyId: body.id,
+                supportStatus: "resolved",
+                supportIssue: undefined,
+            };
+        }
+        catch (error) {
+            return {
+                ...structuredClone(sketch),
+                supportStatus: "unresolved",
+                supportIssue: error instanceof Error ? error.message : "The sketch face reference could not be resolved.",
+            };
+        }
+    }
     if (!sketch.workplaneId)
         return structuredClone(sketch);
     const workplane = workplanes.find((item) => item.id === sketch.workplaneId);
@@ -81761,6 +81794,9 @@ function syncSketchWorkplane(sketch, workplanes, bodies) {
             : undefined,
         coordinateSpace: "local",
         frame: resolved.frame ? structuredClone(resolved.frame) : undefined,
+        supportBodyId: resolved.faceReference?.bodyId ?? resolved.attachment?.bodyId,
+        supportStatus: "resolved",
+        supportIssue: undefined,
     };
 }
 function makeSketchFeature(type, name, sequence, sketch, inputIds = []) {
@@ -81779,7 +81815,7 @@ function makeSketchFeature(type, name, sequence, sketch, inputIds = []) {
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 9,
+        schemaVersion: 10,
     };
 }
 function makeWorkplaneFeature(type, name, sequence, workplane, inputIds = []) {
@@ -81803,7 +81839,7 @@ function makeWorkplaneFeature(type, name, sequence, workplane, inputIds = []) {
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 9,
+        schemaVersion: 10,
     };
 }
 function makeFeature(type, name, sequence, snapshot, parameters = {}, inputIds = []) {
@@ -81822,7 +81858,7 @@ function makeFeature(type, name, sequence, snapshot, parameters = {}, inputIds =
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 9,
+        schemaVersion: 10,
     };
 }
 function propagateDerivedBodyRebuild(features, sourceFeatureId, previousSource, rebuiltSource) {
@@ -81893,7 +81929,7 @@ function makeMultiBodyFeature(type, name, sequence, bodies, parameters = {}, inp
         status: "valid",
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 9,
+        schemaVersion: 10,
     };
 }
 function splitAxisForPlane(plane) {
@@ -82231,7 +82267,7 @@ function emptyProject(name = "Untitled fixture") {
         migrationHistory: [],
         createdAt: now,
         updatedAt: now,
-        schemaVersion: 9,
+        schemaVersion: 10,
         appVersion: exports.APP_VERSION,
     };
 }
@@ -83341,6 +83377,19 @@ function normalizeProjectStructure(project) {
         const componentId = componentIds.has(candidate) ? candidate : root.id;
         feature.componentId = componentId;
         feature.schemaVersion = exports.SCHEMA_VERSION;
+        feature.parameters ?? (feature.parameters = {});
+        if (feature.type === "Extrude" || feature.type === "Thin Extrude") {
+            feature.parameters.direction ?? (feature.parameters.direction = "positive");
+            if (feature.snapshot) {
+                feature.snapshot.extrudeDirection ?? (feature.snapshot.extrudeDirection = feature.parameters.direction);
+                if (feature.snapshot.thinExtrude)
+                    feature.snapshot.thinExtrude.direction ?? (feature.snapshot.thinExtrude.direction = feature.parameters.direction);
+            }
+        }
+        if (feature.sketchSnapshot) {
+            feature.sketchSnapshot.visible ?? (feature.sketchSnapshot.visible = true);
+            feature.sketchSnapshot.supportBodyId ?? (feature.sketchSnapshot.supportBodyId = feature.sketchSnapshot.faceReference?.bodyId ?? feature.sketchSnapshot.attachment?.bodyId);
+        }
         if (feature.componentSnapshot) {
             (_a = feature.componentSnapshot).occurrenceIds ?? (_a.occurrenceIds = []);
             (_b = feature.componentSnapshot).workplaneIds ?? (_b.workplaneIds = []);
@@ -83648,7 +83697,7 @@ function validateProject(value) {
     if (!value || typeof value !== "object")
         return false;
     const project = value;
-    return (project.schemaVersion === 9 &&
+    return (project.schemaVersion === exports.SCHEMA_VERSION &&
         typeof project.name === "string" &&
         Array.isArray(project.features) &&
         Array.isArray(project.components) &&
@@ -83683,6 +83732,38 @@ function migrateProject(value) {
     if (value && typeof value === "object") {
         const legacy = value;
         const fromVersion = typeof legacy.schemaVersion === "number" ? legacy.schemaVersion : 0;
+        if (fromVersion === 9 &&
+            typeof legacy.name === "string" &&
+            Array.isArray(legacy.features) &&
+            Array.isArray(legacy.components) &&
+            Array.isArray(legacy.occurrences)) {
+            const migrated = structuredClone(legacy);
+            migrated.features = migrated.features.map((feature, index) => ({
+                ...feature,
+                sequence: index + 1,
+                schemaVersion: 10,
+                parameters: feature.type === "Extrude" || feature.type === "Thin Extrude"
+                    ? { ...(feature.parameters ?? {}), direction: feature.parameters?.direction ?? "positive" }
+                    : { ...(feature.parameters ?? {}) },
+                sketchSnapshot: feature.sketchSnapshot
+                    ? {
+                        ...feature.sketchSnapshot,
+                        visible: feature.sketchSnapshot.visible ?? true,
+                        supportBodyId: feature.sketchSnapshot.supportBodyId ?? feature.sketchSnapshot.faceReference?.bodyId ?? feature.sketchSnapshot.attachment?.bodyId,
+                    }
+                    : undefined,
+            }));
+            migrated.schemaVersion = 10;
+            migrated.appVersion = exports.APP_VERSION;
+            migrated.migrationHistory ?? (migrated.migrationHistory = []);
+            migrated.migrationHistory.push({
+                fromVersion: 9,
+                toVersion: 10,
+                migratedAt: new Date().toISOString(),
+                note: "Added first-class face-supported sketches, persistent sketch visibility, and explicit positive, negative, or symmetric extrusion direction without changing existing geometry.",
+            });
+            return normalizeProjectStructure(migrated);
+        }
         if (fromVersion === 8 &&
             typeof legacy.name === "string" &&
             Array.isArray(legacy.features) &&
@@ -83693,14 +83774,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 8,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Added drawing schema 5 with true parent-linked cropped Detail views, printable-area diagnostics, collision review, and qualified cross-format drawing output without changing model geometry or feature order.",
             });
@@ -83716,14 +83797,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 7,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Added drawing schema 4, then schema 5 with persistent projected-entity references, associative radial/angular/ordinate dimensions, center annotations, feature callouts, and explicit broken-reference repair without changing model geometry or feature order.",
             });
@@ -83739,14 +83820,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 6,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Added drawing schema 3, then schema 5 for depth-aware projections, true clipped sections, material-region hatching, cutting-plane references, and projected-view alignment without changing model geometry or feature order.",
             });
@@ -83762,14 +83843,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 5,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Added drawing-schema integrity. Legacy v0.32 Detail placeholders are relabeled as enlarged previews, and bounds-based diameter, radius, center, or unknown annotations are preserved as unsupported records instead of being displayed as fabrication values.",
             });
@@ -83786,14 +83867,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 4,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Initialized named project parameters, expression bindings, and drawing-schema integrity without changing existing geometry or feature order.",
             });
@@ -83815,14 +83896,14 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 3,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Added associative workplanes, named parameters, and drawing-schema integrity without changing existing geometry or feature order.",
             });
@@ -83846,7 +83927,7 @@ function migrateProject(value) {
             migrated.features = migrated.features.map((feature, index) => ({
                 ...feature,
                 sequence: index + 1,
-                schemaVersion: 9,
+                schemaVersion: 10,
             }));
             migrated.components
                 .filter((component) => component.id !== migrated.rootComponentId)
@@ -83869,12 +83950,12 @@ function migrateProject(value) {
                 if (migrated.activeComponentId === component.id)
                     migrated.activeOccurrenceId = occurrence.id;
             });
-            migrated.schemaVersion = 9;
+            migrated.schemaVersion = 10;
             migrated.appVersion = exports.APP_VERSION;
             migrated.migrationHistory ?? (migrated.migrationHistory = []);
             migrated.migrationHistory.push({
                 fromVersion: 2,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Created one zero-transform occurrence for each existing non-root component, added the origin XY workplane, initialized named parameters, and added drawing-schema integrity while preserving prior geometry and ownership.",
             });
@@ -83916,12 +83997,12 @@ function migrateProject(value) {
                             dimensions: feature.sketchSnapshot.dimensions ?? [],
                         }
                         : undefined,
-                    schemaVersion: 9,
+                    schemaVersion: 10,
                 };
             });
             migrated.migrationHistory.push({
                 fromVersion,
-                toVersion: 9,
+                toVersion: 10,
                 migratedAt: new Date().toISOString(),
                 note: "Preserved legacy history, assigned it to the generated root component, selected the origin XY workplane, initialized named parameters, and added drawing-schema integrity.",
             });
@@ -84036,6 +84117,7 @@ exports.SAMPLE_PROJECTS = (() => {
         },
     ];
 })();
+
 
 },
 "lib/benchcad-mesh.ts":function(require,module,exports){
@@ -84598,8 +84680,7 @@ exports.jsxs = jsxProd;
 module.exports = require('./cjs/react-jsx-runtime.production.js');
 
 },
-"components/cad-viewport.tsx":function(require,module,exports){
-"use client";
+"components/cad-viewport.tsx":function(require,module,exports){"use client";
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -84655,6 +84736,34 @@ const benchcad_model_1 = require("@/lib/benchcad-model");
 const benchcad_mesh_1 = require("@/lib/benchcad-mesh");
 const benchcad_manufacturing_1 = require("@/lib/benchcad-manufacturing");
 const benchcad_interactions_1 = require("@/lib/benchcad-interactions");
+
+function viewportSketchFrame(sketch) {
+    if (sketch.frame)
+        return sketch.frame;
+    return (0, benchcad_model_1.axisAlignedWorkplaneFrame)({ plane: sketch.plane, origin: sketch.origin ?? [0, 0, 0], normal: sketch.normal ?? 1 });
+}
+function viewportSketchPoint(frame, point, offset = 0.035) {
+    return [
+        frame.origin[0] + frame.xAxis[0] * point[0] + frame.yAxis[0] * point[1] + frame.normal[0] * offset,
+        frame.origin[1] + frame.xAxis[1] * point[0] + frame.yAxis[1] * point[1] + frame.normal[1] * offset,
+        frame.origin[2] + frame.xAxis[2] * point[0] + frame.yAxis[2] * point[1] + frame.normal[2] * offset,
+    ];
+}
+function sketchEntityDisplayPoints(entity) {
+    if (entity.kind === "rectangle")
+        return [[entity.x, entity.y], [entity.x + entity.width, entity.y], [entity.x + entity.width, entity.y + entity.height], [entity.x, entity.y + entity.height], [entity.x, entity.y]];
+    if (entity.kind === "circle")
+        return Array.from({ length: 65 }, (_, index) => { const angle = index / 64 * Math.PI * 2; return [entity.x + Math.cos(angle) * entity.radius, entity.y + Math.sin(angle) * entity.radius]; });
+    if (entity.kind === "arc") {
+        let span = entity.endAngle - entity.startAngle;
+        while (span < 0) span += Math.PI * 2;
+        const count = Math.max(8, Math.min(64, Math.ceil(span / (Math.PI / 24))));
+        return Array.from({ length: count + 1 }, (_, index) => { const angle = entity.startAngle + span * index / count; return [entity.x + Math.cos(angle) * entity.radius, entity.y + Math.sin(angle) * entity.radius]; });
+    }
+    if (entity.kind === "point")
+        return [[entity.x - 0.6, entity.y], [entity.x + 0.6, entity.y], [entity.x, entity.y], [entity.x, entity.y - 0.6], [entity.x, entity.y + 0.6]];
+    return entity.closed && entity.points.length ? [...entity.points, entity.points[0]] : entity.points;
+}
 function threadAnnotationObject(body) {
     if (!body.threads?.length)
         return null;
@@ -85263,18 +85372,21 @@ const VIEWPORT_LIGHTING_PRESETS = {
         background: "#10191c",
         fog: "#10191c",
         toneMapping: "aces",
-        exposure: 0.94,
+        exposure: 1,
         maxPixelRatio: 2,
-        hemisphere: { sky: "#e8f1f2", ground: "#293437", intensity: 1.18 },
-        ambient: { color: "#d5e0e2", intensity: 0.24 },
-        key: { color: "#f7f5ef", intensity: 1.34 },
-        fill: { color: "#d9edf2", intensity: 0.72 },
-        rim: { color: "#e9e2d6", intensity: 0.26 },
+        hemisphere: { sky: "#e7eff0", ground: "#697679", intensity: 1.02 },
+        ambient: { color: "#dce5e6", intensity: 0.3 },
+        key: { color: "#f7f5ef", intensity: 1 },
+        fill: { color: "#dceff2", intensity: 0.58 },
+        rim: { color: "#e9e2d6", intensity: 0.14 },
+        underside: { color: "#eef3f2", intensity: 0.58 },
+        headlight: { color: "#f7faf9", intensity: 0.46 },
         shadows: true,
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.035,
         material: "standard",
-        roughness: 0.82,
+        roughness: 0.88,
         metalness: 0,
+        emissive: 0.035,
     },
     flat: {
         background: "#111a1d",
@@ -85282,33 +85394,39 @@ const VIEWPORT_LIGHTING_PRESETS = {
         toneMapping: "none",
         exposure: 1,
         maxPixelRatio: 2,
-        hemisphere: { sky: "#f1f5f5", ground: "#354044", intensity: 1.3 },
-        ambient: { color: "#e3e9ea", intensity: 0.42 },
-        key: { color: "#ffffff", intensity: 0.68 },
-        fill: { color: "#e8f2f4", intensity: 0.36 },
+        hemisphere: { sky: "#eef3f3", ground: "#879294", intensity: 1 },
+        ambient: { color: "#e9eeee", intensity: 0.48 },
+        key: { color: "#ffffff", intensity: 0.38 },
+        fill: { color: "#e8f2f4", intensity: 0.22 },
         rim: { color: "#ffffff", intensity: 0 },
+        underside: { color: "#f2f5f4", intensity: 0.62 },
+        headlight: { color: "#ffffff", intensity: 0.72 },
         shadows: false,
         shadowOpacity: 0,
         material: "lambert",
         roughness: 1,
         metalness: 0,
+        emissive: 0.055,
     },
     technical: {
         background: "#0f181b",
         fog: "#0f181b",
         toneMapping: "aces",
-        exposure: 0.98,
+        exposure: 1,
         maxPixelRatio: 2,
-        hemisphere: { sky: "#dce9ec", ground: "#202d31", intensity: 1.12 },
-        ambient: { color: "#c9d8dc", intensity: 0.24 },
-        key: { color: "#eef6f7", intensity: 1.15 },
-        fill: { color: "#bddce4", intensity: 0.62 },
-        rim: { color: "#d9eef1", intensity: 0.18 },
+        hemisphere: { sky: "#dfe9eb", ground: "#5e6b6f", intensity: 0.98 },
+        ambient: { color: "#d0dcde", intensity: 0.34 },
+        key: { color: "#eef6f7", intensity: 0.78 },
+        fill: { color: "#c6e0e6", intensity: 0.48 },
+        rim: { color: "#d9eef1", intensity: 0.08 },
+        underside: { color: "#e8efef", intensity: 0.52 },
+        headlight: { color: "#f2f7f7", intensity: 0.54 },
         shadows: false,
         shadowOpacity: 0,
         material: "standard",
-        roughness: 0.94,
+        roughness: 0.96,
         metalness: 0,
+        emissive: 0.04,
     },
     presentation: {
         background: "#0d1518",
@@ -85316,37 +85434,63 @@ const VIEWPORT_LIGHTING_PRESETS = {
         toneMapping: "aces",
         exposure: 1.04,
         maxPixelRatio: 1.75,
-        hemisphere: { sky: "#dbeef2", ground: "#172024", intensity: 0.94 },
+        hemisphere: { sky: "#dbeef2", ground: "#2a3539", intensity: 0.94 },
         ambient: { color: "#b9ccd0", intensity: 0.18 },
         key: { color: "#fff0d5", intensity: 1.9 },
         fill: { color: "#bce9f3", intensity: 0.85 },
         rim: { color: "#ffd6a0", intensity: 0.76 },
+        underside: { color: "#e7ece9", intensity: 0.14 },
+        headlight: { color: "#fff8ec", intensity: 0.08 },
         shadows: false,
         shadowOpacity: 0,
         material: "standard",
         roughness: 0.55,
         metalness: 0.02,
+        emissive: 0.008,
     },
     performance: {
         background: "#0f171a",
         fog: "#0f171a",
         toneMapping: "aces",
-        exposure: 0.98,
+        exposure: 1,
         maxPixelRatio: 1.25,
-        hemisphere: { sky: "#dce7e9", ground: "#253034", intensity: 1.05 },
-        ambient: { color: "#c4d0d2", intensity: 0.22 },
-        key: { color: "#f0f3f2", intensity: 0.82 },
-        fill: { color: "#c7dde2", intensity: 0.25 },
+        hemisphere: { sky: "#dce7e9", ground: "#657174", intensity: 0.98 },
+        ambient: { color: "#d0dadd", intensity: 0.35 },
+        key: { color: "#f0f3f2", intensity: 0.58 },
+        fill: { color: "#c7dde2", intensity: 0.2 },
         rim: { color: "#ffffff", intensity: 0 },
+        underside: { color: "#edf1ef", intensity: 0.48 },
+        headlight: { color: "#f5f7f6", intensity: 0.62 },
         shadows: false,
         shadowOpacity: 0,
         material: "lambert",
         roughness: 1,
         metalness: 0,
+        emissive: 0.045,
+    },
+};
+const VIEWPORT_DARK_FACE_LIFT = {
+    natural: {
+        lightMultiplier: 0.35,
+        ambientMultiplier: 0.9,
+        emissiveMultiplier: 0.4,
+    },
+    balanced: {
+        lightMultiplier: 1,
+        ambientMultiplier: 1,
+        emissiveMultiplier: 1,
+    },
+    bright: {
+        lightMultiplier: 1.55,
+        ambientMultiplier: 1.12,
+        emissiveMultiplier: 1.6,
     },
 };
 function viewportLightingPreset(preset) {
     return VIEWPORT_LIGHTING_PRESETS[preset] ?? VIEWPORT_LIGHTING_PRESETS.workbench;
+}
+function viewportDarkFaceLift(level) {
+    return VIEWPORT_DARK_FACE_LIFT[level] ?? VIEWPORT_DARK_FACE_LIFT.balanced;
 }
 function lightingAllowsShadows(preset) {
     return viewportLightingPreset(preset).shadows;
@@ -85377,10 +85521,11 @@ function bodyDisplayColor(body, displayMode, selected) {
     }
     return color;
 }
-function bodyMaterial(body, displayMode, lightingPreset, selected) {
+function bodyMaterial(body, displayMode, lightingPreset, darkFaceLift, selected) {
     const opacity = bodyDisplayOpacity(body, displayMode, selected);
     const color = bodyDisplayColor(body, displayMode, selected);
     const lighting = viewportLightingPreset(lightingPreset);
+    const lift = viewportDarkFaceLift(darkFaceLift);
     const doubleSided = body.shape === "Imported mesh" ||
         Boolean(body.shell) ||
         displayMode === "interior" ||
@@ -85413,6 +85558,7 @@ function bodyMaterial(body, displayMode, lightingPreset, selected) {
         polygonOffsetUnits: 1,
         flatShading: Boolean(body.shell),
         dithering: true,
+        emissive: color.clone().multiplyScalar(lighting.emissive * lift.emissiveMultiplier),
     };
     // Flat/CAD and Performance deliberately avoid a specular BRDF. They are
     // working views: diffuse face separation is more important than gloss.
@@ -85539,10 +85685,11 @@ async function threeMfBlob(meshes, units) {
         compression: "DEFLATE",
     });
 }
-exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, components, occurrences, activeOccurrenceId, isolatedOccurrenceId, booleanMeshes, workplanes, activeWorkplane, selectedIds, perspective, displayMode, lightingPreset, showGrid, boxSelectMode, topologyMode, selectedTopologyIds, transformMode, translationSnap, rotationSnap, scaleSnap, onSelect, onTopologySelect, onBoxSelect, onDropShape, onViewChange, onTransformCommit, }, ref) {
+exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, sketches = [], selectedSketchId = null, components, occurrences, activeOccurrenceId, isolatedOccurrenceId, booleanMeshes, workplanes, activeWorkplane, selectedIds, perspective, displayMode, lightingPreset, darkFaceLift, showGrid, boxSelectMode, topologyMode, selectedTopologyIds, transformMode, translationSnap, rotationSnap, scaleSnap, onSelect, onSketchSelect, onTopologySelect, onBoxSelect, onDropShape, onViewChange, onTransformCommit, }, ref) {
     const mountRef = (0, react_1.useRef)(null);
     const stateRef = (0, react_1.useRef)(null);
     const onSelectRef = (0, react_1.useRef)(onSelect);
+    const onSketchSelectRef = (0, react_1.useRef)(onSketchSelect);
     const onTopologySelectRef = (0, react_1.useRef)(onTopologySelect);
     const onBoxSelectRef = (0, react_1.useRef)(onBoxSelect);
     const onViewChangeRef = (0, react_1.useRef)(onViewChange);
@@ -85561,6 +85708,9 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
     (0, react_1.useEffect)(() => {
         onSelectRef.current = onSelect;
     }, [onSelect]);
+    (0, react_1.useEffect)(() => {
+        onSketchSelectRef.current = onSketchSelect;
+    }, [onSketchSelect]);
     (0, react_1.useEffect)(() => {
         onTopologySelectRef.current = onTopologySelect;
     }, [onTopologySelect]);
@@ -85850,8 +86000,24 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         rim.position.set(-30, 85, 110);
         rim.target.position.set(0, 12, 0);
         scene.add(rim, rim.target);
+        // Modeling lights deliberately cover camera-facing and downward-facing
+        // surfaces. This prevents standard Bottom and underside inspections from
+        // collapsing into near-black while keeping Presentation comparatively dramatic.
+        const underside = new THREE.DirectionalLight("#eef3f2", 0.58);
+        underside.name = "viewport-underside";
+        underside.position.set(30, -120, -45);
+        underside.target.position.set(0, 6, 0);
+        scene.add(underside, underside.target);
+        const headlight = new THREE.DirectionalLight("#f7faf9", 0.46);
+        headlight.name = "viewport-headlight";
+        headlight.position.copy(camera.position);
+        headlight.target.position.copy(controls.target);
+        scene.add(headlight, headlight.target);
         const grid = new THREE.GridHelper(240, 48, "#537078", "#27383d");
         grid.name = "bench-grid";
+        // Keep the origin grid just inside bodies resting on the workplane so a
+        // standard Bottom view does not z-fight with a coplanar underside.
+        grid.position.y = 0.04;
         scene.add(grid);
         const axes = new THREE.AxesHelper(22);
         axes.name = "origin-axes";
@@ -85874,6 +86040,9 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         let frame = 0;
         const render = () => {
             controls.update();
+            headlight.position.copy(camera.position);
+            headlight.target.position.copy(controls.target);
+            headlight.target.updateMatrixWorld();
             renderer.render(scene, camera);
             frame = requestAnimationFrame(render);
         };
@@ -85910,6 +86079,11 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
                 const element = hit?.object.userData.topologyElement;
                 if (hit && element)
                     onTopologySelectRef.current(topologySelectionInWorld(element, hit.object), event.shiftKey || event.metaKey || event.ctrlKey);
+                return;
+            }
+            const sketchHit = hits.find((item) => item.object.userData.sketchId);
+            if (sketchHit && onSketchSelectRef.current) {
+                onSketchSelectRef.current(sketchHit.object.userData.sketchId);
                 return;
             }
             const hit = hits.find((item) => item.object.userData.selectionId);
@@ -86163,6 +86337,54 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         const state = stateRef.current;
         if (!state)
             return;
+        const previous = state.scene.getObjectByName("persistent-sketches");
+        if (previous) {
+            previous.traverse((object) => {
+                if (object instanceof THREE.Line || object instanceof THREE.LineSegments) {
+                    object.geometry.dispose();
+                    if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
+                    else object.material.dispose();
+                }
+            });
+            state.scene.remove(previous);
+        }
+        const group = new THREE.Group();
+        group.name = "persistent-sketches";
+        let segmentBudget = 0;
+        sketches.filter((sketch) => sketch.visible !== false).forEach((sketch) => {
+            const frame = viewportSketchFrame(sketch);
+            sketch.entities.forEach((entity) => {
+                if (segmentBudget > 12000)
+                    return;
+                const points = sketchEntityDisplayPoints(entity);
+                if (points.length < 2)
+                    return;
+                const world = points.map((point) => viewportSketchPoint(frame, point));
+                const vertices = new Float32Array(world.flatMap((point) => [point[0], point[2], point[1]]));
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+                const sketchSelected = sketch.id === selectedSketchId;
+                const material = entity.construction
+                    ? new THREE.LineDashedMaterial({ color: sketchSelected ? "#fff09a" : "#e6a04a", transparent: true, opacity: sketchSelected ? 1 : 0.82, depthTest: false, dashSize: 0.8, gapSize: 0.5 })
+                    : new THREE.LineBasicMaterial({ color: sketchSelected ? "#fff7b0" : entity.projected ? "#76aeb8" : "#84f5ff", transparent: true, opacity: sketchSelected ? 1 : entity.projected ? 0.72 : 0.94, depthTest: false });
+                const line = new THREE.Line(geometry, material);
+                line.name = `sketch-${sketch.id}-${entity.id}`;
+                line.renderOrder = 80;
+                line.userData.sketchId = sketch.id;
+                if (line.computeLineDistances)
+                    line.computeLineDistances();
+                group.add(line);
+                segmentBudget += points.length - 1;
+            });
+        });
+        group.userData.visibleSketchCount = sketches.filter((sketch) => sketch.visible !== false && sketch.entities.length).length;
+        state.scene.add(group);
+        state.renderer.domElement.dataset.visibleSketches = String(group.userData.visibleSketchCount);
+    }, [selectedSketchId, sketches]);
+    (0, react_1.useEffect)(() => {
+        const state = stateRef.current;
+        if (!state)
+            return;
         state.transform.detach();
         const previous = state.scene.getObjectByName("bodies");
         if (previous) {
@@ -86215,7 +86437,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
             holder.scale.set(bodyMirror[0], bodyMirror[2], bodyMirror[1]);
             if (!calculated)
                 holder.rotation.set(THREE.MathUtils.degToRad(body.rotation[0]), THREE.MathUtils.degToRad(body.rotation[2]), THREE.MathUtils.degToRad(body.rotation[1]));
-            const material = bodyMaterial(body, displayMode, lightingPreset, selected);
+            const material = bodyMaterial(body, displayMode, lightingPreset, darkFaceLift, selected);
             const mesh = new THREE.Mesh(geometry, material);
             mesh.userData.selectionId = selectionId;
             const topology = (0, benchcad_topology_1.analyzeMeshTopology)(body.id, geometry.getAttribute("position").array, geometry.index?.array, selectionId);
@@ -86434,6 +86656,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         topologyMode,
         displayMode,
         lightingPreset,
+        darkFaceLift,
         transformMode,
     ]);
     (0, react_1.useEffect)(() => {
@@ -86441,6 +86664,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         if (!state)
             return;
         const lighting = viewportLightingPreset(lightingPreset);
+        const lift = viewportDarkFaceLift(darkFaceLift);
         const grid = state.scene.getObjectByName("bench-grid");
         if (grid)
             grid.visible = showGrid;
@@ -86457,10 +86681,8 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
                 shadowPlane.material.needsUpdate = true;
             }
         }
-        // Keep the renderer's shadow pipeline initialized. Toggling the entire
-        // shadow-map subsystem off and back on can force a costly shader and
-        // framebuffer rebuild on some WebGL implementations. Presets instead
-        // toggle the casting light, body casting, and receiver plane.
+        // Keep the renderer's shadow pipeline initialized. Presets instead
+        // control casters and the receiver plane to avoid costly subsystem resets.
         state.renderer.shadowMap.enabled = true;
         state.renderer.toneMapping = lighting.toneMapping === "none"
             ? THREE.NoToneMapping
@@ -86480,14 +86702,16 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         const key = state.scene.getObjectByName("viewport-key");
         const fill = state.scene.getObjectByName("viewport-fill");
         const rim = state.scene.getObjectByName("viewport-rim");
+        const underside = state.scene.getObjectByName("viewport-underside");
+        const headlight = state.scene.getObjectByName("viewport-headlight");
         if (hemisphere) {
             hemisphere.color.set(lighting.hemisphere.sky);
             hemisphere.groundColor.set(lighting.hemisphere.ground);
-            hemisphere.intensity = lighting.hemisphere.intensity * (interior ? 0.76 : 1);
+            hemisphere.intensity = lighting.hemisphere.intensity * (interior ? 0.82 : 1);
         }
         if (ambient) {
             ambient.color.set(lighting.ambient.color);
-            ambient.intensity = Math.max(interior ? 0.08 : 0, lighting.ambient.intensity * (interior ? 0.68 : 1));
+            ambient.intensity = Math.max(interior ? 0.1 : 0, lighting.ambient.intensity * lift.ambientMultiplier * (interior ? 0.78 : 1));
         }
         if (key) {
             key.color.set(lighting.key.color);
@@ -86496,16 +86720,24 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
         }
         if (fill) {
             fill.color.set(lighting.fill.color);
-            fill.intensity = lighting.fill.intensity * (interior ? 0.5 : 1);
+            fill.intensity = lighting.fill.intensity * (interior ? 0.62 : 1);
         }
         if (rim) {
             rim.color.set(lighting.rim.color);
             rim.intensity = lighting.rim.intensity * (interior ? 0.52 : 1);
         }
+        if (underside) {
+            underside.color.set(lighting.underside.color);
+            underside.intensity = lighting.underside.intensity * lift.lightMultiplier * (interior ? 0.82 : 1);
+        }
+        if (headlight) {
+            headlight.color.set(lighting.headlight.color);
+            headlight.intensity = lighting.headlight.intensity * lift.lightMultiplier * (interior ? 0.88 : 1);
+        }
         state.camera.fov = perspective ? 42 : 9;
         state.camera.updateProjectionMatrix();
-    }, [displayMode, lightingPreset, perspective, showGrid]);
-    return ((0, jsx_runtime_1.jsxs)("div", { ref: mountRef, className: `cad-viewport display-${displayMode} lighting-${lightingPreset} mode-${transformMode} topology-${topologyMode} ${boxSelectMode ? "box-select-mode" : ""}`, "data-display-mode": displayMode, "data-lighting-preset": lightingPreset, "aria-label": "Interactive three-dimensional model viewport", onDragOver: (event) => event.preventDefault(), onDrop: (event) => {
+    }, [darkFaceLift, displayMode, lightingPreset, perspective, showGrid]);
+    return ((0, jsx_runtime_1.jsxs)("div", { ref: mountRef, className: `cad-viewport display-${displayMode} lighting-${lightingPreset} face-lift-${darkFaceLift} mode-${transformMode} topology-${topologyMode} ${boxSelectMode ? "box-select-mode" : ""}`, "data-display-mode": displayMode, "data-lighting-preset": lightingPreset, "data-dark-face-lift": darkFaceLift, "aria-label": "Interactive three-dimensional model viewport", onDragOver: (event) => event.preventDefault(), onDrop: (event) => {
             event.preventDefault();
             const shape = event.dataTransfer.getData("application/x-benchcad-shape");
             if (shape)
@@ -86521,6 +86753,7 @@ exports.CadViewport = (0, react_1.forwardRef)(function CadViewport({ bodies, com
                                 ? "ROTATE"
                                 : "SCALE" }), live.position && ((0, jsx_runtime_1.jsxs)("b", { children: ["X ", live.position[0], " \u00B7 Y ", live.position[1], " \u00B7 Z", " ", live.position[2]] })), live.rotation && ((0, jsx_runtime_1.jsxs)("b", { children: ["X ", live.rotation[0], "\u00B0 \u00B7 Y ", live.rotation[1], "\u00B0 \u00B7 Z", " ", live.rotation[2], "\u00B0"] })), live.size && ((0, jsx_runtime_1.jsxs)("b", { children: ["W ", live.size[0], " \u00B7 D ", live.size[1], " \u00B7 H ", live.size[2]] })), (0, jsx_runtime_1.jsxs)("em", { children: ["SNAP ", live.snap, live.duplicate ? " · DUPLICATE" : ""] })] }))] }));
 });
+
 
 },
 "lib/benchcad-sketch.ts":function(require,module,exports){
@@ -87084,8 +87317,7 @@ function pruneSketchRelations(sketch, removedEntityIds) {
 }
 
 },
-"components/sketch-workbench.tsx":function(require,module,exports){
-"use client";
+"components/sketch-workbench.tsx":function(require,module,exports){"use client";
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SketchWorkbench = SketchWorkbench;
@@ -87147,15 +87379,101 @@ function arcPath(e) {
         span += Math.PI * 2;
     return `M ${sx} ${sy} A ${e.radius * SCALE} ${e.radius * SCALE} 0 ${span > Math.PI ? 1 : 0} 0 ${ex} ${ey}`;
 }
-function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCancel, onSave, onExtrude, onThinExtrude, onRib, onRevolve, }) {
+
+const frameDot2 = (first, second) => first[0] * second[0] + first[1] * second[1] + first[2] * second[2];
+function sketchDisplayFrame(sketch) {
+    if (sketch.frame)
+        return sketch.frame;
+    return (0, benchcad_model_1.axisAlignedWorkplaneFrame)({
+        plane: sketch.plane,
+        origin: sketch.origin ?? [0, 0, 0],
+        normal: sketch.normal ?? 1,
+    });
+}
+function projectWorldToSketch(point, frame) {
+    const delta = point.map((value, axis) => value - frame.origin[axis]);
+    return [frameDot2(delta, frame.xAxis), frameDot2(delta, frame.yAxis), frameDot2(delta, frame.normal)];
+}
+function bodyBoxCorners(body) {
+    const half = body.size.map((value) => value / 2);
+    return [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => [
+        body.position[0] + x * half[0],
+        body.position[1] + y * half[1],
+        body.position[2] + z * half[2],
+    ])));
+}
+function makeSketchUnderlay(sketch, bodies, meshes, selectedBody) {
+    const supportId = sketch.faceReference?.bodyId ?? sketch.supportBodyId ?? sketch.attachment?.bodyId;
+    const body = bodies.find((candidate) => candidate.id === supportId);
+    if (!body)
+        return { body: null, polygons: [], edges: [], bounds: null, exact: false };
+    const frame = sketchDisplayFrame(sketch);
+    const calculated = meshes?.find((mesh) => mesh.targetId === body.id);
+    const vertices = [];
+    if (calculated?.vertices?.length) {
+        for (let index = 0; index < calculated.vertices.length; index += 3)
+            vertices.push([calculated.vertices[index], calculated.vertices[index + 1], calculated.vertices[index + 2]]);
+    }
+    else
+        vertices.push(...bodyBoxCorners(body));
+    const projected = vertices.map((point) => projectWorldToSketch(point, frame));
+    const polygons = [];
+    const edgeCounts = new Map();
+    const edgePoints = new Map();
+    if (calculated?.indices?.length) {
+        const tolerance = Math.max(0.02, Math.max(...body.size) * 0.0025);
+        for (let index = 0; index < calculated.indices.length; index += 3) {
+            const ids = [calculated.indices[index], calculated.indices[index + 1], calculated.indices[index + 2]];
+            const points = ids.map((id) => projected[id]);
+            if (points.every((point) => Math.abs(point[2]) <= tolerance)) {
+                polygons.push(points.map((point) => [point[0], point[1]]));
+                [[0, 1], [1, 2], [2, 0]].forEach(([a, b]) => {
+                    const first = ids[a], second = ids[b];
+                    const key = first < second ? `${first}:${second}` : `${second}:${first}`;
+                    edgeCounts.set(key, (edgeCounts.get(key) ?? 0) + 1);
+                    edgePoints.set(key, [[points[a][0], points[a][1]], [points[b][0], points[b][1]]]);
+                });
+            }
+        }
+    }
+    let edges = [...edgeCounts.entries()].filter(([, count]) => count === 1).map(([key]) => edgePoints.get(key));
+    if (!edges.length) {
+        const points = projected.map((point) => [point[0], point[1]]);
+        const minX = Math.min(...points.map((point) => point[0])), maxX = Math.max(...points.map((point) => point[0]));
+        const minY = Math.min(...points.map((point) => point[1])), maxY = Math.max(...points.map((point) => point[1]));
+        edges = [
+            [[minX, minY], [maxX, minY]],
+            [[maxX, minY], [maxX, maxY]],
+            [[maxX, maxY], [minX, maxY]],
+            [[minX, maxY], [minX, minY]],
+        ];
+        polygons.push([[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]]);
+    }
+    const points = edges.flat();
+    const bounds = points.length ? {
+        minX: Math.min(...points.map((point) => point[0])),
+        maxX: Math.max(...points.map((point) => point[0])),
+        minY: Math.min(...points.map((point) => point[1])),
+        maxY: Math.max(...points.map((point) => point[1])),
+    } : null;
+    return { body, polygons: polygons.slice(0, 900), edges: edges.slice(0, 2400), bounds, exact: Boolean(calculated) };
+}
+function SketchWorkbench({ sketch: incoming, bodies, meshes = [], selectedBody, units, initialProfileSelection = false, onCancel, onSave, onExtrude, onThinExtrude, onRib, onRevolve, }) {
     const [sketch, setSketch] = (0, react_1.useState)(() => (0, benchcad_model_1.syncSketchProjections)({
         ...structuredClone(incoming),
         constraints: incoming.constraints ?? [],
         dimensions: incoming.dimensions ?? [],
-    }, bodies)), [tool, setTool] = (0, react_1.useState)("line"), [selectedIds, setSelectedIds] = (0, react_1.useState)(sketch.entities[0] ? [sketch.entities[0].id] : []);
+    }, bodies)), [tool, setTool] = (0, react_1.useState)("select"), [selectedIds, setSelectedIds] = (0, react_1.useState)(() => initialProfileSelection
+        ? (0, benchcad_sketch_1.analyzeSketch)((0, benchcad_model_1.syncSketchProjections)({
+            ...structuredClone(incoming),
+            constraints: incoming.constraints ?? [],
+            dimensions: incoming.dimensions ?? [],
+        }, bodies), bodies.map((body) => body.id)).validProfileIds
+        : []);
     const [start, setStart] = (0, react_1.useState)(null), [cursor, setCursor] = (0, react_1.useState)(null), [chain, setChain] = (0, react_1.useState)([]), [arcPoints, setArcPoints] = (0, react_1.useState)([]), [drag, setDrag] = (0, react_1.useState)(null), [marqueeEnd, setMarqueeEnd] = (0, react_1.useState)(null);
-    const [distance, setDistance] = (0, react_1.useState)(12), [thinThickness, setThinThickness] = (0, react_1.useState)(1.2), [thinPlacement, setThinPlacement] = (0, react_1.useState)("inside"), [ribWidth, setRibWidth] = (0, react_1.useState)(2), [ribHeight, setRibHeight] = (0, react_1.useState)(12), [ribDraftAngle, setRibDraftAngle] = (0, react_1.useState)(0), [revolveAngle, setRevolveAngle] = (0, react_1.useState)(360), [revolveAxis, setRevolveAxis] = (0, react_1.useState)("horizontal"), [operation, setOperation] = (0, react_1.useState)("new"), [construction, setConstruction] = (0, react_1.useState)(false), [snapEnabled, setSnapEnabled] = (0, react_1.useState)(true), [gridSnap, setGridSnap] = (0, react_1.useState)(1), [snapLabel, setSnapLabel] = (0, react_1.useState)("GRID"), [offsetDistance, setOffsetDistance] = (0, react_1.useState)(2), [projectionMode, setProjectionMode] = (0, react_1.useState)("loop"), [projectionEdge, setProjectionEdge] = (0, react_1.useState)(0), [dimensionType, setDimensionType] = (0, react_1.useState)("horizontal"), [dimensionValue, setDimensionValue] = (0, react_1.useState)(10), [constraintMessage, setConstraintMessage] = (0, react_1.useState)("Select geometry, then apply a relation."), [viewSize, setViewSize] = (0, react_1.useState)(VIEW), [pan, setPan] = (0, react_1.useState)([0, 0]), [panDrag, setPanDrag] = (0, react_1.useState)(null);
+    const [distance, setDistance] = (0, react_1.useState)(12), [extrudeDirection, setExtrudeDirection] = (0, react_1.useState)("positive"), [showUnderlay, setShowUnderlay] = (0, react_1.useState)(true), [thinThickness, setThinThickness] = (0, react_1.useState)(1.2), [thinPlacement, setThinPlacement] = (0, react_1.useState)("inside"), [ribWidth, setRibWidth] = (0, react_1.useState)(2), [ribHeight, setRibHeight] = (0, react_1.useState)(12), [ribDraftAngle, setRibDraftAngle] = (0, react_1.useState)(0), [revolveAngle, setRevolveAngle] = (0, react_1.useState)(360), [revolveAxis, setRevolveAxis] = (0, react_1.useState)("horizontal"), [operation, setOperation] = (0, react_1.useState)("new"), [construction, setConstruction] = (0, react_1.useState)(false), [snapEnabled, setSnapEnabled] = (0, react_1.useState)(true), [gridSnap, setGridSnap] = (0, react_1.useState)(1), [snapLabel, setSnapLabel] = (0, react_1.useState)("GRID"), [offsetDistance, setOffsetDistance] = (0, react_1.useState)(2), [projectionMode, setProjectionMode] = (0, react_1.useState)("loop"), [projectionEdge, setProjectionEdge] = (0, react_1.useState)(0), [dimensionType, setDimensionType] = (0, react_1.useState)("horizontal"), [dimensionValue, setDimensionValue] = (0, react_1.useState)(10), [constraintMessage, setConstraintMessage] = (0, react_1.useState)("Select geometry, then apply a relation."), [viewSize, setViewSize] = (0, react_1.useState)(VIEW), [pan, setPan] = (0, react_1.useState)([0, 0]), [panDrag, setPanDrag] = (0, react_1.useState)(null);
     const svgRef = (0, react_1.useRef)(null);
+    const initialFitRef = (0, react_1.useRef)(false);
     const selected = sketch.entities.find((e) => e.id === selectedIds[0]) ?? null;
     const sketchAnalysis = (0, react_1.useMemo)(() => (0, benchcad_sketch_1.analyzeSketch)(sketch, bodies.map((body) => body.id)), [bodies, sketch]);
     const closedIds = (0, react_1.useMemo)(() => sketchAnalysis.profiles.map((profile) => profile.entityId), [sketchAnalysis]);
@@ -87171,6 +87489,64 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
     const hasConflict = !sketchAnalysis.canFinish;
     const remainingDof = sketchAnalysis.remainingDof;
     const solveState = sketchAnalysis.solveState;
+    const underlay = (0, react_1.useMemo)(() => makeSketchUnderlay(sketch, bodies, meshes, selectedBody), [bodies, meshes, selectedBody, sketch]);
+    (0, react_1.useEffect)(() => {
+        if (initialFitRef.current)
+            return;
+        initialFitRef.current = true;
+        const frame = window.requestAnimationFrame(() => fit());
+        return () => window.cancelAnimationFrame(frame);
+    }, [underlay.body?.id]);
+    function resetCommand(message = "Command canceled. Select is active.") {
+        setStart(null);
+        setCursor(null);
+        setChain([]);
+        setArcPoints([]);
+        setDrag(null);
+        setMarqueeEnd(null);
+        setPanDrag(null);
+        setTool("select");
+        setConstraintMessage(message);
+    }
+    function activateTool(nextTool) {
+        setStart(null);
+        setCursor(null);
+        setChain([]);
+        setArcPoints([]);
+        setDrag(null);
+        setMarqueeEnd(null);
+        setPanDrag(null);
+        setTool(nextTool);
+        setConstraintMessage(nextTool === "select" ? "Select geometry or drag a marquee." : `${nextTool.replace("-", " ")} command active. Press Escape to cancel.`);
+    }
+    (0, react_1.useEffect)(() => {
+        const onKey = (event) => {
+            const target = event.target;
+            const editing = Boolean(target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName ?? "")));
+            if (editing && event.key !== "Escape")
+                return;
+            if (event.key === "Escape") {
+                if (editing && typeof target.blur === "function")
+                    target.blur();
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation?.();
+                if (tool !== "select" || chain.length || arcPoints.length || start || drag || panDrag)
+                    resetCommand();
+                else {
+                    setSelectedIds([]);
+                    setConstraintMessage("Selection cleared. Select is active.");
+                }
+            }
+            if (event.key === "Enter" && chain.length >= 2 && (tool === "line" || tool === "polyline")) {
+                event.preventDefault();
+                event.stopPropagation();
+                finishChain(false);
+            }
+        };
+        window.addEventListener("keydown", onKey, true);
+        return () => window.removeEventListener("keydown", onKey, true);
+    }, [arcPoints.length, chain.length, drag, panDrag, start, tool]);
     function raw(event) {
         const svg = svgRef.current;
         if (!svg)
@@ -87226,8 +87602,10 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
         setSelectedIds([e.id]);
     };
     function finishChain(close = false) {
-        if (chain.length < 2)
+        if (chain.length < 2) {
+            resetCommand("Line chain canceled. Select is active.");
             return;
+        }
         add({
             id: (0, benchcad_model_1.uid)("entity"),
             kind: "polyline",
@@ -87236,7 +87614,26 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
             construction,
         });
         setChain([]);
+        setCursor(null);
         setTool("select");
+        setConstraintMessage(close ? "Closed profile created." : "Line chain finished.");
+    }
+    function commitSketch() {
+        const pending = chain.length >= 2
+            ? {
+                id: (0, benchcad_model_1.uid)("entity"),
+                kind: "polyline",
+                points: chain,
+                closed: false,
+                construction,
+            }
+            : null;
+        const finished = {
+            ...sketch,
+            visible: sketch.visible !== false,
+            entities: pending ? [...sketch.entities, pending] : sketch.entities,
+        };
+        onSave((0, benchcad_sketch_1.resolveSketchRelations)(finished));
     }
     function drawClick(p) {
         if (tool === "line" || tool === "polyline") {
@@ -87657,6 +88054,10 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
                 ...current,
                 plane,
                 attachment: undefined,
+                faceReference: undefined,
+                supportBodyId: undefined,
+                supportStatus: undefined,
+                supportIssue: undefined,
                 workplaneId: undefined,
                 origin: undefined,
                 normal: 1,
@@ -87670,6 +88071,10 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
             ...current,
             plane,
             attachment: { bodyId, face, offset: 0 },
+            faceReference: undefined,
+            supportBodyId: bodyId,
+            supportStatus: "resolved",
+            supportIssue: undefined,
             workplaneId: undefined,
             origin: undefined,
             normal: (0, benchcad_model_1.normalForFace)(face),
@@ -87803,12 +88208,15 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
         }
     }
     function fit() {
-        if (!sketch.entities.length) {
+        const all = sketch.entities.map(bounds);
+        if (underlay.bounds)
+            all.push(underlay.bounds);
+        if (!all.length) {
             setViewSize(VIEW);
             setPan([0, 0]);
             return;
         }
-        const all = sketch.entities.map(bounds), minX = Math.min(...all.map((item) => item.minX)), maxX = Math.max(...all.map((item) => item.maxX)), minY = Math.min(...all.map((item) => item.minY)), maxY = Math.max(...all.map((item) => item.maxY));
+        const minX = Math.min(...all.map((item) => item.minX)), maxX = Math.max(...all.map((item) => item.maxX)), minY = Math.min(...all.map((item) => item.minY)), maxY = Math.max(...all.map((item) => item.maxY));
         setViewSize(Math.min(720, Math.max(80, Math.max(maxX - minX, maxY - minY) * SCALE * 1.35)));
         setPan([
             round(((minX + maxX) / 2) * SCALE),
@@ -87829,32 +88237,22 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
             ? { ...e, construction: !e.construction }
             : e),
     });
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "sketch-shell", role: "dialog", "aria-modal": "true", "aria-label": "Sketch editor", children: [(0, jsx_runtime_1.jsxs)("header", { className: "sketch-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "BENCHCAD SKETCH" }), (0, jsx_runtime_1.jsx)("strong", { children: sketch.name })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Sketch on", (0, jsx_runtime_1.jsxs)("select", { value: sketch.workplaneId
-                                    ? `workplane:${sketch.workplaneId}`
-                                    : sketch.attachment
-                                        ? `face:${sketch.attachment.bodyId}:${sketch.attachment.face}`
-                                        : `plane:${sketch.plane}`, onChange: (e) => setWorkplane(e.target.value), children: [sketch.workplaneId && ((0, jsx_runtime_1.jsx)("option", { value: `workplane:${sketch.workplaneId}`, children: "Active associative workplane" })), (0, jsx_runtime_1.jsx)("option", { value: "plane:XY", children: "Origin XY plane" }), (0, jsx_runtime_1.jsx)("option", { value: "plane:XZ", children: "Origin XZ plane" }), (0, jsx_runtime_1.jsx)("option", { value: "plane:YZ", children: "Origin YZ plane" }), bodies.flatMap((body) => [
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "sketch-shell", role: "dialog", "aria-modal": "true", "aria-label": "Sketch editor", children: [(0, jsx_runtime_1.jsxs)("header", { className: "sketch-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "BENCHCAD SKETCH" }), (0, jsx_runtime_1.jsx)("strong", { children: sketch.name })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Sketch on", (0, jsx_runtime_1.jsxs)("select", { value: sketch.faceReference
+                                    ? `face-reference:${sketch.faceReference.bodyId}:${sketch.faceReference.topologyId}`
+                                    : sketch.workplaneId
+                                        ? `workplane:${sketch.workplaneId}`
+                                        : sketch.attachment
+                                            ? `face:${sketch.attachment.bodyId}:${sketch.attachment.face}`
+                                            : `plane:${sketch.plane}`, onChange: (e) => setWorkplane(e.target.value), children: [sketch.faceReference && ((0, jsx_runtime_1.jsx)("option", { value: `face-reference:${sketch.faceReference.bodyId}:${sketch.faceReference.topologyId}`, children: `${bodies.find((body) => body.id === sketch.faceReference?.bodyId)?.name ?? "Body"} · selected planar face` })), sketch.workplaneId && ((0, jsx_runtime_1.jsx)("option", { value: `workplane:${sketch.workplaneId}`, children: "Active associative workplane" })), (0, jsx_runtime_1.jsx)("option", { value: "plane:XY", children: "Origin XY plane" }), (0, jsx_runtime_1.jsx)("option", { value: "plane:XZ", children: "Origin XZ plane" }), (0, jsx_runtime_1.jsx)("option", { value: "plane:YZ", children: "Origin YZ plane" }), bodies.flatMap((body) => [
                                         "top",
                                         "bottom",
                                         "front",
                                         "back",
                                         "left",
                                         "right",
-                                    ].map((face) => ((0, jsx_runtime_1.jsxs)("option", { value: `face:${body.id}:${face}`, children: [body.name, " \u00B7 ", face, " face"] }, `${body.id}:${face}`))))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-status", children: [(0, jsx_runtime_1.jsxs)("b", { children: [sketchAnalysis.validProfileIds.length, "/", closedIds.length, " PROFILES READY"] }), (0, jsx_runtime_1.jsxs)("span", { children: ["SNAP ", snapLabel] }), (0, jsx_runtime_1.jsx)("strong", { className: hasConflict ? "solve-conflict" : "", children: solveState })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-header-actions", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: () => onSave((0, benchcad_sketch_1.resolveSketchRelations)(sketch)), disabled: !sketchAnalysis.canFinish, title: sketchAnalysis.canFinish
+                                    ].map((face) => ((0, jsx_runtime_1.jsxs)("option", { value: `face:${body.id}:${face}`, children: [body.name, " \u00B7 ", face, " face"] }, `${body.id}:${face}`))))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-status", children: [(0, jsx_runtime_1.jsxs)("b", { children: [sketchAnalysis.validProfileIds.length, "/", closedIds.length, " PROFILES READY"] }), (0, jsx_runtime_1.jsxs)("span", { children: ["SNAP ", snapLabel] }), (0, jsx_runtime_1.jsx)("strong", { className: hasConflict ? "solve-conflict" : "", children: solveState }), (0, jsx_runtime_1.jsxs)("span", { className: "sketch-command-state", children: [tool.toUpperCase(), " · ESC CANCELS", chain.length >= 2 && ((0, jsx_runtime_1.jsx)("button", { type: "button", className: "finish-chain-button", onClick: () => finishChain(false), children: "Finish chain · Enter" }))] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-header-actions", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: commitSketch, disabled: !sketchAnalysis.canFinish, title: sketchAnalysis.canFinish
                                     ? "Commit this sketch"
-                                    : "Resolve invalid geometry or relation conflicts before finishing", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}), "Finish sketch"] }), (0, jsx_runtime_1.jsx)("button", { className: "icon", onClick: onCancel, "aria-label": "Close sketch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.X, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-layout", children: [(0, jsx_runtime_1.jsxs)("aside", { className: "sketch-tools", children: [(0, jsx_runtime_1.jsx)("h3", { children: "CREATE" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "select", onClick: () => setTool("select"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.MousePointer2, {}), text: "Select / marquee" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "line", onClick: () => {
-                                    setTool("line");
-                                    setChain([]);
-                                }, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Minus, {}), text: "Connected line" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "rectangle", onClick: () => setTool("rectangle"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.RectangleHorizontal, {}), text: "Rectangle" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "circle", onClick: () => setTool("circle"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), text: "Circle" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "arc-center", onClick: () => {
-                                    setTool("arc-center");
-                                    setArcPoints([]);
-                                }, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Crosshair, {}), text: "Center arc" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "arc-3pt", onClick: () => {
-                                    setTool("arc-3pt");
-                                    setArcPoints([]);
-                                }, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Pentagon, {}), text: "Three-point arc" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "polyline", onClick: () => {
-                                    setTool("polyline");
-                                    setChain([]);
-                                }, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Pentagon, {}), text: "Closed polyline" }), (0, jsx_runtime_1.jsxs)("label", { className: "construction-toggle", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: construction, onChange: (e) => setConstruction(e.target.checked) }), "Create as construction"] }), (0, jsx_runtime_1.jsx)("h3", { children: "MODIFY" }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selectedIds.length, onClick: trim, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), text: "Trim" }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selected, onClick: extend, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}), text: `Extend 5 ${units}` }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selected, onClick: split, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), text: "Split" }), (0, jsx_runtime_1.jsxs)("div", { className: "offset-row", children: [(0, jsx_runtime_1.jsx)("input", { type: "number", value: offsetDistance, onChange: (e) => setOffsetDistance(Number(e.target.value)) }), (0, jsx_runtime_1.jsxs)("button", { onClick: offset, disabled: !selectedIds.length, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Copy, {}), "Offset"] })] }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selectedIds.length, onClick: toggleConstruction, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), text: "Construction / normal" }), (0, jsx_runtime_1.jsx)("h3", { children: "ARRANGE" }), (0, jsx_runtime_1.jsxs)("div", { className: "constraint-grid sketch-arrange-grid", children: [(0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "min"), disabled: selectedIds.length < 2, children: "Left" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "center"), disabled: selectedIds.length < 2, children: "Center X" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "max"), disabled: selectedIds.length < 2, children: "Right" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "min"), disabled: selectedIds.length < 2, children: "Bottom" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "center"), disabled: selectedIds.length < 2, children: "Center Y" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "max"), disabled: selectedIds.length < 2, children: "Top" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "distribute"), disabled: selectedIds.length < 3, children: "Space X" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "distribute"), disabled: selectedIds.length < 3, children: "Space Y" })] }), (0, jsx_runtime_1.jsx)("h3", { children: "CONSTRAIN" }), (0, jsx_runtime_1.jsx)("div", { className: "constraint-grid", children: [
+                                    : "Resolve invalid geometry or relation conflicts before finishing", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}), "Finish sketch"] }), (0, jsx_runtime_1.jsx)("button", { className: "icon", onClick: onCancel, "aria-label": "Close sketch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.X, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-layout", children: [(0, jsx_runtime_1.jsxs)("aside", { className: "sketch-tools", children: [(0, jsx_runtime_1.jsx)("h3", { children: "CREATE" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "select", onClick: () => activateTool("select"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.MousePointer2, {}), text: "Select / marquee" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "line", onClick: () => activateTool("line"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Minus, {}), text: "Connected line" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "rectangle", onClick: () => activateTool("rectangle"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.RectangleHorizontal, {}), text: "Rectangle" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "circle", onClick: () => activateTool("circle"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), text: "Circle" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "arc-center", onClick: () => activateTool("arc-center"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Crosshair, {}), text: "Center arc" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "arc-3pt", onClick: () => activateTool("arc-3pt"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Pentagon, {}), text: "Three-point arc" }), (0, jsx_runtime_1.jsx)(ToolButton, { active: tool === "polyline", onClick: () => activateTool("polyline"), icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Pentagon, {}), text: "Closed polyline" }), (0, jsx_runtime_1.jsxs)("label", { className: "construction-toggle", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: construction, onChange: (e) => setConstruction(e.target.checked) }), "Create as construction"] }), (0, jsx_runtime_1.jsx)("h3", { children: "MODIFY" }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selectedIds.length, onClick: trim, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), text: "Trim" }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selected, onClick: extend, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}), text: `Extend 5 ${units}` }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selected, onClick: split, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), text: "Split" }), (0, jsx_runtime_1.jsxs)("div", { className: "offset-row", children: [(0, jsx_runtime_1.jsx)("input", { type: "number", value: offsetDistance, onChange: (e) => setOffsetDistance(Number(e.target.value)) }), (0, jsx_runtime_1.jsxs)("button", { onClick: offset, disabled: !selectedIds.length, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Copy, {}), "Offset"] })] }), (0, jsx_runtime_1.jsx)(ToolButton, { disabled: !selectedIds.length, onClick: toggleConstruction, icon: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), text: "Construction / normal" }), (0, jsx_runtime_1.jsx)("h3", { children: "ARRANGE" }), (0, jsx_runtime_1.jsxs)("div", { className: "constraint-grid sketch-arrange-grid", children: [(0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "min"), disabled: selectedIds.length < 2, children: "Left" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "center"), disabled: selectedIds.length < 2, children: "Center X" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "max"), disabled: selectedIds.length < 2, children: "Right" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "min"), disabled: selectedIds.length < 2, children: "Bottom" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "center"), disabled: selectedIds.length < 2, children: "Center Y" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "max"), disabled: selectedIds.length < 2, children: "Top" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(0, "distribute"), disabled: selectedIds.length < 3, children: "Space X" }), (0, jsx_runtime_1.jsx)("button", { onClick: () => arrangeSelection(1, "distribute"), disabled: selectedIds.length < 3, children: "Space Y" })] }), (0, jsx_runtime_1.jsx)("h3", { children: "CONSTRAIN" }), (0, jsx_runtime_1.jsx)("div", { className: "constraint-grid", children: [
                                     "coincident",
                                     "horizontal",
                                     "vertical",
@@ -87877,11 +88275,13 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
                                     ? `${sketchAnalysis.brokenProjectionIds.length} broken linked reference${sketchAnalysis.brokenProjectionIds.length === 1 ? "" : "s"}; last valid geometry is preserved.`
                                     : selectedBody
                                         ? `Projects ${selectedBody.name}'s ${projectionMode} as associative reference geometry.`
-                                        : "Select a 3D body before opening Sketch to project it." })] }), (0, jsx_runtime_1.jsxs)("section", { className: "sketch-canvas-wrap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "sketch-plane-label", children: [sketch.workplaneId
-                                        ? `ASSOCIATIVE WORKPLANE · ${sketch.plane}`
-                                        : sketch.attachment
-                                            ? `${bodies.find((body) => body.id === sketch.attachment?.bodyId)?.name ?? "BODY"} · ${sketch.attachment.face.toUpperCase()} FACE`
-                                            : `${sketch.plane} ORIGIN PLANE`, " ", "\u00B7 ", units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-view-tools", children: [(0, jsx_runtime_1.jsx)("button", { onClick: fit, title: "Fit sketch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)("button", { className: snapEnabled ? "active" : "", onClick: () => setSnapEnabled(!snapEnabled), title: "Toggle snapping", "aria-label": "Toggle sketch snapping", "aria-pressed": snapEnabled, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Crosshair, {}) }), (0, jsx_runtime_1.jsxs)("select", { value: gridSnap, onChange: (e) => setGridSnap(Number(e.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: ".1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" })] })] }), (0, jsx_runtime_1.jsxs)("svg", { ref: svgRef, className: `sketch-canvas tool-${tool}`, viewBox: `${(VIEW - viewSize) / 2 + pan[0]} ${(VIEW - viewSize) / 2 + pan[1]} ${viewSize} ${viewSize}`, onWheel: (e) => {
+                                        : "Select a 3D body before opening Sketch to project it." })] }), (0, jsx_runtime_1.jsxs)("section", { className: "sketch-canvas-wrap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "sketch-plane-label", children: [sketch.faceReference
+                                        ? `${bodies.find((body) => body.id === sketch.faceReference?.bodyId)?.name ?? "BODY"} · ASSOCIATIVE FACE`
+                                        : sketch.workplaneId
+                                            ? `ASSOCIATIVE WORKPLANE · ${sketch.plane}`
+                                            : sketch.attachment
+                                                ? `${bodies.find((body) => body.id === sketch.attachment?.bodyId)?.name ?? "BODY"} · ${sketch.attachment.face.toUpperCase()} FACE`
+                                                : `${sketch.plane} ORIGIN PLANE`, " ", "\u00B7 ", units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("div", { className: "sketch-view-tools", children: [(0, jsx_runtime_1.jsx)("button", { onClick: fit, title: "Fit sketch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)("button", { className: showUnderlay ? "active" : "", onClick: () => setShowUnderlay((value) => !value), title: "Toggle supporting body underlay", "aria-label": "Toggle supporting body underlay", "aria-pressed": showUnderlay, children: showUnderlay ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {}) }), (0, jsx_runtime_1.jsx)("button", { className: snapEnabled ? "active" : "", onClick: () => setSnapEnabled(!snapEnabled), title: "Toggle snapping", "aria-label": "Toggle sketch snapping", "aria-pressed": snapEnabled, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Crosshair, {}) }), (0, jsx_runtime_1.jsxs)("select", { value: gridSnap, onChange: (e) => setGridSnap(Number(e.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: ".1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" })] })] }), (0, jsx_runtime_1.jsxs)("svg", { ref: svgRef, className: `sketch-canvas tool-${tool}`, "data-active-tool": tool, "data-underlay-body-count": showUnderlay && underlay.body ? "1" : "0", viewBox: `${(VIEW - viewSize) / 2 + pan[0]} ${(VIEW - viewSize) / 2 + pan[1]} ${viewSize} ${viewSize}`, onWheel: (e) => {
                                     e.preventDefault();
                                     setViewSize((s) => Math.max(100, Math.min(720, s * (e.deltaY > 0 ? 1.12 : 0.89))));
                                 }, onPointerDown: (e) => {
@@ -87906,12 +88306,12 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
                                     setStart(p);
                                     setCursor(p);
                                     e.currentTarget.setPointerCapture(e.pointerId);
-                                }, onPointerMove: move, onPointerUp: up, onContextMenu: (event) => event.preventDefault(), onDoubleClick: () => {
+                                }, onPointerMove: move, onPointerUp: up, onContextMenu: (event) => { event.preventDefault(); resetCommand("Command canceled by right-click. Select is active."); }, onDoubleClick: () => {
                                     if (tool === "line")
                                         finishChain(false);
                                     if (tool === "polyline")
                                         finishChain(true);
-                                }, children: [(0, jsx_runtime_1.jsxs)("defs", { children: [(0, jsx_runtime_1.jsx)("pattern", { id: "minor-grid", width: "20", height: "20", patternUnits: "userSpaceOnUse", children: (0, jsx_runtime_1.jsx)("path", { d: "M20 0H0V20", fill: "none", stroke: "#334348", strokeWidth: ".45" }) }), (0, jsx_runtime_1.jsxs)("pattern", { id: "major-grid", width: "100", height: "100", patternUnits: "userSpaceOnUse", children: [(0, jsx_runtime_1.jsx)("rect", { width: "100", height: "100", fill: "url(#minor-grid)" }), (0, jsx_runtime_1.jsx)("path", { d: "M100 0H0V100", fill: "none", stroke: "#4e6267", strokeWidth: ".7" })] })] }), (0, jsx_runtime_1.jsx)("rect", { width: VIEW, height: VIEW, fill: "url(#major-grid)" }), (0, jsx_runtime_1.jsx)("path", { d: `M0 ${VIEW / 2}H${VIEW}M${VIEW / 2} 0V${VIEW}`, className: "sketch-origin" }), sketch.entities.map((e) => ((0, jsx_runtime_1.jsx)(EntityView, { entity: e, selected: selectedIds.includes(e.id), dof: sketchAnalysis.entityDof[e.id] ?? 0, invalid: sketchAnalysis.issues.some((issue) => issue.severity === "error" && issue.entityIds.includes(e.id)), brokenProjection: sketchAnalysis.brokenProjectionIds.includes(e.id), onDown: (event) => beginDrag(event, e), onVertex: (event, index) => {
+                                }, children: [(0, jsx_runtime_1.jsxs)("defs", { children: [(0, jsx_runtime_1.jsx)("pattern", { id: "minor-grid", width: "20", height: "20", patternUnits: "userSpaceOnUse", children: (0, jsx_runtime_1.jsx)("path", { d: "M20 0H0V20", fill: "none", stroke: "#334348", strokeWidth: ".45" }) }), (0, jsx_runtime_1.jsxs)("pattern", { id: "major-grid", width: "100", height: "100", patternUnits: "userSpaceOnUse", children: [(0, jsx_runtime_1.jsx)("rect", { width: "100", height: "100", fill: "url(#minor-grid)" }), (0, jsx_runtime_1.jsx)("path", { d: "M100 0H0V100", fill: "none", stroke: "#4e6267", strokeWidth: ".7" })] })] }), (0, jsx_runtime_1.jsx)("rect", { width: VIEW, height: VIEW, fill: "url(#major-grid)" }), showUnderlay && underlay.body && (0, jsx_runtime_1.jsx)(SketchUnderlay, { underlay: underlay }), (0, jsx_runtime_1.jsx)("path", { d: `M0 ${VIEW / 2}H${VIEW}M${VIEW / 2} 0V${VIEW}`, className: "sketch-origin" }), sketch.entities.map((e) => ((0, jsx_runtime_1.jsx)(EntityView, { entity: e, selected: selectedIds.includes(e.id), dof: sketchAnalysis.entityDof[e.id] ?? 0, invalid: sketchAnalysis.issues.some((issue) => issue.severity === "error" && issue.entityIds.includes(e.id)), brokenProjection: sketchAnalysis.brokenProjectionIds.includes(e.id), onDown: (event) => beginDrag(event, e), onVertex: (event, index) => {
                                             event.stopPropagation();
                                             setDrag({
                                                 type: "vertex",
@@ -87944,9 +88344,13 @@ function SketchWorkbench({ sketch: incoming, bodies, selectedBody, units, onCanc
                                                             : "CURVE" }), (0, jsx_runtime_1.jsxs)("strong", { children: [selected.kind, selectedIds.length > 1 ? ` + ${selectedIds.length - 1}` : ""] }), selected.fixed && ((0, jsx_runtime_1.jsxs)("small", { children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Lock, {}), " FIXED"] })), selected.projection?.linked && (0, jsx_runtime_1.jsx)("small", { children: "LINKED TO BODY" })] }), (0, jsx_runtime_1.jsx)(EntityFields, { entity: selected, disabled: Boolean(selected.fixed || selected.projection?.linked), update: (patch) => {
                                             if (!selected.fixed && !selected.projection?.linked)
                                                 update(selected.id, patch);
-                                        } }), (0, jsx_runtime_1.jsxs)("button", { className: "delete-entity", onClick: remove, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), "Delete selected"] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "EXTRUDE PROFILE" }), (0, jsx_runtime_1.jsx)("p", { children: profileSelection.message }), (0, jsx_runtime_1.jsxs)("label", { children: ["Distance", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: distance, onChange: (e) => setDistance(Number(e.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (e) => setOperation(e.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !profileSelection.ready || distance <= 0 || !sketchAnalysis.canFinish, onClick: () => onExtrude(sketch, extrudeIds, distance, operation), children: "Extrude selected profiles" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card manufacturing-feature-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "THIN EXTRUDE" }), (0, jsx_runtime_1.jsx)("p", { children: "Create a real hollow wall from the selected closed profile." }), (0, jsx_runtime_1.jsxs)("label", { children: ["Height", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: distance, onChange: (event) => setDistance(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Wall thickness", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: thinThickness, onChange: (event) => setThinThickness(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Placement", (0, jsx_runtime_1.jsxs)("select", { value: thinPlacement, onChange: (event) => setThinPlacement(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "inside", children: "Inside profile" }), (0, jsx_runtime_1.jsx)("option", { value: "center", children: "Centered on profile" }), (0, jsx_runtime_1.jsx)("option", { value: "outside", children: "Outside profile" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (event) => setOperation(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !profileSelection.ready || !sketchAnalysis.canFinish || distance <= 0 || thinThickness <= 0, onClick: () => onThinExtrude(sketch, extrudeIds, distance, thinThickness, thinPlacement, operation), children: "Create thin wall" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card manufacturing-feature-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "RIB / WEB" }), (0, jsx_runtime_1.jsx)("p", { children: ribIds.length ? `${ribIds.length} open centerline${ribIds.length === 1 ? "" : "s"} selected.` : "Select one or more open polylines to create structural webs." }), (0, jsx_runtime_1.jsxs)("label", { children: ["Height", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: ribHeight, onChange: (event) => setRibHeight(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Width", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: ribWidth, onChange: (event) => setRibWidth(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Draft annotation", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0", max: "45", value: ribDraftAngle, onChange: (event) => setRibDraftAngle(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: "\u00B0" })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (event) => setOperation(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !ribIds.length || !sketchAnalysis.canFinish || ribHeight <= 0 || ribWidth <= 0, onClick: () => onRib(sketch, ribIds, ribHeight, ribWidth, ribDraftAngle, operation), children: "Create rib / web" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card revolve-card", children: [(0, jsx_runtime_1.jsxs)("h3", { children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Rotate3D, {}), " REVOLVE PROFILE"] }), (0, jsx_runtime_1.jsx)("p", { children: profileSelection.ready
+                                        } }), (0, jsx_runtime_1.jsxs)("button", { className: "delete-entity", onClick: remove, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), "Delete selected"] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "EXTRUDE PROFILE" }), (0, jsx_runtime_1.jsx)("p", { children: profileSelection.message }), (0, jsx_runtime_1.jsxs)("label", { children: ["Distance", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: distance, onChange: (e) => setDistance(Number(e.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Direction", (0, jsx_runtime_1.jsxs)("select", { value: extrudeDirection, onChange: (e) => setExtrudeDirection(e.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "positive", children: "Positive · along sketch normal" }), (0, jsx_runtime_1.jsx)("option", { value: "negative", children: "Negative · opposite sketch normal" }), (0, jsx_runtime_1.jsx)("option", { value: "symmetric", children: "Symmetric · both sides" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (e) => setOperation(e.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join target body" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut target body" })] })] }), (0, jsx_runtime_1.jsx)("small", { className: "extrude-direction-note", children: extrudeDirection === "negative" ? "The profile grows opposite the blue sketch normal — useful for cutting into a supporting face." : extrudeDirection === "symmetric" ? "The total distance is centered equally around the sketch plane." : "The profile grows along the blue sketch normal." }), (0, jsx_runtime_1.jsx)("button", { disabled: !profileSelection.ready || distance <= 0 || !sketchAnalysis.canFinish, onClick: () => onExtrude(sketch, extrudeIds, distance, operation, extrudeDirection), children: operation === "cut" ? "Cut with selected profiles" : operation === "join" ? "Join selected profiles" : "Extrude selected profiles" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card manufacturing-feature-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "THIN EXTRUDE" }), (0, jsx_runtime_1.jsx)("p", { children: "Create a real hollow wall from the selected closed profile." }), (0, jsx_runtime_1.jsxs)("label", { children: ["Height", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: distance, onChange: (event) => setDistance(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Wall thickness", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: thinThickness, onChange: (event) => setThinThickness(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Placement", (0, jsx_runtime_1.jsxs)("select", { value: thinPlacement, onChange: (event) => setThinPlacement(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "inside", children: "Inside profile" }), (0, jsx_runtime_1.jsx)("option", { value: "center", children: "Centered on profile" }), (0, jsx_runtime_1.jsx)("option", { value: "outside", children: "Outside profile" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Direction", (0, jsx_runtime_1.jsxs)("select", { value: extrudeDirection, onChange: (event) => setExtrudeDirection(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "positive", children: "Positive · along sketch normal" }), (0, jsx_runtime_1.jsx)("option", { value: "negative", children: "Negative · opposite sketch normal" }), (0, jsx_runtime_1.jsx)("option", { value: "symmetric", children: "Symmetric · both sides" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (event) => setOperation(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join target body" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut target body" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !profileSelection.ready || !sketchAnalysis.canFinish || distance <= 0 || thinThickness <= 0, onClick: () => onThinExtrude(sketch, extrudeIds, distance, thinThickness, thinPlacement, operation, extrudeDirection), children: "Create thin wall" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card manufacturing-feature-card", children: [(0, jsx_runtime_1.jsx)("h3", { children: "RIB / WEB" }), (0, jsx_runtime_1.jsx)("p", { children: ribIds.length ? `${ribIds.length} open centerline${ribIds.length === 1 ? "" : "s"} selected.` : "Select one or more open polylines to create structural webs." }), (0, jsx_runtime_1.jsxs)("label", { children: ["Height", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: ribHeight, onChange: (event) => setRibHeight(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Width", (0, jsx_runtime_1.jsx)("input", { type: "number", min: ".01", value: ribWidth, onChange: (event) => setRibWidth(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: units })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Draft annotation", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0", max: "45", value: ribDraftAngle, onChange: (event) => setRibDraftAngle(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: "\u00B0" })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (event) => setOperation(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !ribIds.length || !sketchAnalysis.canFinish || ribHeight <= 0 || ribWidth <= 0, onClick: () => onRib(sketch, ribIds, ribHeight, ribWidth, ribDraftAngle, operation), children: "Create rib / web" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "extrude-card revolve-card", children: [(0, jsx_runtime_1.jsxs)("h3", { children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Rotate3D, {}), " REVOLVE PROFILE"] }), (0, jsx_runtime_1.jsx)("p", { children: profileSelection.ready
                                                     ? `${profileSelection.message} The profile must stay on one side of the axis.`
                                                     : profileSelection.message }), (0, jsx_runtime_1.jsxs)("label", { children: ["Axis", (0, jsx_runtime_1.jsxs)("select", { value: revolveAxis, onChange: (event) => setRevolveAxis(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "horizontal", children: "Sketch horizontal axis" }), (0, jsx_runtime_1.jsx)("option", { value: "vertical", children: "Sketch vertical axis" }), (0, jsx_runtime_1.jsx)("option", { value: "construction", children: "Selected construction line" })] })] }), revolveAxis === "construction" && ((0, jsx_runtime_1.jsx)("small", { children: selectedAxisId ? "Selected two-point construction axis" : "Shift-select a two-point construction line with the profiles." })), (0, jsx_runtime_1.jsxs)("label", { children: ["Angle", (0, jsx_runtime_1.jsx)("input", { type: "number", min: "0.1", max: "360", step: "1", value: revolveAngle, onChange: (event) => setRevolveAngle(Number(event.target.value)) }), (0, jsx_runtime_1.jsx)("em", { children: "\u00B0" })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Operation", (0, jsx_runtime_1.jsxs)("select", { value: operation, onChange: (event) => setOperation(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "new", children: "New body" }), (0, jsx_runtime_1.jsx)("option", { value: "join", children: "Join" }), (0, jsx_runtime_1.jsx)("option", { value: "cut", children: "Cut" })] })] }), (0, jsx_runtime_1.jsx)("button", { disabled: !profileSelection.ready || !sketchAnalysis.canFinish || revolveAngle <= 0 || revolveAngle > 360 || (revolveAxis === "construction" && !selectedAxisId), onClick: () => onRevolve(sketch, extrudeIds, revolveAngle, revolveAxis, selectedAxisId, operation), children: "Revolve selected profiles" })] })] })) : ((0, jsx_runtime_1.jsxs)("div", { className: "sketch-empty", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MousePointer2, {}), (0, jsx_runtime_1.jsx)("p", { children: "Drag a selection window or choose geometry to edit it." })] }))] })] })] }));
+}
+
+function SketchUnderlay({ underlay }) {
+    return ((0, jsx_runtime_1.jsxs)("g", { className: "sketch-body-underlay", "aria-hidden": "true", children: [(0, jsx_runtime_1.jsx)("g", { className: "sketch-underlay-faces", children: underlay.polygons.map((polygon, index) => ((0, jsx_runtime_1.jsx)("polygon", { points: polygon.map((point) => screen(point).join(",")).join(" ") }, index))) }), (0, jsx_runtime_1.jsx)("g", { className: "sketch-underlay-edges", children: underlay.edges.map((edge, index) => ((0, jsx_runtime_1.jsx)("line", { x1: screen(edge[0])[0], y1: screen(edge[0])[1], x2: screen(edge[1])[0], y2: screen(edge[1])[1] }, index))) }), (0, jsx_runtime_1.jsxs)("text", { x: "10", y: "18", className: "sketch-underlay-label", children: [underlay.body.name, underlay.exact ? " · EXACT FACE" : " · BODY ENVELOPE"] })] }));
 }
 function ToolButton({ active, disabled = false, onClick, icon, text, }) {
     return ((0, jsx_runtime_1.jsxs)("button", { className: active ? "active" : "", disabled: disabled, onClick: onClick, "aria-pressed": active === undefined ? undefined : active, children: [icon, text] }));
@@ -88000,6 +88404,7 @@ function DimensionView({ entity, type, value, units, conflict, }) {
                 : "";
     return ((0, jsx_runtime_1.jsxs)("g", { className: `dimension-mark ${conflict ? "dimension-conflict" : ""}`, children: [(0, jsx_runtime_1.jsx)("path", { d: `M ${screen([box.minX, box.maxY + 1])[0]} ${y} H ${screen([box.maxX, box.maxY + 1])[0]}` }), (0, jsx_runtime_1.jsxs)("text", { x: x, y: y - 2, textAnchor: "middle", children: [prefix, value, type === "angular" ? "°" : ` ${units}`] })] }));
 }
+
 
 },
 "lib/benchcad-drawing.ts":function(require,module,exports){
@@ -108450,11 +108855,10 @@ function applySelectionBehavior(current, incoming, behavior) {
 }
 
 },
-"components/benchcad-app.tsx":function(require,module,exports){
-"use client";
+"components/benchcad-app.tsx":function(require,module,exports){"use client";
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.LIGHTING_PRESET_LABELS = exports.VIEWPORT_DISPLAY_LABELS = void 0;
+exports.DARK_FACE_LIFT_LABELS = exports.LIGHTING_PRESET_LABELS = exports.VIEWPORT_DISPLAY_LABELS = void 0;
 exports.BenchCadApp = BenchCadApp;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
@@ -108575,6 +108979,8 @@ exports.LIGHTING_PRESET_LABELS = {
     performance: "Performance",
 };
 const LIGHTING_PRESET_ORDER = ["workbench", "flat", "technical", "presentation", "performance"];
+exports.DARK_FACE_LIFT_LABELS = { natural: "Natural", balanced: "Balanced", bright: "Bright" };
+const DARK_FACE_LIFT_ORDER = ["natural", "balanced", "bright"];
 function BenchCadApp() {
     const initialProject = (0, react_1.useMemo)(() => cloneProject(benchcad_model_1.SAMPLE_PROJECTS[0].project), []);
     const [project, setProject] = (0, react_1.useState)(initialProject);
@@ -108608,6 +109014,7 @@ function BenchCadApp() {
     const [capabilityChecks, setCapabilityChecks] = (0, react_1.useState)([]);
     const [offlineState, setOfflineState] = (0, react_1.useState)("checking");
     const [activeSketch, setActiveSketch] = (0, react_1.useState)(null);
+    const [sketchAutoSelectProfiles, setSketchAutoSelectProfiles] = (0, react_1.useState)(false);
     const [branchShape, setBranchShape] = (0, react_1.useState)(null);
     const [playing, setPlaying] = (0, react_1.useState)(false);
     const [playSpeed, setPlaySpeed] = (0, react_1.useState)(1);
@@ -108615,6 +109022,7 @@ function BenchCadApp() {
     const [activeStandardView, setActiveStandardView] = (0, react_1.useState)("home");
     const [viewportDisplay, setViewportDisplay] = (0, react_1.useState)("shadedEdges");
     const [lightingPreset, setLightingPreset] = (0, react_1.useState)("workbench");
+    const [darkFaceLift, setDarkFaceLift] = (0, react_1.useState)("balanced");
     const [showGrid, setShowGrid] = (0, react_1.useState)(true);
     const [measureMode, setMeasureMode] = (0, react_1.useState)(false);
     const [analysisScope, setAnalysisScope] = (0, react_1.useState)("selection");
@@ -108724,6 +109132,15 @@ function BenchCadApp() {
     const atEnd = marker === project.features.length;
     const selectedFeature = project.features.find((feature) => feature.id === selectedFeatureId) ??
         null;
+    const selectedSketch = selectedFeature?.sketchSnapshot
+        ? reconstruction.sketches.find((sketch) => sketch.id === selectedFeature.sketchSnapshot.id) ?? selectedFeature.sketchSnapshot
+        : null;
+    const selectedSketchAnalysis = selectedSketch
+        ? (0, benchcad_sketch_1.analyzeSketch)(selectedSketch, reconstruction.bodies.map((body) => body.id))
+        : null;
+    const selectedSketchSupportBody = selectedSketch
+        ? reconstruction.bodies.find((body) => body.id === (selectedSketch.faceReference?.bodyId ?? selectedSketch.supportBodyId ?? selectedSketch.attachment?.bodyId)) ?? null
+        : null;
     const selectedPatternFeature = selectedFeature &&
         (selectedFeature.type.startsWith("Pattern") || selectedFeature.type.startsWith("Mirror"))
         ? selectedFeature
@@ -109124,6 +109541,8 @@ function BenchCadApp() {
                     setViewportDisplay(preferences.viewportDisplay);
                 if (LIGHTING_PRESET_ORDER.includes(preferences.lightingPreset ?? ""))
                     setLightingPreset(preferences.lightingPreset);
+                if (DARK_FACE_LIFT_ORDER.includes(preferences.darkFaceLift ?? ""))
+                    setDarkFaceLift(preferences.darkFaceLift);
             }
         }
         catch {
@@ -109137,14 +109556,16 @@ function BenchCadApp() {
         if (!uiPreferencesLoaded)
             return;
         try {
-            window.localStorage.setItem("benchcad-ui-preferences-v1", JSON.stringify({ leftOpen, rightOpen, timelineOpen, outlineOpen, theme, mode, viewportDisplay, lightingPreset }));
+            window.localStorage.setItem("benchcad-ui-preferences-v1", JSON.stringify({ leftOpen, rightOpen, timelineOpen, outlineOpen, theme, mode, viewportDisplay, lightingPreset, darkFaceLift }));
         }
         catch {
             // Private browsing or a full storage quota may prevent preference persistence.
         }
-    }, [leftOpen, lightingPreset, mode, outlineOpen, rightOpen, theme, timelineOpen, uiPreferencesLoaded, viewportDisplay]);
+    }, [darkFaceLift, leftOpen, lightingPreset, mode, outlineOpen, rightOpen, theme, timelineOpen, uiPreferencesLoaded, viewportDisplay]);
     (0, react_1.useEffect)(() => {
         const onKey = (event) => {
+            if (activeSketch)
+                return;
             const modifier = event.metaKey || event.ctrlKey;
             if (!modifier && event.shiftKey && event.key.toLowerCase() === "f") {
                 event.preventDefault();
@@ -109603,15 +110024,15 @@ function BenchCadApp() {
                     : derived.type === "Loft"
                         ? loftBodyFromFeature(derived, next.features.flatMap((feature) => feature.sketchSnapshot ? [feature.sketchSnapshot] : []), derived.snapshot)
                         : derived.type === "Extrude" && sketch
-                            ? makeExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies)
+                            ? makeExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies, String(derived.parameters.direction ?? "positive"))
                             : derived.type === "Thin Extrude" && sketch
-                                ? makeThinExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), Number(derived.parameters.thickness ?? derived.snapshot.thinExtrude?.thickness ?? 1), String(derived.parameters.placement ?? derived.snapshot.thinExtrude?.placement ?? "inside"), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies)
+                                ? makeThinExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), Number(derived.parameters.thickness ?? derived.snapshot.thinExtrude?.thickness ?? 1), String(derived.parameters.placement ?? derived.snapshot.thinExtrude?.placement ?? "inside"), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies, String(derived.parameters.direction ?? "positive"))
                                 : derived.type === "Rib / Web" && sketch
-                                    ? makeRibBody(sketch, ids[0], Number(derived.parameters.height ?? derived.snapshot.rib?.height ?? derived.snapshot.size[2]), Number(derived.parameters.width ?? derived.snapshot.rib?.width ?? 2), Number(derived.parameters.draftAngle ?? derived.snapshot.rib?.draftAngle ?? 0), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies)
+                                    ? makeRibBody(sketch, ids[0], Number(derived.parameters.height ?? derived.snapshot.rib?.height ?? derived.snapshot.size[2]), Number(derived.parameters.width ?? derived.snapshot.rib?.width ?? 2), Number(derived.parameters.draftAngle ?? derived.snapshot.rib?.draftAngle ?? 0), String(derived.parameters.operation ?? "new"), derived.snapshot, bodies, String(derived.parameters.direction ?? "positive"))
                                     : derived.type === "Revolve" && sketch
                                         ? makeRevolutionBody(sketch, ids, Number(derived.parameters.angle ?? 360), String(derived.parameters.axisKind ?? "horizontal"), derived.parameters.axisEntityId
                                             ? String(derived.parameters.axisEntityId)
-                                            : undefined, String(derived.parameters.operation ?? "new"), derived.snapshot, bodies)
+                                            : undefined, String(derived.parameters.operation ?? "new"), derived.snapshot, bodies, String(derived.parameters.direction ?? "positive"))
                                         : null;
             }
             catch (error) {
@@ -110220,26 +110641,67 @@ function BenchCadApp() {
         setBranchShape(null);
         (0, sonner_1.toast)(`${shape} placed on the active workplane`);
     }
+    function selectSketch(sketchId) {
+        const feature = project.features.find((candidate) => candidate.sketchSnapshot?.id === sketchId);
+        if (!feature)
+            return;
+        setSelectedIds([]);
+        setSelectedFeatureId(feature.id);
+        setSelectedComponentId(null);
+        setRightOpen(true);
+    }
+    function openExistingSketch(sketch, autoSelectProfiles = false) {
+        if (!atEnd)
+            return sonner_1.toast.error("Return to the end of the timeline before editing a sketch");
+        const synced = (0, benchcad_model_1.syncSketchProjections)((0, benchcad_model_1.syncSketchWorkplane)(structuredClone(sketch), reconstruction.workplanes, reconstruction.bodies), reconstruction.bodies);
+        if (synced.supportStatus === "unresolved")
+            sonner_1.toast.error(synced.supportIssue ?? "The sketch support is unresolved. You can still inspect and repair the sketch.");
+        setSketchAutoSelectProfiles(autoSelectProfiles);
+        setActiveSketch(synced);
+        setTransformMode("select");
+    }
     function openSketch() {
         if (!atEnd)
             return sonner_1.toast.error("Return to the end of the timeline before creating a sketch");
         if (activeComponent?.locked)
             return sonner_1.toast.error("Unlock the active component before adding a sketch");
-        const sketch = (0, benchcad_model_1.makeSketch)(`Sketch ${reconstruction.sketches.length + 1}`, activeWorkplane.plane, project.activeComponentId);
-        sketch.normal = activeWorkplane.normal;
-        if (!activeWorkplane.id.startsWith("origin-workplane-")) {
-            sketch.workplaneId = activeWorkplane.id;
-            sketch.origin = [...activeWorkplane.origin];
-            sketch.coordinateSpace = "local";
-            sketch.frame = activeWorkplane.frame
-                ? structuredClone(activeWorkplane.frame)
-                : undefined;
-            sketch.attachment = activeWorkplane.attachment
-                ? structuredClone(activeWorkplane.attachment)
-                : undefined;
+        const selectedFace = selectedPlanarFace();
+        const sketch = (0, benchcad_model_1.makeSketch)(`Sketch ${reconstruction.sketches.length + 1}`, selectedFace ? "XY" : activeWorkplane.plane, project.activeComponentId);
+        if (selectedFace) {
+            try {
+                const faceReference = (0, benchcad_model_1.makePlanarFaceReference)(selectedFace.body, selectedFace.face);
+                const frame = (0, benchcad_model_1.resolvePlanarFaceFrame)(selectedFace.body, faceReference, 0, false);
+                const dominant = frame.normal.map((value, axis) => ({ axis, value: Math.abs(value) })).sort((first, second) => second.value - first.value)[0].axis;
+                sketch.plane = dominant === 2 ? "XY" : dominant === 1 ? "XZ" : "YZ";
+                sketch.normal = frame.normal[dominant] < 0 ? -1 : 1;
+                sketch.origin = [...frame.origin];
+                sketch.coordinateSpace = "local";
+                sketch.frame = frame;
+                sketch.faceReference = faceReference;
+                sketch.supportBodyId = selectedFace.body.id;
+                sketch.supportStatus = "resolved";
+            }
+            catch (error) {
+                return sonner_1.toast.error(error instanceof Error ? error.message : "The selected face could not support a sketch");
+            }
         }
+        else {
+            sketch.normal = activeWorkplane.normal;
+            if (!activeWorkplane.id.startsWith("origin-workplane-")) {
+                sketch.workplaneId = activeWorkplane.id;
+                sketch.origin = [...activeWorkplane.origin];
+                sketch.coordinateSpace = "local";
+                sketch.frame = activeWorkplane.frame ? structuredClone(activeWorkplane.frame) : undefined;
+                sketch.attachment = activeWorkplane.attachment ? structuredClone(activeWorkplane.attachment) : undefined;
+                sketch.faceReference = activeWorkplane.faceReference ? structuredClone(activeWorkplane.faceReference) : undefined;
+                sketch.supportBodyId = activeWorkplane.faceReference?.bodyId ?? activeWorkplane.attachment?.bodyId;
+                sketch.supportStatus = "resolved";
+            }
+        }
+        setSketchAutoSelectProfiles(false);
         setActiveSketch(sketch);
         setTransformMode("select");
+        sonner_1.toast(selectedFace ? `Sketching on ${selectedFace.body.name}'s selected face` : `Sketching on ${activeWorkplane.name}`);
     }
     function saveSketch(sketch) {
         sketch = (0, benchcad_model_1.syncSketchWorkplane)(sketch, reconstruction.workplanes, reconstruction.bodies);
@@ -110248,7 +110710,7 @@ function BenchCadApp() {
         const existing = next.features.find((feature) => feature.sketchSnapshot?.id === sketch.id);
         const feature = existing ??
             (0, benchcad_model_1.makeSketchFeature)("Create sketch", `Create ${sketch.name}`, next.features.length + 1, sketch, [
-                ...(selectedBody ? [selectedBody.id] : []),
+                ...((sketch.faceReference?.bodyId ?? sketch.supportBodyId ?? sketch.attachment?.bodyId ?? selectedBody?.id) ? [sketch.faceReference?.bodyId ?? sketch.supportBodyId ?? sketch.attachment?.bodyId ?? selectedBody.id] : []),
                 ...(sketch.workplaneId ? [sketch.workplaneId] : []),
             ]);
         if (existing) {
@@ -110278,9 +110740,9 @@ function BenchCadApp() {
                     : derived.type === "Loft"
                         ? loftBodyFromFeature(derived, sketches, derived.snapshot)
                         : derived.type === "Extrude"
-                            ? makeExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), operation, derived.snapshot)
+                            ? makeExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), operation, derived.snapshot, reconstruction.bodies, String(derived.parameters.direction ?? "positive"))
                             : derived.type === "Thin Extrude"
-                                ? makeThinExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), Number(derived.parameters.thickness ?? derived.snapshot.thinExtrude?.thickness ?? 1), String(derived.parameters.placement ?? derived.snapshot.thinExtrude?.placement ?? "inside"), operation, derived.snapshot)
+                                ? makeThinExtrusionBody(sketch, ids, Number(derived.parameters.distance ?? derived.snapshot.size[2]), Number(derived.parameters.thickness ?? derived.snapshot.thinExtrude?.thickness ?? 1), String(derived.parameters.placement ?? derived.snapshot.thinExtrude?.placement ?? "inside"), operation, derived.snapshot, reconstruction.bodies, String(derived.parameters.direction ?? "positive"))
                                 : derived.type === "Rib / Web"
                                     ? makeRibBody(sketch, ids[0], Number(derived.parameters.height ?? derived.snapshot.rib?.height ?? derived.snapshot.size[2]), Number(derived.parameters.width ?? derived.snapshot.rib?.width ?? 2), Number(derived.parameters.draftAngle ?? derived.snapshot.rib?.draftAngle ?? 0), operation, derived.snapshot)
                                     : derived.type === "Revolve"
@@ -110303,85 +110765,53 @@ function BenchCadApp() {
             (0, benchcad_model_1.propagateDerivedBodyRebuild)(next.features, derived.id, previous, rebuilt);
         });
         commitProject(next);
+        setSelectedIds([]);
         setSelectedFeatureId(feature.id);
+        setSelectedComponentId(null);
         setActiveSketch(null);
+        setSketchAutoSelectProfiles(false);
         (0, sonner_1.toast)(`${sketch.name} committed to the timeline`);
     }
-    function makeExtrusionBody(sketch, entityIds, distance, operation, previous, sourceBodies = reconstruction.bodies) {
+    function makeExtrusionBody(sketch, entityIds, distance, operation, previous, sourceBodies = reconstruction.bodies, direction = "positive") {
         const analysis = (0, benchcad_sketch_1.analyzeSketch)(sketch, sourceBodies.map((body) => body.id));
         const selection = (0, benchcad_sketch_1.analyzeProfileSelection)(sketch, entityIds, analysis);
         if (!selection.ready)
             return null;
+        const magnitude = Math.abs(Number(distance));
+        if (!Number.isFinite(magnitude) || magnitude <= 0)
+            return null;
+        const directionMode = ["positive", "negative", "symmetric"].includes(direction) ? direction : "positive";
+        const centerOffset = directionMode === "negative" ? -magnitude / 2 : directionMode === "symmetric" ? 0 : magnitude / 2;
         const worldProfiles = selection.orderedIds.map((id) => (0, benchcad_sketch_1.sketchProfilePoints)(sketch.entities.find((item) => item.id === id)));
         const outer = worldProfiles[0];
         const xs = outer.map((point) => point[0]);
         const ys = outer.map((point) => point[1]);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
+        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
         const center = [(minX + maxX) / 2, (minY + maxY) / 2];
         const localize = (profile) => profile.map(([x, y]) => [x - center[0], y - center[1]]);
-        const localOrigin = sketch.coordinateSpace === "local" && sketch.origin
-            ? sketch.origin
-            : [0, 0, 0];
+        const localOrigin = sketch.coordinateSpace === "local" && sketch.origin ? sketch.origin : [0, 0, 0];
         const normal = sketch.normal ?? 1;
         let position = sketch.plane === "XY"
-            ? [
-                localOrigin[0] + center[0],
-                localOrigin[1] + center[1],
-                localOrigin[2] + normal * distance / 2,
-            ]
+            ? [localOrigin[0] + center[0], localOrigin[1] + center[1], localOrigin[2] + normal * centerOffset]
             : sketch.plane === "XZ"
-                ? [
-                    localOrigin[0] + center[0],
-                    localOrigin[1] + normal * distance / 2,
-                    localOrigin[2] + center[1],
-                ]
-                : [
-                    localOrigin[0] + normal * distance / 2,
-                    localOrigin[1] + center[0],
-                    localOrigin[2] + center[1],
-                ];
-        const attachedBody = sketch.attachment
-            ? sourceBodies.find((body) => body.id === sketch.attachment?.bodyId)
-            : undefined;
-        if (attachedBody &&
-            sketch.attachment &&
-            sketch.coordinateSpace !== "local" &&
-            !sketch.frame) {
-            const face = sketch.attachment.face;
-            const offset = sketch.attachment.offset;
-            if (face === "top")
-                position[2] =
-                    attachedBody.position[2] + attachedBody.size[2] / 2 + offset + distance / 2;
-            if (face === "bottom")
-                position[2] =
-                    attachedBody.position[2] - attachedBody.size[2] / 2 - offset - distance / 2;
-            if (face === "front")
-                position[1] =
-                    attachedBody.position[1] - attachedBody.size[1] / 2 - offset - distance / 2;
-            if (face === "back")
-                position[1] =
-                    attachedBody.position[1] + attachedBody.size[1] / 2 + offset + distance / 2;
-            if (face === "left")
-                position[0] =
-                    attachedBody.position[0] - attachedBody.size[0] / 2 - offset - distance / 2;
-            if (face === "right")
-                position[0] =
-                    attachedBody.position[0] + attachedBody.size[0] / 2 + offset + distance / 2;
+                ? [localOrigin[0] + center[0], localOrigin[1] + normal * centerOffset, localOrigin[2] + center[1]]
+                : [localOrigin[0] + normal * centerOffset, localOrigin[1] + center[0], localOrigin[2] + center[1]];
+        const attachedBody = sketch.attachment ? sourceBodies.find((body) => body.id === sketch.attachment?.bodyId) : undefined;
+        if (attachedBody && sketch.attachment && sketch.coordinateSpace !== "local" && !sketch.frame) {
+            const face = sketch.attachment.face, offset = sketch.attachment.offset;
+            if (face === "top") position[2] = attachedBody.position[2] + attachedBody.size[2] / 2 + offset + centerOffset;
+            if (face === "bottom") position[2] = attachedBody.position[2] - attachedBody.size[2] / 2 - offset - centerOffset;
+            if (face === "front") position[1] = attachedBody.position[1] - attachedBody.size[1] / 2 - offset - centerOffset;
+            if (face === "back") position[1] = attachedBody.position[1] + attachedBody.size[1] / 2 + offset + centerOffset;
+            if (face === "left") position[0] = attachedBody.position[0] - attachedBody.size[0] / 2 - offset - centerOffset;
+            if (face === "right") position[0] = attachedBody.position[0] + attachedBody.size[0] / 2 + offset + centerOffset;
         }
-        let rotation = sketch.plane === "XY"
-            ? normal === 1 ? [0, 0, 0] : [180, 0, 0]
-            : sketch.plane === "XZ"
-                ? normal === 1 ? [-90, 0, 0] : [90, 0, 0]
+        let rotation = sketch.plane === "XY" ? normal === 1 ? [0, 0, 0] : [180, 0, 0]
+            : sketch.plane === "XZ" ? normal === 1 ? [-90, 0, 0] : [90, 0, 0]
                 : normal === 1 ? [0, 90, 0] : [0, -90, 0];
         if (sketch.frame) {
             const frame = sketch.frame;
-            position = frame.origin.map((value, axis) => value +
-                frame.xAxis[axis] * center[0] +
-                frame.yAxis[axis] * center[1] +
-                frame.normal[axis] * distance / 2);
+            position = frame.origin.map((value, axis) => value + frame.xAxis[axis] * center[0] + frame.yAxis[axis] * center[1] + frame.normal[axis] * centerOffset);
             rotation = [0, 0, 0];
         }
         return (0, benchcad_model_1.makeBody)("Extrusion", {
@@ -110392,26 +110822,21 @@ function BenchCadApp() {
             profile: localize(outer),
             profileHoles: worldProfiles.slice(1).map(localize),
             sourceSketchId: sketch.id,
-            size: [maxX - minX, maxY - minY, distance],
+            extrudeDirection: directionMode,
+            size: [maxX - minX, maxY - minY, magnitude],
             position,
             rotation,
-            orientation: sketch.frame
-                ? {
-                    xAxis: sketch.frame.xAxis,
-                    yAxis: sketch.frame.yAxis,
-                    normal: sketch.frame.normal,
-                }
-                : undefined,
+            orientation: sketch.frame ? { xAxis: sketch.frame.xAxis, yAxis: sketch.frame.yAxis, normal: sketch.frame.normal } : undefined,
         });
     }
-    function makeThinExtrusionBody(sketch, entityIds, distance, thickness, placement, operation, previous, sourceBodies = reconstruction.bodies) {
+    function makeThinExtrusionBody(sketch, entityIds, distance, thickness, placement, operation, previous, sourceBodies = reconstruction.bodies, direction = "positive") {
         const analysis = (0, benchcad_sketch_1.analyzeSketch)(sketch, sourceBodies.map((body) => body.id));
         const selection = (0, benchcad_sketch_1.analyzeProfileSelection)(sketch, entityIds, analysis);
         if (!selection.ready)
             throw new Error(selection.message);
         if (selection.orderedIds.length !== 1)
             throw new Error("Thin Extrude currently requires one closed profile without nested profiles.");
-        const base = makeExtrusionBody(sketch, selection.orderedIds, distance, operation, previous, sourceBodies);
+        const base = makeExtrusionBody(sketch, selection.orderedIds, distance, operation, previous, sourceBodies, direction);
         if (!base?.profile)
             throw new Error("The selected profile could not be extruded.");
         const wall = (0, benchcad_profile_tools_1.thinWallProfiles)(base.profile, thickness, placement);
@@ -110427,7 +110852,7 @@ function BenchCadApp() {
                 Math.max(...ys) - Math.min(...ys),
                 distance,
             ],
-            thinExtrude: { thickness, placement, distance },
+            thinExtrude: { thickness, placement, distance, direction },
             rib: undefined,
         };
     }
@@ -110523,86 +110948,104 @@ function BenchCadApp() {
         setSelectedFeatureId(revolve.id);
         setSelectedComponentId(null);
         setActiveSketch(null);
+        setSketchAutoSelectProfiles(false);
         (0, sonner_1.toast)(`Profile revolved ${angle}°`);
     }
-    function extrudeSketch(sketch, entityIds, distance, operation) {
+    function extrudeSketch(sketch, entityIds, distance, operation, direction = "positive") {
+        sketch = (0, benchcad_model_1.syncSketchWorkplane)(sketch, reconstruction.workplanes, reconstruction.bodies);
         sketch = (0, benchcad_model_1.syncSketchProjections)(sketch, reconstruction.bodies);
+        if (sketch.supportStatus === "unresolved")
+            return sonner_1.toast.error(sketch.supportIssue ?? "The sketch support face is unresolved");
         const profileSelection = (0, benchcad_sketch_1.analyzeProfileSelection)(sketch, entityIds, (0, benchcad_sketch_1.analyzeSketch)(sketch, reconstruction.bodies.map((body) => body.id)));
         if (!profileSelection.ready)
             return sonner_1.toast.error(profileSelection.message);
-        if (operation !== "new" && !selectedBody)
-            return sonner_1.toast.error(`${operation === "cut" ? "Cut" : "Join"} needs a selected target body`);
-        if (operation !== "new" &&
-            selectedBody &&
-            selectedBody.componentId !== sketch.componentId)
+        const supportBodyId = sketch.faceReference?.bodyId ?? sketch.supportBodyId ?? sketch.attachment?.bodyId;
+        const targetBody = selectedBody ?? reconstruction.bodies.find((body) => body.id === supportBodyId) ?? null;
+        if (operation !== "new" && !targetBody)
+            return sonner_1.toast.error(`${operation === "cut" ? "Cut" : "Join"} needs a selected or supporting target body`);
+        if (operation !== "new" && targetBody && targetBody.componentId !== sketch.componentId)
             return sonner_1.toast.error("Join and cut require the sketch and target body to belong to the same component.");
-        const body = makeExtrusionBody(sketch, entityIds, distance, operation);
+        const body = makeExtrusionBody(sketch, entityIds, distance, operation, undefined, reconstruction.bodies, direction);
         if (!body)
             return sonner_1.toast.error("Select at least one valid closed profile");
         const next = cloneProject(project);
         const existingSketch = next.features.find((feature) => feature.sketchSnapshot?.id === sketch.id);
-        if (existingSketch)
+        if (existingSketch) {
             existingSketch.sketchSnapshot = structuredClone(sketch);
+            existingSketch.updatedAt = new Date().toISOString();
+        }
         else
-            next.features.push((0, benchcad_model_1.makeSketchFeature)("Create sketch", `Create ${sketch.name}`, next.features.length + 1, sketch, selectedBody ? [selectedBody.id] : []));
+            next.features.push((0, benchcad_model_1.makeSketchFeature)("Create sketch", `Create ${sketch.name}`, next.features.length + 1, sketch, [...new Set([supportBodyId, targetBody?.id].filter(Boolean))]));
         const extrude = (0, benchcad_model_1.makeFeature)("Extrude", `Extrude ${sketch.name}`, next.features.length + 1, body, {
             sketchId: sketch.id,
             entityIds,
-            distance,
+            distance: Math.abs(distance),
+            direction,
             operation,
             plane: sketch.plane,
+            supportBodyId,
         }, [sketch.id]);
         next.features.push(extrude);
-        if (operation !== "new") {
-            const booleanFeature = (0, benchcad_model_1.makeFeature)(`Boolean ${operation === "cut" ? "subtract" : "union"}`, `${operation === "cut" ? "Cut" : "Join"} ${selectedBody.name} with extrusion`, next.features.length + 1, undefined, {
+        if (operation !== "new" && targetBody) {
+            const booleanFeature = (0, benchcad_model_1.makeFeature)(`Boolean ${operation === "cut" ? "subtract" : "union"}`, `${operation === "cut" ? "Cut" : "Join"} ${targetBody.name} with extrusion`, next.features.length + 1, undefined, {
                 operation: operation === "cut" ? "subtract" : "union",
                 engine: "Manifold WASM",
                 sourceSketchId: sketch.id,
-            }, [selectedBody.id, body.id]);
+                extrudeDirection: direction,
+            }, [targetBody.id, body.id]);
             booleanFeature.componentId = sketch.componentId;
             next.features.push(booleanFeature);
         }
         next.features.forEach((feature, index) => (feature.sequence = index + 1));
         commitProject(next);
-        setSelectedIds(operation === "new" ? [body.id] : [selectedBody.id]);
+        setSelectedIds(operation === "new" ? [body.id] : [targetBody.id]);
         setSelectedFeatureId(extrude.id);
         setSelectedComponentId(null);
         setActiveSketch(null);
-        (0, sonner_1.toast)(`Sketch extruded ${distance} ${project.units}`);
+        setSketchAutoSelectProfiles(false);
+        (0, sonner_1.toast)(`Sketch extruded ${direction === "negative" ? "negative" : direction === "symmetric" ? "symmetrically" : "positive"} ${Math.abs(distance)} ${project.units}`);
     }
-    function thinExtrudeSketch(sketch, entityIds, distance, thickness, placement, operation) {
+    function thinExtrudeSketch(sketch, entityIds, distance, thickness, placement, operation, direction = "positive") {
+        sketch = (0, benchcad_model_1.syncSketchWorkplane)(sketch, reconstruction.workplanes, reconstruction.bodies);
         sketch = (0, benchcad_model_1.syncSketchProjections)(sketch, reconstruction.bodies);
-        if (operation !== "new" && !selectedBody)
-            return sonner_1.toast.error(`${operation === "cut" ? "Cut" : "Join"} needs a selected target body`);
-        if (operation !== "new" && selectedBody?.componentId !== sketch.componentId)
+        if (sketch.supportStatus === "unresolved")
+            return sonner_1.toast.error(sketch.supportIssue ?? "The sketch support face is unresolved");
+        const supportBodyId = sketch.faceReference?.bodyId ?? sketch.supportBodyId ?? sketch.attachment?.bodyId;
+        const targetBody = selectedBody ?? reconstruction.bodies.find((body) => body.id === supportBodyId) ?? null;
+        if (operation !== "new" && !targetBody)
+            return sonner_1.toast.error(`${operation === "cut" ? "Cut" : "Join"} needs a selected or supporting target body`);
+        if (operation !== "new" && targetBody?.componentId !== sketch.componentId)
             return sonner_1.toast.error("Join and cut require the sketch and target body to belong to the same component.");
         let body;
         try {
-            body = makeThinExtrusionBody(sketch, entityIds, distance, thickness, placement, operation);
+            body = makeThinExtrusionBody(sketch, entityIds, distance, thickness, placement, operation, undefined, reconstruction.bodies, direction);
         }
         catch (error) {
             return sonner_1.toast.error(error instanceof Error ? error.message : "The thin wall could not be created");
         }
         const next = cloneProject(project);
         const existingSketch = next.features.find((feature) => feature.sketchSnapshot?.id === sketch.id);
-        if (existingSketch)
+        if (existingSketch) {
             existingSketch.sketchSnapshot = structuredClone(sketch);
+            existingSketch.updatedAt = new Date().toISOString();
+        }
         else
-            next.features.push((0, benchcad_model_1.makeSketchFeature)("Create sketch", `Create ${sketch.name}`, next.features.length + 1, sketch, selectedBody ? [selectedBody.id] : []));
-        const feature = (0, benchcad_model_1.makeFeature)("Thin Extrude", `Thin Extrude ${sketch.name}`, next.features.length + 1, body, { sketchId: sketch.id, entityIds, distance, thickness, placement, operation, plane: sketch.plane }, [sketch.id]);
+            next.features.push((0, benchcad_model_1.makeSketchFeature)("Create sketch", `Create ${sketch.name}`, next.features.length + 1, sketch, [...new Set([supportBodyId, targetBody?.id].filter(Boolean))]));
+        const feature = (0, benchcad_model_1.makeFeature)("Thin Extrude", `Thin Extrude ${sketch.name}`, next.features.length + 1, body, { sketchId: sketch.id, entityIds, distance: Math.abs(distance), thickness, placement, operation, direction, plane: sketch.plane, supportBodyId }, [sketch.id]);
         next.features.push(feature);
-        if (operation !== "new") {
-            const booleanFeature = (0, benchcad_model_1.makeFeature)(`Boolean ${operation === "cut" ? "subtract" : "union"}`, `${operation === "cut" ? "Cut" : "Join"} ${selectedBody.name} with thin wall`, next.features.length + 1, undefined, { operation: operation === "cut" ? "subtract" : "union", engine: "Manifold WASM", sourceSketchId: sketch.id }, [selectedBody.id, body.id]);
+        if (operation !== "new" && targetBody) {
+            const booleanFeature = (0, benchcad_model_1.makeFeature)(`Boolean ${operation === "cut" ? "subtract" : "union"}`, `${operation === "cut" ? "Cut" : "Join"} ${targetBody.name} with thin wall`, next.features.length + 1, undefined, { operation: operation === "cut" ? "subtract" : "union", engine: "Manifold WASM", sourceSketchId: sketch.id, extrudeDirection: direction }, [targetBody.id, body.id]);
             booleanFeature.componentId = sketch.componentId;
             next.features.push(booleanFeature);
         }
         next.features.forEach((item, index) => (item.sequence = index + 1));
         commitProject(next);
-        setSelectedIds(operation === "new" ? [body.id] : [selectedBody.id]);
+        setSelectedIds(operation === "new" ? [body.id] : [targetBody.id]);
         setSelectedFeatureId(feature.id);
         setSelectedComponentId(null);
         setActiveSketch(null);
-        (0, sonner_1.toast)(`Thin wall created · ${thickness} ${project.units}`);
+        setSketchAutoSelectProfiles(false);
+        (0, sonner_1.toast)(`Thin wall created ${direction === "negative" ? "opposite the sketch normal" : direction === "symmetric" ? "symmetrically" : "along the sketch normal"} · ${thickness} ${project.units}`);
     }
     function ribSketch(sketch, entityIds, height, width, draftAngle, operation) {
         sketch = (0, benchcad_model_1.syncSketchProjections)(sketch, reconstruction.bodies);
@@ -110641,6 +111084,7 @@ function BenchCadApp() {
         setSelectedFeatureId(next.features.at(-1)?.id ?? null);
         setSelectedComponentId(null);
         setActiveSketch(null);
+        setSketchAutoSelectProfiles(false);
         (0, sonner_1.toast)(`${created.length} rib${created.length === 1 ? "" : "s"} created · ${width} ${project.units} wide`);
     }
     function selectBody(id, additive) {
@@ -112397,7 +112841,7 @@ function BenchCadApp() {
                                                                 return ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSub, { children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubTrigger, { disabled: !canAlign, children: ["Align / distribute ", axisName] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuSubContent, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "min"), children: "Align minimum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "center"), children: "Align centers" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => alignSelection(axis, "max"), children: "Align maximum edges" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: selectedBodies.length < 3, onClick: () => alignSelection(axis, "distribute"), children: "Distribute equal gaps" })] })] }, axisName));
                                                             }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("linear"), children: "Linear pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("circular"), children: "Circular pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createPattern("grid"), children: "Grid pattern" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), [0, 1, 2].map((axis) => ((0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => createMirror(axis), children: ["Mirror across ", ["X", "Y", "Z"][axis], " = 0"] }, axis)))] })] }), (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedOccurrenceJoint ? "active" : ""}`, onClick: openJointDialog, disabled: !atEnd || !selectedOccurrence, title: selectedOccurrenceJoint
                                                     ? "Inspect the joint controlling this occurrence"
-                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-display-trigger ${viewportDisplay !== "shadedEdges" ? "is-active" : ""}`, title: `Viewport style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, "aria-label": `Viewport display style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shadedEdges"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded + edges" }), (0, jsx_runtime_1.jsx)("small", { children: "Best everyday shape and cavity readability" })] }), viewportDisplay === "shadedEdges" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shaded"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded" }), (0, jsx_runtime_1.jsx)("small", { children: "Clean surfaces without feature-edge overlays" })] }), viewportDisplay === "shaded" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral material with high-contrast edges" })] }), viewportDisplay === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("interior"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Interior inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghost outer walls and emphasize cavity corners" })] }), viewportDisplay === "interior" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("xray"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "X-ray inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghosted surfaces with through-body edges" })] }), viewportDisplay === "xray" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("wireframe"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Wireframe" }), (0, jsx_runtime_1.jsx)("small", { children: "Triangle mesh inspection" })] }), viewportDisplay === "wireframe" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-lighting-trigger ${lightingPreset !== "workbench" ? "is-active" : ""}`, title: `Lighting: ${exports.LIGHTING_PRESET_LABELS[lightingPreset]} · Shift+L`, "aria-label": `Viewport lighting: ${exports.LIGHTING_PRESET_LABELS[lightingPreset]}. Press Shift+L to cycle presets.`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu viewport-lighting-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("workbench"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Workbench" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral matte light with a soft contact shadow" })] }), lightingPreset === "workbench" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("flat"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.BoxSelect, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Flat / CAD" }), (0, jsx_runtime_1.jsx)("small", { children: "Diffuse low-gloss faces with shadows disabled" })] }), lightingPreset === "flat" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Cool neutral lighting with restrained face contrast" })] }), lightingPreset === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("presentation"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Presentation" }), (0, jsx_runtime_1.jsx)("small", { children: "Richer highlights and stronger face contrast for screenshots" })] }), lightingPreset === "presentation" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("performance"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Performance" }), (0, jsx_runtime_1.jsx)("small", { children: "Simplified diffuse light, no shadows, lower pixel load" })] }), lightingPreset === "performance" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => { setViewportDisplay("shadedEdges"); setLightingPreset("workbench"); }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Reset view style and lighting"] })] })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, displayMode: viewportDisplay, lightingPreset: lightingPreset, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
+                                                    : "Create a rigid, revolute, or slider assembly joint", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Link2, {}), " ", selectedOccurrenceJoint ? "Joint" : "Assemble"] }), (0, jsx_runtime_1.jsxs)("div", { className: "topology-filter", role: "toolbar", "aria-label": "Selection filter", children: [(0, jsx_runtime_1.jsx)("span", { children: "FILTER" }), ["body", "face", "edge", "vertex"].map((selectionMode) => ((0, jsx_runtime_1.jsx)("button", { className: topologyMode === selectionMode ? "active" : "", onClick: () => changeTopologyMode(selectionMode), "aria-pressed": topologyMode === selectionMode, title: `Select ${selectionMode}${selectionMode === "body" ? " objects" : " topology"}`, children: selectionMode.toUpperCase() }, selectionMode)))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster primary-create-tools", "aria-label": "Create geometry", children: [(0, jsx_runtime_1.jsxs)("button", { className: "model-tool sketch-tool", onClick: openSketch, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Sketch"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool", title: "Create a derived solid feature", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), " Feature ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !profileCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId) || !pathCandidates.some((candidate) => candidate.sketch.componentId === project.activeComponentId), onClick: openSweepDialog, children: "Sweep profile along path" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || new Set(profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => candidate.sketch.id)).size < 2, onClick: openLoftDialog, children: "Loft between profiles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: openHoleDialog, children: "Hole from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedPlanarFace(), onClick: createDraft, children: "Draft from selected planar face" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd, onClick: createShell, children: "Shell selected body" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody || !atEnd || selectedBodies.length !== 1, onClick: openThreadDialog, children: "Add cosmetic / represented thread\u2026" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd, onClick: beginMidpointSplit, children: "Split midway between two faces" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || !selectedBody || selectedBodies.length !== 1, onClick: openSplitBody, children: "Split selected body with workplane\u2026" })] })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "model-tool manufacturing-tool", onClick: () => runManufacturingAnalysis(), disabled: !reconstruction.bodies.some((body) => body.visible), title: "Run local manufacturing-readiness checks", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), " Manufacture"] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: `model-tool toolbar-menu ${selectedBody?.role === "hole" ? "active" : ""}`, title: "Set body roles or combine selected bodies", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Group, {}), " Combine ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("solid"), children: "Mark selected body as solid" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody, onClick: () => setRole("hole"), children: "Mark selected body as hole" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("auto"), children: "Auto combine by body roles" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("union"), children: "Union selected bodies" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("subtract"), children: "Subtract from solid target" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !atEnd || selectedIds.length < 2, onClick: () => booleanSelection("intersect"), children: "Intersect selected bodies" })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsxs)("button", { className: "model-tool toolbar-menu", title: "Selection editing commands", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.MoreHorizontal, {}), " Edit ", (0, jsx_runtime_1.jsx)(lucide_react_1.ChevronDown, {})] }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "start", children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedBody && !selectedOccurrence, onClick: duplicateSelection, children: "Duplicate selection \u00B7 \u2318D" }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuItem, { disabled: !selectedIds.length, onClick: deleteSelection, children: "Delete selection \u00B7 Delete" })] })] }), (0, jsx_runtime_1.jsx)("span", { className: "toolbar-flex" }), (0, jsx_runtime_1.jsxs)("div", { className: "snap-control", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: "Toggle snapping", active: snapEnabled, onClick: () => setSnapEnabled((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Magnet, {}) }), transformMode === "rotate" ? ((0, jsx_runtime_1.jsxs)("select", { value: rotationSnap, onChange: (event) => setRotationSnap(Number(event.target.value)), "aria-label": "Rotation snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "5", children: "5\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "15", children: "15\u00B0" }), (0, jsx_runtime_1.jsx)("option", { value: "45", children: "45\u00B0" })] })) : transformMode === "scale" ? ((0, jsx_runtime_1.jsxs)("select", { value: scaleSnap, onChange: (event) => setScaleSnap(Number(event.target.value)), "aria-label": "Scale snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.05", children: "5%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "10%" }), (0, jsx_runtime_1.jsx)("option", { value: "0.25", children: "25%" })] })) : ((0, jsx_runtime_1.jsxs)("select", { value: translationSnap, onChange: (event) => setTranslationSnap(Number(event.target.value)), "aria-label": "Move snap", children: [(0, jsx_runtime_1.jsx)("option", { value: "0.1", children: "0.1" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "1" }), (0, jsx_runtime_1.jsx)("option", { value: "5", children: "5" }), (0, jsx_runtime_1.jsx)("option", { value: "10", children: "10" })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "tool-cluster view-tool-cluster", "aria-label": "Viewport display", children: [(0, jsx_runtime_1.jsx)(TinyButton, { label: showGrid ? "Hide modeling grid" : "Show modeling grid", active: showGrid, onClick: () => setShowGrid((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Perspective / orthographic", active: perspective, onClick: () => setPerspective((value) => !value), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-display-trigger ${viewportDisplay !== "shadedEdges" ? "is-active" : ""}`, title: `Viewport style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, "aria-label": `Viewport display style: ${exports.VIEWPORT_DISPLAY_LABELS[viewportDisplay]}`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shadedEdges"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded + edges" }), (0, jsx_runtime_1.jsx)("small", { children: "Best everyday shape and cavity readability" })] }), viewportDisplay === "shadedEdges" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("shaded"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Shaded" }), (0, jsx_runtime_1.jsx)("small", { children: "Clean surfaces without feature-edge overlays" })] }), viewportDisplay === "shaded" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral material with high-contrast edges" })] }), viewportDisplay === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("interior"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Interior inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghost outer walls and emphasize cavity corners" })] }), viewportDisplay === "interior" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("xray"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "X-ray inspect" }), (0, jsx_runtime_1.jsx)("small", { children: "Ghosted surfaces with through-body edges" })] }), viewportDisplay === "xray" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option", onClick: () => setViewportDisplay("wireframe"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Wireframe" }), (0, jsx_runtime_1.jsx)("small", { children: "Triangle mesh inspection" })] }), viewportDisplay === "wireframe" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] })] })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenu, { children: [(0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuTrigger, { asChild: true, children: (0, jsx_runtime_1.jsx)("button", { className: `tiny-button viewport-lighting-trigger ${lightingPreset !== "workbench" || darkFaceLift !== "balanced" ? "is-active" : ""}`, title: `Lighting: ${exports.LIGHTING_PRESET_LABELS[lightingPreset]} · Dark-face lift: ${exports.DARK_FACE_LIFT_LABELS[darkFaceLift]} · Shift+L`, "aria-label": `Viewport lighting: ${exports.LIGHTING_PRESET_LABELS[lightingPreset]}. Dark-face lift: ${exports.DARK_FACE_LIFT_LABELS[darkFaceLift]}. Press Shift+L to cycle presets.`, children: (0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}) }) }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuContent, { align: "end", className: "viewport-display-menu viewport-lighting-menu", children: [(0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("workbench"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Ruler, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Workbench" }), (0, jsx_runtime_1.jsx)("small", { children: "Neutral matte light with a soft contact shadow" })] }), lightingPreset === "workbench" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("flat"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.BoxSelect, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Flat / CAD" }), (0, jsx_runtime_1.jsx)("small", { children: "Diffuse low-gloss faces with shadows disabled" })] }), lightingPreset === "flat" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("technical"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Technical" }), (0, jsx_runtime_1.jsx)("small", { children: "Cool neutral lighting with restrained face contrast" })] }), lightingPreset === "technical" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("presentation"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Sparkles, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Presentation" }), (0, jsx_runtime_1.jsx)("small", { children: "Richer highlights and stronger face contrast for screenshots" })] }), lightingPreset === "presentation" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option", onClick: () => setLightingPreset("performance"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.ScanLine, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Performance" }), (0, jsx_runtime_1.jsx)("small", { children: "Simplified diffuse light, no shadows, lower pixel load" })] }), lightingPreset === "performance" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsx)("div", { className: "viewport-lighting-section-label", children: "DARK-FACE LIFT" }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option viewport-lift-option", onClick: () => setDarkFaceLift("natural"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Natural" }), (0, jsx_runtime_1.jsx)("small", { children: "Low camera and underside assistance" })] }), darkFaceLift === "natural" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option viewport-lift-option", onClick: () => setDarkFaceLift("balanced"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Balanced" }), (0, jsx_runtime_1.jsx)("small", { children: "Default CAD visibility from every standard view" })] }), darkFaceLift === "balanced" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { className: "viewport-display-option viewport-lighting-option viewport-lift-option", onClick: () => setDarkFaceLift("bright"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Contrast, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "Bright" }), (0, jsx_runtime_1.jsx)("small", { children: "Maximum legibility for undersides and deep cavities" })] }), darkFaceLift === "bright" && (0, jsx_runtime_1.jsx)(lucide_react_1.Check, { className: "viewport-display-check" })] }), (0, jsx_runtime_1.jsx)(dropdown_menu_1.DropdownMenuSeparator, {}), (0, jsx_runtime_1.jsxs)(dropdown_menu_1.DropdownMenuItem, { onClick: () => { setViewportDisplay("shadedEdges"); setLightingPreset("workbench"); setDarkFaceLift("balanced"); }, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Reset view style and lighting"] })] })] }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Fit all", onClick: () => viewportRef.current?.fitAll(), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Maximize, {}) }), (0, jsx_runtime_1.jsx)(TinyButton, { label: "Home view", active: activeStandardView === "home", onClick: () => viewportRef.current?.setView("home"), children: (0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-wrap", children: [(0, jsx_runtime_1.jsx)(cad_viewport_1.CadViewport, { ref: viewportRef, bodies: viewportBodies, components: reconstruction.components, occurrences: reconstruction.occurrences, activeOccurrenceId: project.activeOccurrenceId, isolatedOccurrenceId: isolatedOccurrenceId, booleanMeshes: booleanMeshes, sketches: reconstruction.sketches, selectedSketchId: selectedSketch?.id ?? null, workplanes: resolvedWorkplanes, activeWorkplane: activeWorkplane, selectedIds: selectedIds, topologyMode: topologyMode, selectedTopologyIds: selectedTopologyIds, perspective: perspective, displayMode: viewportDisplay, lightingPreset: lightingPreset, darkFaceLift: darkFaceLift, showGrid: showGrid, boxSelectMode: boxSelectMode && atEnd && topologyMode === "body", transformMode: atEnd ? transformMode : "select", translationSnap: snapEnabled ? translationSnap : null, rotationSnap: snapEnabled ? rotationSnap : null, scaleSnap: snapEnabled ? scaleSnap : null, onTransformCommit: commitViewportTransform, onSelect: selectBody, onSketchSelect: selectSketch, onTopologySelect: selectTopology, onBoxSelect: selectBox, onDropShape: (shape) => insertShape(shape), onViewChange: setActiveStandardView }), (0, jsx_runtime_1.jsxs)("div", { className: `viewport-badge engine-${engineState}`, title: "Local Manifold WebAssembly geometry engine", children: [(0, jsx_runtime_1.jsx)("span", { className: "live-dot" }), " GEOMETRY", " ", (0, jsx_runtime_1.jsx)("b", { children: engineState.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("div", { className: "viewport-stats", title: `${reconstruction.occurrences.length} occurrences · ${reconstruction.joints.length} joints · ${reconstruction.workplanes.length} workplanes`, children: [viewportBodies.filter((body) => body.visible).length, " BODIES \u00B7", " ", project.features.length, " FEATURES \u00B7 ", project.units.toUpperCase()] }), (0, jsx_runtime_1.jsxs)("button", { className: "workplane-readout", onClick: () => activeWorkplane.id.startsWith("origin-workplane-")
                                                     ? setLeftOpen(true)
                                                     : selectBody(activeWorkplane.id, false), title: "Active placement and sketch workplane", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}), " ", (0, jsx_runtime_1.jsx)("span", { children: "WORKPLANE" }), " ", activeWorkplane.name] }), midpointSplitActive && ((0, jsx_runtime_1.jsxs)("div", { className: "split-pick-hud", role: "status", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Scissors, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: ["SPLIT BODY \u00B7 ", topologySelections.length + 1, "/2"] }), topologySelections.length
                                                                 ? "Click a parallel face on the same body"
@@ -112431,8 +112875,10 @@ function BenchCadApp() {
                                                                                                             ? "Edge Finish inspector"
                                                                                                             : selectedShellFeature
                                                                                                                 ? "Shell inspector"
-                                                                                                                : selectedWorkplane
-                                                                                                                    ? "Workplane inspector"
+                                                                                                                : selectedSketch
+                                                                                                                    ? "Sketch inspector"
+                                                                                                                    : selectedWorkplane
+                                                                                                                        ? "Workplane inspector"
                                                                                                                     : selectedOccurrence
                                                                                                                         ? "Occurrence inspector"
                                                                                                                         : selectedComponent
@@ -112479,7 +112925,7 @@ function BenchCadApp() {
                                                                     sketchIds[slot] = candidate.sketch.id;
                                                                     entityIds[slot] = candidate.entityId;
                                                                     updateLoftFeature({ ...selectedLoftParameters, profileSketchIds: sketchIds, profileEntityIds: entityIds });
-                                                                }, children: profileCandidates.filter((candidate) => candidate.sketch.componentId === selectedLoftFeature.componentId && candidate.sketch.id !== selectedLoftParameters.profileSketchIds[slot === 0 ? 1 : 0]).map((candidate) => (0, jsx_runtime_1.jsx)("option", { value: candidate.key, children: candidate.label }, candidate.key)) })] }, slot)))] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Matched profile boundaries" }), (0, jsx_runtime_1.jsx)("p", { children: "BENCHCAD resamples and aligns both closed outlines, then builds a watertight exact-kernel solid without modifying either source sketch." })] })] })) : selectedEdgeFinishFeature && selectedEdgeFinishParameters ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector edge-finish-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing Edge Finish feature #", selectedEdgeFinishFeature.sequence, ". Changes rebuild downstream history."] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-summary", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: selectedEdgeFinishFeature.name }), (0, jsx_runtime_1.jsx)("span", { children: "ASSOCIATIVE" })] }), (0, jsx_runtime_1.jsxs)("dl", { children: [(0, jsx_runtime_1.jsx)("dt", { children: "Source body" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishFeature.snapshot?.name ?? "Unavailable" }), (0, jsx_runtime_1.jsx)("dt", { children: "Selected edges" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishParameters.edges.length }), (0, jsx_runtime_1.jsx)("dt", { children: "Operation" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishParameters.mode })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section derived-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Edge treatment" }), (0, jsx_runtime_1.jsx)("span", { children: "EDITABLE" })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Finish type", (0, jsx_runtime_1.jsxs)("select", { value: selectedEdgeFinishParameters.mode, onChange: (event) => updateEdgeFinishFeature({ mode: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "fillet", children: "Fillet \u00B7 rounded edge" }), (0, jsx_runtime_1.jsx)("option", { value: "chamfer", children: "Chamfer \u00B7 beveled edge" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: selectedEdgeFinishParameters.mode === "fillet" ? "Radius" : "Distance", value: selectedEdgeFinishParameters.distance, suffix: project.units, min: 0.01, onCommit: (distance) => updateEdgeFinishFeature({ distance }) }), selectedEdgeFinishParameters.mode === "fillet" && ((0, jsx_runtime_1.jsx)(NumberField, { label: "Segments", value: selectedEdgeFinishParameters.segments, suffix: "", min: 2, onCommit: (segments) => updateEdgeFinishFeature({ segments: Math.max(2, Math.min(32, Math.round(segments))) }) }))] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Stable normalized references" }), (0, jsx_runtime_1.jsx)("p", { children: "Selected outside edges follow earlier box dimension, position, rotation, and mirror edits. Unsupported or lost references preserve the last valid solid and report an actionable kernel issue." })] })] })) : selectedShellFeature ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing shell feature #", selectedShellFeature.sequence, ". Changes rebuild downstream history."] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-summary", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: selectedShellFeature.name }), (0, jsx_runtime_1.jsx)("span", { children: "HOLLOW BODY" })] }), (0, jsx_runtime_1.jsxs)("dl", { children: [(0, jsx_runtime_1.jsx)("dt", { children: "Source body" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.name ?? "Unavailable" }), (0, jsx_runtime_1.jsx)("dt", { children: "Direction" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.shell?.direction ?? "inside" }), (0, jsx_runtime_1.jsx)("dt", { children: "Opening" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.shell?.opening ?? "none" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section derived-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Wall definition" }), (0, jsx_runtime_1.jsx)("span", { children: "ASSOCIATIVE" })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Thickness", value: selectedShellFeature.snapshot?.shell?.thickness ?? 1, suffix: project.units, min: 0.01, onCommit: (thickness) => updateShellFeature({ thickness }) }), (0, jsx_runtime_1.jsxs)("label", { children: ["Shell direction", (0, jsx_runtime_1.jsxs)("select", { value: selectedShellFeature.snapshot?.shell?.direction ?? "inside", onChange: (event) => updateShellFeature({ direction: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "inside", children: "Inside \u00B7 preserve outside size" }), (0, jsx_runtime_1.jsx)("option", { value: "outside", children: "Outside \u00B7 preserve inside size" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Remove face", (0, jsx_runtime_1.jsxs)("select", { value: selectedShellFeature.snapshot?.shell?.opening ?? "none", onChange: (event) => updateShellFeature({ opening: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "none", children: "None \u00B7 closed hollow" }), (0, jsx_runtime_1.jsx)("option", { value: "top", children: "Top" }), (0, jsx_runtime_1.jsx)("option", { value: "bottom", children: "Bottom" }), (0, jsx_runtime_1.jsx)("option", { value: "left", children: "Left" }), (0, jsx_runtime_1.jsx)("option", { value: "right", children: "Right" }), (0, jsx_runtime_1.jsx)("option", { value: "front", children: "Front" }), (0, jsx_runtime_1.jsx)("option", { value: "back", children: "Back" })] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Non-destructive shell" }), (0, jsx_runtime_1.jsx)("p", { children: "The original solid remains available before this feature. Suppressing Shell restores it without creating an inverse history operation." })] })] })) : selectedWorkplane ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector workplane-inspector", children: [selectedFeature?.workplaneSnapshot && ((0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing workplane feature #", selectedFeature.sequence, ". Dependent sketches rebuild automatically."] })), (0, jsx_runtime_1.jsxs)("section", { className: "property-section object-title", children: [(0, jsx_runtime_1.jsx)("div", { className: "object-swatch workplane-swatch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Name" }), (0, jsx_runtime_1.jsx)(input_1.Input, { defaultValue: selectedWorkplane.name, onBlur: (event) => {
+                                                                }, children: profileCandidates.filter((candidate) => candidate.sketch.componentId === selectedLoftFeature.componentId && candidate.sketch.id !== selectedLoftParameters.profileSketchIds[slot === 0 ? 1 : 0]).map((candidate) => (0, jsx_runtime_1.jsx)("option", { value: candidate.key, children: candidate.label }, candidate.key)) })] }, slot)))] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Matched profile boundaries" }), (0, jsx_runtime_1.jsx)("p", { children: "BENCHCAD resamples and aligns both closed outlines, then builds a watertight exact-kernel solid without modifying either source sketch." })] })] })) : selectedEdgeFinishFeature && selectedEdgeFinishParameters ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector edge-finish-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing Edge Finish feature #", selectedEdgeFinishFeature.sequence, ". Changes rebuild downstream history."] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-summary", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: selectedEdgeFinishFeature.name }), (0, jsx_runtime_1.jsx)("span", { children: "ASSOCIATIVE" })] }), (0, jsx_runtime_1.jsxs)("dl", { children: [(0, jsx_runtime_1.jsx)("dt", { children: "Source body" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishFeature.snapshot?.name ?? "Unavailable" }), (0, jsx_runtime_1.jsx)("dt", { children: "Selected edges" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishParameters.edges.length }), (0, jsx_runtime_1.jsx)("dt", { children: "Operation" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedEdgeFinishParameters.mode })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section derived-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Edge treatment" }), (0, jsx_runtime_1.jsx)("span", { children: "EDITABLE" })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Finish type", (0, jsx_runtime_1.jsxs)("select", { value: selectedEdgeFinishParameters.mode, onChange: (event) => updateEdgeFinishFeature({ mode: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "fillet", children: "Fillet \u00B7 rounded edge" }), (0, jsx_runtime_1.jsx)("option", { value: "chamfer", children: "Chamfer \u00B7 beveled edge" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: selectedEdgeFinishParameters.mode === "fillet" ? "Radius" : "Distance", value: selectedEdgeFinishParameters.distance, suffix: project.units, min: 0.01, onCommit: (distance) => updateEdgeFinishFeature({ distance }) }), selectedEdgeFinishParameters.mode === "fillet" && ((0, jsx_runtime_1.jsx)(NumberField, { label: "Segments", value: selectedEdgeFinishParameters.segments, suffix: "", min: 2, onCommit: (segments) => updateEdgeFinishFeature({ segments: Math.max(2, Math.min(32, Math.round(segments))) }) }))] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Stable normalized references" }), (0, jsx_runtime_1.jsx)("p", { children: "Selected outside edges follow earlier box dimension, position, rotation, and mirror edits. Unsupported or lost references preserve the last valid solid and report an actionable kernel issue." })] })] })) : selectedShellFeature ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing shell feature #", selectedShellFeature.sequence, ". Changes rebuild downstream history."] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-summary", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: selectedShellFeature.name }), (0, jsx_runtime_1.jsx)("span", { children: "HOLLOW BODY" })] }), (0, jsx_runtime_1.jsxs)("dl", { children: [(0, jsx_runtime_1.jsx)("dt", { children: "Source body" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.name ?? "Unavailable" }), (0, jsx_runtime_1.jsx)("dt", { children: "Direction" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.shell?.direction ?? "inside" }), (0, jsx_runtime_1.jsx)("dt", { children: "Opening" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedShellFeature.snapshot?.shell?.opening ?? "none" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section derived-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Wall definition" }), (0, jsx_runtime_1.jsx)("span", { children: "ASSOCIATIVE" })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Thickness", value: selectedShellFeature.snapshot?.shell?.thickness ?? 1, suffix: project.units, min: 0.01, onCommit: (thickness) => updateShellFeature({ thickness }) }), (0, jsx_runtime_1.jsxs)("label", { children: ["Shell direction", (0, jsx_runtime_1.jsxs)("select", { value: selectedShellFeature.snapshot?.shell?.direction ?? "inside", onChange: (event) => updateShellFeature({ direction: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "inside", children: "Inside \u00B7 preserve outside size" }), (0, jsx_runtime_1.jsx)("option", { value: "outside", children: "Outside \u00B7 preserve inside size" })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Remove face", (0, jsx_runtime_1.jsxs)("select", { value: selectedShellFeature.snapshot?.shell?.opening ?? "none", onChange: (event) => updateShellFeature({ opening: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "none", children: "None \u00B7 closed hollow" }), (0, jsx_runtime_1.jsx)("option", { value: "top", children: "Top" }), (0, jsx_runtime_1.jsx)("option", { value: "bottom", children: "Bottom" }), (0, jsx_runtime_1.jsx)("option", { value: "left", children: "Left" }), (0, jsx_runtime_1.jsx)("option", { value: "right", children: "Right" }), (0, jsx_runtime_1.jsx)("option", { value: "front", children: "Front" }), (0, jsx_runtime_1.jsx)("option", { value: "back", children: "Back" })] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-note", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Non-destructive shell" }), (0, jsx_runtime_1.jsx)("p", { children: "The original solid remains available before this feature. Suppressing Shell restores it without creating an inverse history operation." })] })] })) : selectedSketch ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector sketch-inspector", children: [(0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Sketch feature #", selectedFeature.sequence, " remains associative to its support and downstream features."] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section component-summary", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: selectedSketch.name }), (0, jsx_runtime_1.jsx)("span", { children: selectedSketch.supportStatus === "unresolved" ? "UNRESOLVED" : "ASSOCIATIVE" })] }), (0, jsx_runtime_1.jsxs)("dl", { children: [(0, jsx_runtime_1.jsx)("dt", { children: "Support" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedSketch.faceReference ? `${selectedSketchSupportBody?.name ?? "Missing body"} · planar face` : selectedSketch.workplaneId ? "Associative workplane" : selectedSketch.attachment ? `${selectedSketchSupportBody?.name ?? "Missing body"} · ${selectedSketch.attachment.face} face` : `Origin ${selectedSketch.plane}` }), (0, jsx_runtime_1.jsx)("dt", { children: "Plane" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedSketch.plane }), (0, jsx_runtime_1.jsx)("dt", { children: "Entities" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedSketch.entities.length }), (0, jsx_runtime_1.jsx)("dt", { children: "Closed profiles" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedSketchAnalysis?.validProfileIds.length ?? 0 }), (0, jsx_runtime_1.jsx)("dt", { children: "Constraints" }), (0, jsx_runtime_1.jsx)("dd", { children: selectedSketch.constraints?.length ?? 0 })] }), selectedSketch.supportStatus === "unresolved" && ((0, jsx_runtime_1.jsx)("p", { className: "sketch-support-warning", children: selectedSketch.supportIssue ?? "The supporting face cannot be resolved." }))] }), (0, jsx_runtime_1.jsxs)("section", { className: "property-section sketch-inspector-actions", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Sketch workflow" }), (0, jsx_runtime_1.jsx)("span", { children: "EDIT OR BUILD" })] }), (0, jsx_runtime_1.jsxs)("button", { className: "activate-component", onClick: () => openExistingSketch(selectedSketch, false), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}), " Edit sketch"] }), (0, jsx_runtime_1.jsxs)("button", { className: "activate-component sketch-extrude-action", disabled: !selectedSketchAnalysis?.validProfileIds.length || selectedSketch.supportStatus === "unresolved", onClick: () => openExistingSketch(selectedSketch, true), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Cuboid, {}), " Extrude profiles"] }), (0, jsx_runtime_1.jsxs)("button", { className: "activate-component", onClick: () => setSketchVisibility(selectedSketch.id, !selectedSketch.visible), children: [selectedSketch.visible ? (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}), selectedSketch.visible ? " Hide sketch in 3D" : " Show sketch in 3D"] }), (0, jsx_runtime_1.jsx)("small", { children: "Extrude profiles opens the sketch with all valid closed profiles selected. Choose positive, negative, or symmetric direction and New, Join, or Cut." })] })] })) : selectedWorkplane ? ((0, jsx_runtime_1.jsxs)("div", { className: "inspector-scroll derived-feature-inspector workplane-inspector", children: [selectedFeature?.workplaneSnapshot && ((0, jsx_runtime_1.jsxs)("div", { className: "history-edit-notice", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Editing workplane feature #", selectedFeature.sequence, ". Dependent sketches rebuild automatically."] })), (0, jsx_runtime_1.jsxs)("section", { className: "property-section object-title", children: [(0, jsx_runtime_1.jsx)("div", { className: "object-swatch workplane-swatch", children: (0, jsx_runtime_1.jsx)(lucide_react_1.Grid3X3, {}) }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Name" }), (0, jsx_runtime_1.jsx)(input_1.Input, { defaultValue: selectedWorkplane.name, onBlur: (event) => {
                                                                     const name = event.target.value.trim();
                                                                     if (name && name !== selectedWorkplane.name)
                                                                         updateSelectedWorkplane({ name });
@@ -112616,7 +113062,7 @@ function BenchCadApp() {
                                                                                         setSelectedIds([]);
                                                                                         setSelectedFeatureId(project.features.find((feature) => feature.sketchSnapshot?.id === sketch.id)?.id ?? null);
                                                                                         setSelectedComponentId(null);
-                                                                                    }, onDoubleClick: () => setActiveSketch(structuredClone(sketch)), children: [(0, jsx_runtime_1.jsx)("span", { className: "tree-role sketch-role", children: (0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}) }), (0, jsx_runtime_1.jsx)("span", { children: sketch.name })] }), (0, jsx_runtime_1.jsx)("button", { className: "tree-visibility", onClick: () => setSketchVisibility(sketch.id, !sketch.visible), title: `${sketch.visible ? "Hide" : "Show"} ${sketch.name}`, "aria-label": `${sketch.visible ? "Hide" : "Show"} ${sketch.name}`, "aria-pressed": sketch.visible, children: sketch.visible ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {}) })] }, sketch.id))), !bodies.length && !sketches.length && !workplanes.length && !occurrences.length && ((0, jsx_runtime_1.jsx)("p", { className: "component-empty", children: "No geometry yet" }))] }, component.id));
+                                                                                    }, onDoubleClick: () => openExistingSketch(sketch, false), children: [(0, jsx_runtime_1.jsx)("span", { className: "tree-role sketch-role", children: (0, jsx_runtime_1.jsx)(lucide_react_1.PencilRuler, {}) }), (0, jsx_runtime_1.jsx)("span", { children: sketch.name })] }), (0, jsx_runtime_1.jsx)("button", { className: "tree-visibility", onClick: () => setSketchVisibility(sketch.id, !sketch.visible), title: `${sketch.visible ? "Hide" : "Show"} ${sketch.name}`, "aria-label": `${sketch.visible ? "Hide" : "Show"} ${sketch.name}`, "aria-pressed": sketch.visible, children: sketch.visible ? (0, jsx_runtime_1.jsx)(lucide_react_1.Eye, {}) : (0, jsx_runtime_1.jsx)(lucide_react_1.EyeOff, {}) })] }, sketch.id))), !bodies.length && !sketches.length && !workplanes.length && !occurrences.length && ((0, jsx_runtime_1.jsx)("p", { className: "component-empty", children: "No geometry yet" }))] }, component.id));
                                                             })] })] })), (0, jsx_runtime_1.jsxs)("div", { className: "timeline-track-wrap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "timeline-ruler", children: [(0, jsx_runtime_1.jsx)("span", { children: "START" }), (0, jsx_runtime_1.jsxs)("span", { children: ["FEATURE ", marker, " / ", project.features.length] }), (0, jsx_runtime_1.jsx)("span", { children: "END" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "timeline-track", children: [(0, jsx_runtime_1.jsxs)("button", { className: `origin-feature ${marker === 0 ? "selected" : ""}`, onClick: () => setMarker(0), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Home, {}), (0, jsx_runtime_1.jsx)("span", { children: "Origin" })] }), project.features.map((feature, index) => {
                                                                 const future = index >= marker;
                                                                 const selected = feature.id === selectedFeatureId;
@@ -112770,8 +113216,9 @@ function BenchCadApp() {
                                             }, children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, { placeholder: "Choose the first profile" }) }), (0, jsx_runtime_1.jsx)(select_1.SelectContent, { children: profileCandidates.filter((candidate) => candidate.sketch.componentId === project.activeComponentId).map((candidate) => ((0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: candidate.key, children: candidate.label }, candidate.key))) })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Second profile", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: loftSecondKey, onValueChange: setLoftSecondKey, children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, { placeholder: "Choose the second profile" }) }), (0, jsx_runtime_1.jsx)(select_1.SelectContent, { children: profileCandidates.filter((candidate) => {
                                                         const first = profileCandidates.find((item) => item.key === loftFirstKey);
                                                         return candidate.sketch.componentId === project.activeComponentId && candidate.sketch.id !== first?.sketch.id;
-                                                    }).map((candidate) => ((0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: candidate.key, children: candidate.label }, candidate.key))) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-plane-summary", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "MATCHED SECTIONS" }), "Profile boundaries are resampled and aligned without changing the source sketches."] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setLoftDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: createLoft, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " Create loft"] })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: holeDialogOpen, onOpenChange: setHoleDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Hole" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Cut an associative hole normal to the selected planar face. Face U and V are offsets from its center." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-dialog-form mechanical-dialog-form", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Hole style", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: holeStyle, onValueChange: (value) => setHoleStyle(value), children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "simple", children: "Simple" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "counterbore", children: "Counterbore" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "countersink", children: "Countersink" })] })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Extent", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: holeExtent, onValueChange: (value) => setHoleExtent(value), children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "through", children: "Through all" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "blind", children: "Blind depth" })] })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "mechanical-dialog-grid", children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Diameter", value: holeDiameter, suffix: project.units, min: 0.01, onCommit: setHoleDiameter }), holeExtent === "blind" && ((0, jsx_runtime_1.jsx)(NumberField, { label: "Depth", value: holeDepth, suffix: project.units, min: 0.01, onCommit: setHoleDepth })), (0, jsx_runtime_1.jsx)(NumberField, { label: "Face U", value: holePosition[0], suffix: project.units, onCommit: (value) => setHolePosition([value, holePosition[1]]) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Face V", value: holePosition[1], suffix: project.units, onCommit: (value) => setHolePosition([holePosition[0], value]) }), holeStyle === "counterbore" && ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Bore diameter", value: counterboreDiameter, suffix: project.units, min: 0.01, onCommit: setCounterboreDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Bore depth", value: counterboreDepth, suffix: project.units, min: 0.01, onCommit: setCounterboreDepth })] })), holeStyle === "countersink" && ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Sink diameter", value: countersinkDiameter, suffix: project.units, min: 0.01, onCommit: setCountersinkDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Included angle", value: countersinkAngle, suffix: "\u00B0", min: 30, max: 150, onCommit: setCountersinkAngle })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-plane-summary", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: [holeStyle.toUpperCase(), " \u00B7 ", holeExtent.toUpperCase()] }), "Exact geometry is validated before the construction feature is committed."] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setHoleDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: createHole, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), " Cut hole"] })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: threadDialogOpen, onOpenChange: setThreadDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "thread-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Cosmetic / Represented Thread" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Adds an editable thread specification and viewport representation. Batch 27 intentionally does not cut helical mesh geometry, so STL and 3MF remain unchanged." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "manufacturing-settings-grid", children: [(0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Designation" }), (0, jsx_runtime_1.jsx)(input_1.Input, { value: threadDesignation, onChange: (event) => setThreadDesignation(event.target.value) })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Display mode" }), (0, jsx_runtime_1.jsxs)("select", { value: threadMode, onChange: (event) => setThreadMode(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "cosmetic", children: "Cosmetic / specification only" }), (0, jsx_runtime_1.jsx)("option", { value: "represented", children: "Represented helix" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Axis" }), (0, jsx_runtime_1.jsxs)("select", { value: threadAxis, onChange: (event) => setThreadAxis(Number(event.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: "0", children: "Body X" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "Body Y" }), (0, jsx_runtime_1.jsx)("option", { value: "2", children: "Body Z" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Major diameter", value: threadDiameter, suffix: project.units, min: 0.01, onCommit: setThreadDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Pitch", value: threadPitch, suffix: project.units, min: 0.01, onCommit: setThreadPitch }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Length", value: threadLength, suffix: project.units, min: 0.01, onCommit: setThreadLength }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Axial start", value: threadStart, suffix: project.units, onCommit: setThreadStart }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Handedness" }), (0, jsx_runtime_1.jsxs)("select", { value: threadHandedness, onChange: (event) => setThreadHandedness(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "right", children: "Right-hand" }), (0, jsx_runtime_1.jsx)("option", { value: "left", children: "Left-hand" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "check-row", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: threadInternal, onChange: (event) => setThreadInternal(event.target.checked) }), "Internal thread specification"] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "step-decision-card", children: [(0, jsx_runtime_1.jsx)("strong", { children: "EXPORT BEHAVIOR" }), (0, jsx_runtime_1.jsx)("p", { children: "The thread stays in the feature timeline, project archive, viewport, and manufacturing report. It is deliberately excluded from mesh export." })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setThreadDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: commitThread, children: "Add thread" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: manufacturingOpen, onOpenChange: setManufacturingOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "manufacturing-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Manufacturing Readiness" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Local design screening for mesh integrity, recognized wall and feature sizes, overhang, draft, and possible body interference." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "manufacturing-layout", children: [(0, jsx_runtime_1.jsxs)("section", { className: "manufacturing-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Analysis settings" }), (0, jsx_runtime_1.jsx)("span", { children: project.units.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Process" }), (0, jsx_runtime_1.jsxs)("select", { value: manufacturingSettings.process, onChange: (event) => setManufacturingSettings({ ...manufacturingSettings, process: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "fdm", children: "FDM printing" }), (0, jsx_runtime_1.jsx)("option", { value: "resin", children: "Resin printing" }), (0, jsx_runtime_1.jsx)("option", { value: "cnc", children: "CNC machining" }), (0, jsx_runtime_1.jsx)("option", { value: "molding", children: "Molding / casting" }), (0, jsx_runtime_1.jsx)("option", { value: "generic", children: "Generic mesh export" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Scope" }), (0, jsx_runtime_1.jsxs)("select", { value: manufacturingScope, onChange: (event) => setManufacturingScope(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "visible", children: "All visible bodies" }), (0, jsx_runtime_1.jsx)("option", { value: "selection", disabled: !selectedIds.length, children: "Current selection" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum wall", value: manufacturingSettings.minimumWall, suffix: project.units, min: 0.001, onCommit: (minimumWall) => setManufacturingSettings({ ...manufacturingSettings, minimumWall }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum feature", value: manufacturingSettings.minimumFeature, suffix: project.units, min: 0.001, onCommit: (minimumFeature) => setManufacturingSettings({ ...manufacturingSettings, minimumFeature }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Maximum overhang", value: manufacturingSettings.maximumOverhang, suffix: "\u00B0", min: 0, max: 89.9, onCommit: (maximumOverhang) => setManufacturingSettings({ ...manufacturingSettings, maximumOverhang }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum draft", value: manufacturingSettings.minimumDraft, suffix: "\u00B0", min: 0, max: 45, onCommit: (minimumDraft) => setManufacturingSettings({ ...manufacturingSettings, minimumDraft }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Interference tolerance", value: manufacturingSettings.interferenceTolerance, suffix: project.units, min: 0, onCommit: (interferenceTolerance) => setManufacturingSettings({ ...manufacturingSettings, interferenceTolerance }) }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: () => runManufacturingAnalysis(false), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Run analysis"] })] }), (0, jsx_runtime_1.jsx)("section", { className: "manufacturing-results", children: manufacturingReport ? ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: `manufacturing-summary ${manufacturingReport.summary.ready ? "ready" : "blocked"}`, children: [(0, jsx_runtime_1.jsx)("strong", { children: manufacturingReport.summary.ready ? "NO BLOCKING MESH ERRORS" : "BLOCKING MESH ERRORS" }), (0, jsx_runtime_1.jsxs)("span", { children: [manufacturingReport.summary.errors, " errors \u00B7 ", manufacturingReport.summary.warnings, " warnings \u00B7 ", manufacturingReport.summary.info, " information"] })] }), (0, jsx_runtime_1.jsx)("div", { className: "manufacturing-findings", children: manufacturingReport.findings.length ? manufacturingReport.findings.map((finding) => ((0, jsx_runtime_1.jsxs)("article", { className: `manufacturing-finding severity-${finding.severity}`, children: [(0, jsx_runtime_1.jsxs)("header", { children: [(0, jsx_runtime_1.jsx)("span", { children: finding.severity.toUpperCase() }), (0, jsx_runtime_1.jsx)("b", { children: finding.check.replace(/-/g, " ") })] }), (0, jsx_runtime_1.jsx)("h4", { children: finding.title }), (0, jsx_runtime_1.jsx)("p", { children: finding.detail }), (0, jsx_runtime_1.jsx)("small", { children: finding.method })] }, finding.id))) : (0, jsx_runtime_1.jsxs)("div", { className: "empty-analysis", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}), (0, jsx_runtime_1.jsx)("p", { children: "No findings for the current thresholds." })] }) }), (0, jsx_runtime_1.jsxs)("div", { className: "step-decision-card", children: [(0, jsx_runtime_1.jsx)("strong", { children: "STEP / B-REP DECISION" }), (0, jsx_runtime_1.jsx)("h4", { children: manufacturingReport.stepDecision.title }), (0, jsx_runtime_1.jsx)("p", { children: manufacturingReport.stepDecision.rationale })] })] })) : ((0, jsx_runtime_1.jsxs)("div", { className: "empty-analysis", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), (0, jsx_runtime_1.jsx)("p", { children: "Run the analysis to create a per-body manufacturing report." })] })) })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", disabled: !manufacturingReport, onClick: () => exportManufacturingReport("json"), children: "Export JSON" }), (0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", disabled: !manufacturingReport, onClick: () => exportManufacturingReport("html"), children: "Export HTML" }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setManufacturingOpen(false), children: "Done" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: Boolean(branchShape), onOpenChange: (open) => !open && setBranchShape(null), children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "You are working in the past" }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogDescription, { children: ["Later features are hidden beyond the history marker. Choose where the new ", branchShape, " should go\u2014future history will never be overwritten silently."] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "branch-choices", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: () => branchShape && insertShape(branchShape, "end"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.SkipForward, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Return to the end" }), (0, jsx_runtime_1.jsx)("small", { children: "Keep all future features and add the shape last." })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => branchShape && insertShape(branchShape, "branch"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Archive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Create a new branch" }), (0, jsx_runtime_1.jsx)("small", { children: "Preserve this point as a separate project version." })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "danger-choice", onClick: () => branchShape && insertShape(branchShape, "truncate"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Discard hidden future" }), (0, jsx_runtime_1.jsxs)("small", { children: ["Remove ", project.features.length - marker, " later features and continue here."] })] })] })] }), (0, jsx_runtime_1.jsx)(dialog_1.DialogFooter, { showCloseButton: true })] }) }), activeSketch && ((0, jsx_runtime_1.jsx)(sketch_workbench_1.SketchWorkbench, { sketch: activeSketch, bodies: reconstruction.bodies, selectedBody: selectedBody ?? null, units: project.units, onCancel: () => setActiveSketch(null), onSave: saveSketch, onExtrude: extrudeSketch, onThinExtrude: thinExtrudeSketch, onRib: ribSketch, onRevolve: revolveSketch })), (0, jsx_runtime_1.jsx)(sonner_1.Toaster, { theme: theme === "light" ? "light" : "dark", position: "bottom-center", richColors: true })] }));
+                                                    }).map((candidate) => ((0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: candidate.key, children: candidate.label }, candidate.key))) })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-plane-summary", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("b", { children: "MATCHED SECTIONS" }), "Profile boundaries are resampled and aligned without changing the source sketches."] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setLoftDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: createLoft, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Layers3, {}), " Create loft"] })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: holeDialogOpen, onOpenChange: setHoleDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Hole" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Cut an associative hole normal to the selected planar face. Face U and V are offsets from its center." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-dialog-form mechanical-dialog-form", children: [(0, jsx_runtime_1.jsxs)("label", { children: ["Hole style", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: holeStyle, onValueChange: (value) => setHoleStyle(value), children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "simple", children: "Simple" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "counterbore", children: "Counterbore" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "countersink", children: "Countersink" })] })] })] }), (0, jsx_runtime_1.jsxs)("label", { children: ["Extent", (0, jsx_runtime_1.jsxs)(select_1.Select, { value: holeExtent, onValueChange: (value) => setHoleExtent(value), children: [(0, jsx_runtime_1.jsx)(select_1.SelectTrigger, { children: (0, jsx_runtime_1.jsx)(select_1.SelectValue, {}) }), (0, jsx_runtime_1.jsxs)(select_1.SelectContent, { children: [(0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "through", children: "Through all" }), (0, jsx_runtime_1.jsx)(select_1.SelectItem, { value: "blind", children: "Blind depth" })] })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "mechanical-dialog-grid", children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Diameter", value: holeDiameter, suffix: project.units, min: 0.01, onCommit: setHoleDiameter }), holeExtent === "blind" && ((0, jsx_runtime_1.jsx)(NumberField, { label: "Depth", value: holeDepth, suffix: project.units, min: 0.01, onCommit: setHoleDepth })), (0, jsx_runtime_1.jsx)(NumberField, { label: "Face U", value: holePosition[0], suffix: project.units, onCommit: (value) => setHolePosition([value, holePosition[1]]) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Face V", value: holePosition[1], suffix: project.units, onCommit: (value) => setHolePosition([holePosition[0], value]) }), holeStyle === "counterbore" && ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Bore diameter", value: counterboreDiameter, suffix: project.units, min: 0.01, onCommit: setCounterboreDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Bore depth", value: counterboreDepth, suffix: project.units, min: 0.01, onCommit: setCounterboreDepth })] })), holeStyle === "countersink" && ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsx)(NumberField, { label: "Sink diameter", value: countersinkDiameter, suffix: project.units, min: 0.01, onCommit: setCountersinkDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Included angle", value: countersinkAngle, suffix: "\u00B0", min: 30, max: 150, onCommit: setCountersinkAngle })] }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "split-plane-summary", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsxs)("b", { children: [holeStyle.toUpperCase(), " \u00B7 ", holeExtent.toUpperCase()] }), "Exact geometry is validated before the construction feature is committed."] })] })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setHoleDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: createHole, children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Circle, {}), " Cut hole"] })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: threadDialogOpen, onOpenChange: setThreadDialogOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "thread-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Cosmetic / Represented Thread" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Adds an editable thread specification and viewport representation. Batch 27 intentionally does not cut helical mesh geometry, so STL and 3MF remain unchanged." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "manufacturing-settings-grid", children: [(0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Designation" }), (0, jsx_runtime_1.jsx)(input_1.Input, { value: threadDesignation, onChange: (event) => setThreadDesignation(event.target.value) })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Display mode" }), (0, jsx_runtime_1.jsxs)("select", { value: threadMode, onChange: (event) => setThreadMode(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "cosmetic", children: "Cosmetic / specification only" }), (0, jsx_runtime_1.jsx)("option", { value: "represented", children: "Represented helix" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Axis" }), (0, jsx_runtime_1.jsxs)("select", { value: threadAxis, onChange: (event) => setThreadAxis(Number(event.target.value)), children: [(0, jsx_runtime_1.jsx)("option", { value: "0", children: "Body X" }), (0, jsx_runtime_1.jsx)("option", { value: "1", children: "Body Y" }), (0, jsx_runtime_1.jsx)("option", { value: "2", children: "Body Z" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Major diameter", value: threadDiameter, suffix: project.units, min: 0.01, onCommit: setThreadDiameter }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Pitch", value: threadPitch, suffix: project.units, min: 0.01, onCommit: setThreadPitch }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Length", value: threadLength, suffix: project.units, min: 0.01, onCommit: setThreadLength }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Axial start", value: threadStart, suffix: project.units, onCommit: setThreadStart }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Handedness" }), (0, jsx_runtime_1.jsxs)("select", { value: threadHandedness, onChange: (event) => setThreadHandedness(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "right", children: "Right-hand" }), (0, jsx_runtime_1.jsx)("option", { value: "left", children: "Left-hand" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "check-row", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: threadInternal, onChange: (event) => setThreadInternal(event.target.checked) }), "Internal thread specification"] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "step-decision-card", children: [(0, jsx_runtime_1.jsx)("strong", { children: "EXPORT BEHAVIOR" }), (0, jsx_runtime_1.jsx)("p", { children: "The thread stays in the feature timeline, project archive, viewport, and manufacturing report. It is deliberately excluded from mesh export." })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", onClick: () => setThreadDialogOpen(false), children: "Cancel" }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: commitThread, children: "Add thread" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: manufacturingOpen, onOpenChange: setManufacturingOpen, children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { className: "manufacturing-dialog", children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "Manufacturing Readiness" }), (0, jsx_runtime_1.jsx)(dialog_1.DialogDescription, { children: "Local design screening for mesh integrity, recognized wall and feature sizes, overhang, draft, and possible body interference." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "manufacturing-layout", children: [(0, jsx_runtime_1.jsxs)("section", { className: "manufacturing-controls", children: [(0, jsx_runtime_1.jsxs)("div", { className: "section-title", children: [(0, jsx_runtime_1.jsx)("h3", { children: "Analysis settings" }), (0, jsx_runtime_1.jsx)("span", { children: project.units.toUpperCase() })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Process" }), (0, jsx_runtime_1.jsxs)("select", { value: manufacturingSettings.process, onChange: (event) => setManufacturingSettings({ ...manufacturingSettings, process: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "fdm", children: "FDM printing" }), (0, jsx_runtime_1.jsx)("option", { value: "resin", children: "Resin printing" }), (0, jsx_runtime_1.jsx)("option", { value: "cnc", children: "CNC machining" }), (0, jsx_runtime_1.jsx)("option", { value: "molding", children: "Molding / casting" }), (0, jsx_runtime_1.jsx)("option", { value: "generic", children: "Generic mesh export" })] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "number-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Scope" }), (0, jsx_runtime_1.jsxs)("select", { value: manufacturingScope, onChange: (event) => setManufacturingScope(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "visible", children: "All visible bodies" }), (0, jsx_runtime_1.jsx)("option", { value: "selection", disabled: !selectedIds.length, children: "Current selection" })] })] }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum wall", value: manufacturingSettings.minimumWall, suffix: project.units, min: 0.001, onCommit: (minimumWall) => setManufacturingSettings({ ...manufacturingSettings, minimumWall }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum feature", value: manufacturingSettings.minimumFeature, suffix: project.units, min: 0.001, onCommit: (minimumFeature) => setManufacturingSettings({ ...manufacturingSettings, minimumFeature }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Maximum overhang", value: manufacturingSettings.maximumOverhang, suffix: "\u00B0", min: 0, max: 89.9, onCommit: (maximumOverhang) => setManufacturingSettings({ ...manufacturingSettings, maximumOverhang }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Minimum draft", value: manufacturingSettings.minimumDraft, suffix: "\u00B0", min: 0, max: 45, onCommit: (minimumDraft) => setManufacturingSettings({ ...manufacturingSettings, minimumDraft }) }), (0, jsx_runtime_1.jsx)(NumberField, { label: "Interference tolerance", value: manufacturingSettings.interferenceTolerance, suffix: project.units, min: 0, onCommit: (interferenceTolerance) => setManufacturingSettings({ ...manufacturingSettings, interferenceTolerance }) }), (0, jsx_runtime_1.jsxs)(button_1.Button, { onClick: () => runManufacturingAnalysis(false), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.RefreshCw, {}), " Run analysis"] })] }), (0, jsx_runtime_1.jsx)("section", { className: "manufacturing-results", children: manufacturingReport ? ((0, jsx_runtime_1.jsxs)(jsx_runtime_1.Fragment, { children: [(0, jsx_runtime_1.jsxs)("div", { className: `manufacturing-summary ${manufacturingReport.summary.ready ? "ready" : "blocked"}`, children: [(0, jsx_runtime_1.jsx)("strong", { children: manufacturingReport.summary.ready ? "NO BLOCKING MESH ERRORS" : "BLOCKING MESH ERRORS" }), (0, jsx_runtime_1.jsxs)("span", { children: [manufacturingReport.summary.errors, " errors \u00B7 ", manufacturingReport.summary.warnings, " warnings \u00B7 ", manufacturingReport.summary.info, " information"] })] }), (0, jsx_runtime_1.jsx)("div", { className: "manufacturing-findings", children: manufacturingReport.findings.length ? manufacturingReport.findings.map((finding) => ((0, jsx_runtime_1.jsxs)("article", { className: `manufacturing-finding severity-${finding.severity}`, children: [(0, jsx_runtime_1.jsxs)("header", { children: [(0, jsx_runtime_1.jsx)("span", { children: finding.severity.toUpperCase() }), (0, jsx_runtime_1.jsx)("b", { children: finding.check.replace(/-/g, " ") })] }), (0, jsx_runtime_1.jsx)("h4", { children: finding.title }), (0, jsx_runtime_1.jsx)("p", { children: finding.detail }), (0, jsx_runtime_1.jsx)("small", { children: finding.method })] }, finding.id))) : (0, jsx_runtime_1.jsxs)("div", { className: "empty-analysis", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Check, {}), (0, jsx_runtime_1.jsx)("p", { children: "No findings for the current thresholds." })] }) }), (0, jsx_runtime_1.jsxs)("div", { className: "step-decision-card", children: [(0, jsx_runtime_1.jsx)("strong", { children: "STEP / B-REP DECISION" }), (0, jsx_runtime_1.jsx)("h4", { children: manufacturingReport.stepDecision.title }), (0, jsx_runtime_1.jsx)("p", { children: manufacturingReport.stepDecision.rationale })] })] })) : ((0, jsx_runtime_1.jsxs)("div", { className: "empty-analysis", children: [(0, jsx_runtime_1.jsx)(lucide_react_1.TriangleAlert, {}), (0, jsx_runtime_1.jsx)("p", { children: "Run the analysis to create a per-body manufacturing report." })] })) })] }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogFooter, { children: [(0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", disabled: !manufacturingReport, onClick: () => exportManufacturingReport("json"), children: "Export JSON" }), (0, jsx_runtime_1.jsx)(button_1.Button, { variant: "outline", disabled: !manufacturingReport, onClick: () => exportManufacturingReport("html"), children: "Export HTML" }), (0, jsx_runtime_1.jsx)(button_1.Button, { onClick: () => setManufacturingOpen(false), children: "Done" })] })] }) }), (0, jsx_runtime_1.jsx)(dialog_1.Dialog, { open: Boolean(branchShape), onOpenChange: (open) => !open && setBranchShape(null), children: (0, jsx_runtime_1.jsxs)(dialog_1.DialogContent, { children: [(0, jsx_runtime_1.jsxs)(dialog_1.DialogHeader, { children: [(0, jsx_runtime_1.jsx)(dialog_1.DialogTitle, { children: "You are working in the past" }), (0, jsx_runtime_1.jsxs)(dialog_1.DialogDescription, { children: ["Later features are hidden beyond the history marker. Choose where the new ", branchShape, " should go\u2014future history will never be overwritten silently."] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "branch-choices", children: [(0, jsx_runtime_1.jsxs)("button", { onClick: () => branchShape && insertShape(branchShape, "end"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.SkipForward, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Return to the end" }), (0, jsx_runtime_1.jsx)("small", { children: "Keep all future features and add the shape last." })] })] }), (0, jsx_runtime_1.jsxs)("button", { onClick: () => branchShape && insertShape(branchShape, "branch"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Archive, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Create a new branch" }), (0, jsx_runtime_1.jsx)("small", { children: "Preserve this point as a separate project version." })] })] }), (0, jsx_runtime_1.jsxs)("button", { className: "danger-choice", onClick: () => branchShape && insertShape(branchShape, "truncate"), children: [(0, jsx_runtime_1.jsx)(lucide_react_1.Trash2, {}), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Discard hidden future" }), (0, jsx_runtime_1.jsxs)("small", { children: ["Remove ", project.features.length - marker, " later features and continue here."] })] })] })] }), (0, jsx_runtime_1.jsx)(dialog_1.DialogFooter, { showCloseButton: true })] }) }), activeSketch && ((0, jsx_runtime_1.jsx)(sketch_workbench_1.SketchWorkbench, { sketch: activeSketch, bodies: reconstruction.bodies, meshes: booleanMeshes, selectedBody: selectedBody ?? reconstruction.bodies.find((body) => body.id === (activeSketch.faceReference?.bodyId ?? activeSketch.supportBodyId ?? activeSketch.attachment?.bodyId)) ?? null, units: project.units, initialProfileSelection: sketchAutoSelectProfiles, onCancel: () => { setActiveSketch(null); setSketchAutoSelectProfiles(false); }, onSave: saveSketch, onExtrude: extrudeSketch, onThinExtrude: thinExtrudeSketch, onRib: ribSketch, onRevolve: revolveSketch })), (0, jsx_runtime_1.jsx)(sonner_1.Toaster, { theme: theme === "light" ? "light" : "dark", position: "bottom-center", richColors: true })] }));
 }
+
 
 },
 "standalone-main.tsx":function(require,module,exports){

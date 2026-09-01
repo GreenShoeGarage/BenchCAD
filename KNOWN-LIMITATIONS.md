@@ -1,6 +1,20 @@
-# BENCHCAD v0.36.3 Known Limitations
+# BENCHCAD v0.37.0 Known Limitations
 
-BENCHCAD v0.36.3 retains the completed Technical Drawings 2.0 roadmap, but it remains a lightweight mesh-based CAD system rather than a full analytic mechanical drafting package. Review every drawing before fabrication.
+BENCHCAD v0.37.0 adds persistent face/workplane sketches and bidirectional extrusion while retaining the completed Technical Drawings 2.0 roadmap. It remains a lightweight mesh-based CAD system rather than a full analytic mechanical CAD and drafting package. Review every model and drawing before fabrication.
+
+## Sketching and face associativity
+
+- Sketches are planar; three-dimensional sketches, surface wrapping, embossing, and projected-on-surface curves are not implemented.
+- The current geometric/constraint tools are useful for practical profiles but are not a complete professional parametric sketch solver.
+- A new sketch starts in Select. Connected line and Closed polyline begin only when chosen. `Escape` cancels transient geometry and resets the command; `Enter` commits an open line chain.
+- Face-supported sketches store a support-body reference and a reconstructed planar face frame. They do not use persistent analytic boundary-representation face names.
+- Major upstream topology changes can make a support face unresolved. BENCHCAD reports the unresolved support rather than silently attaching the sketch to a different face.
+- Exact body/face underlay depends on an exact reconstructed mesh. When that mesh is unavailable, the editor can show a clearly labeled approximate envelope only as an orientation aid.
+- Very dense support geometry can be simplified or bounded for interactive underlay performance. The underlay is not the authoritative model; reconstruction remains authoritative.
+- A persistent three-dimensional sketch overlay is a visibility and selection aid. It is not exported as solid geometry unless a downstream modeling feature consumes it.
+- Straight profile extrusion supports Positive, Negative, and Symmetric directions. Draft/taper and variable-direction extrusion are not part of this workflow.
+- Join and Cut require a resolvable target body. A face-supported sketch defaults to its support body only when that relationship remains valid.
+- Editing an upstream sketch can invalidate downstream profile selection or Boolean results; failures remain visible in the feature history.
 
 ## Geometry and topology
 
@@ -96,10 +110,12 @@ Dense meshes, many views, hidden-line depth tests, section reconstruction, and r
 
 ## Viewport rendering and inspection
 
-BENCHCAD v0.36.3 prioritizes modeling readability, but the viewport remains an engineering work view rather than a photorealistic or calibrated renderer.
+BENCHCAD v0.37.0 retains the all-angle modeling readability work from v0.36.4, but the viewport remains an engineering work view rather than a photorealistic or calibrated renderer.
 
-- Display styles and lighting presets are independent browser-local preferences. They do not change authoritative geometry or exported files.
-- **Workbench** is intentionally matte and neutral. Its soft contact shadow is an orientation cue, not a physically calibrated light simulation.
+- Display styles, lighting presets, and dark-face lift are independent browser-local preferences. They do not change authoritative geometry or exported files.
+- The camera-relative headlight and fixed underside fill are deliberate CAD visibility aids. They do not represent real lamps, measured exposure, material reflectance, or a physical environment.
+- **Natural**, **Balanced**, and **Bright** change camera/underside assistance, ambient contribution, and a small material-color floor. Bright can flatten curvature and directional shading; Natural retains more falloff.
+- **Workbench** is intentionally matte and neutral. Its reduced contact shadow is an orientation cue, not a physically calibrated light simulation.
 - **Flat / CAD** and **Performance** use diffuse Lambert materials and disable cast shadows. Fine curvature can look flatter by design.
 - **Technical** suppresses authored color drama to prioritize linework and topology.
 - **Presentation** adds warmer highlights and stronger face contrast, but does not provide ray-traced reflections, clearcoat simulation, studio environments, or photorealistic output.
@@ -114,18 +130,18 @@ BENCHCAD v0.36.3 prioritizes modeling readability, but the viewport remains an e
 
 ## Interface and responsive behavior
 
-The v0.36.3 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
+The v0.37.0 viewport and UI cleanup gives the canvas priority, but it does not remove the inherent density of a CAD tool.
 
 - At constrained widths, modeling and drawing command groups scroll horizontally inside their own toolbar rather than shrinking or overlapping.
 - Tablet and mobile layouts expose Shapes, Inspect, and History as drawers; not every panel is visible simultaneously.
 - Panel, outline, theme, and workspace-mode preferences are stored in browser-local storage and can be removed by site-data cleanup.
 - Canvas Focus is intentionally session-only so a later visit does not appear to be missing panels.
 - Touch viewing and light editing are supported, but precision topology selection and dense drafting remain best with a mouse, trackpad, or stylus.
-- The v0.36.3 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
+- The v0.37.0 renderer uses `PCFShadowMap`; the earlier inherited `PCFSoftShadowMap` warning is no longer expected.
 
 ## Browser qualification
 
-The v0.36.3 lighting workflow was exercised in Chromium with real Three.js and Manifold WebAssembly. Firefox and Safari/WebKit runtimes were not available in the release container and were not falsely reported as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
+The v0.37.0 sketch workflow was exercised in headed Chromium with a deterministic exact-mesh worker adapter for repeatable interface assertions. A separate headed-browser suite loaded the unmodified production geometry-worker logic and exact packaged Manifold WebAssembly bytes, reconstructed exact geometry, opened a face-supported sketch with exact underlay, and completed a negative cut. Firefox and Safari/WebKit runtimes were not available in the release container and are not claimed as tested. Real-device Gecko and WebKit qualification remains part of Batch 30 public-beta hardening.
 
 ## Local storage and offline use
 

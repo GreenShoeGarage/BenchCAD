@@ -1,0 +1,15 @@
+BENCHCAD v0.37.0 — actual-production-geometry-worker-sketch
+
+Result: 11/11 passed
+
+PASS — production geometry worker completed: [{'type': 'complete', 'requestId': 1, 'results': [{'targetId': 'body-d9z2egysnb8', 'triangles': 340, 'volume': 17532.553528704615, 'bounds': {'min': [-36, -20.98906158216879, 0], 'max': [36, 20.98906158216879, 6]}}], 'issues': [], 'message': None}]
+PASS — Manifold worker returned exact meshes: 1
+PASS — initial real-worker reconstruction has no issues: []
+PASS — geometry ready shown
+PASS — real-mesh face sketch opens
+PASS — real mesh supplies exact face underlay
+PASS — real-worker negative cut command enabled
+PASS — negative cut rebuilt through production worker: 2
+PASS — negative cut real-worker reconstruction has no blocking issues: []
+PASS — source sketch remains visible after real-worker cut: 1
+PASS — no application errors during real-worker workflow: []

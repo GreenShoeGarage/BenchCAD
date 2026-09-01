@@ -2,10 +2,10 @@
 
 # BENCHCAD
 
-**Local-first browser CAD with approachable solid modeling, exact dimensions, and an editable construction history.**
+**Local-first browser CAD with persistent face/workplane sketches, bidirectional extrusion, exact dimensions, and an editable construction history.**
 
-![Release](https://img.shields.io/badge/release-v0.36.3-ef9f3d)
-![Project schema](https://img.shields.io/badge/project%20schema-9-4bc6d3)
+![Release](https://img.shields.io/badge/release-v0.37.0-ef9f3d)
+![Project schema](https://img.shields.io/badge/project%20schema-10-4bc6d3)
 ![Drawing schema](https://img.shields.io/badge/drawing%20schema-5-4bc6d3)
 ![Deployment](https://img.shields.io/badge/deployment-static%20files-54727a)
 ![Privacy](https://img.shields.io/badge/privacy-local--first-5f9f73)
@@ -26,15 +26,15 @@ The application runs entirely in the browser. It requires no account, backend, c
 
 | Item | Value |
 |---|---|
-| Application | **BENCHCAD v0.36.3** |
-| Project schema | **9** |
+| Application | **BENCHCAD v0.37.0** |
+| Project schema | **10** |
 | Drawing schema | **5** |
 | Release stage | Active pre-1.0 development |
 | Distribution | Prebuilt static web application |
 | Runtime services | None required |
-| Tested runtime | Chromium with the packaged Three.js viewport and Manifold WebAssembly kernel |
+| Tested runtime | Headed Chromium workflow testing plus a separate run using the production geometry worker and the exact packaged Manifold WebAssembly kernel |
 | Additional browser qualification | Firefox and Safari/WebKit scheduled for public-beta hardening |
-| Complete package checksum | See `BENCHCAD-v0.36.3-complete.zip.sha256` distributed beside the ZIP |
+| Complete package checksum | See `BENCHCAD-v0.37.0-complete.zip.sha256` distributed beside the ZIP |
 
 ## What BENCHCAD does
 
@@ -46,6 +46,23 @@ The application runs entirely in the browser. It requires no account, backend, c
 - Treats geometry as **solid** or **hole** and supports union, subtraction, and intersection.
 - Includes shell, split-body, extrusion, revolve, thin-extrude, rib/web, and thread-metadata workflows.
 - Uses the Manifold WebAssembly geometry kernel for exact-solid reconstruction where supported.
+
+### First-class 2D sketching
+
+- Starts sketches on an origin plane, an associative workplane, or a selected planar body face.
+- Shows the exact reconstructed supporting body and selected face beneath the sketch canvas. When exact geometry is unavailable, any envelope fallback is explicitly labeled and is never treated as authoritative solid geometry.
+- Opens every new sketch in **Select** mode; a line chain begins only after the Line or Polyline command is chosen and the first point is clicked.
+- Uses **Escape** to cancel the active command or unfinished chain and return to Select. A second Escape in Select clears the current sketch selection. **Enter** completes an open line/polyline chain. **Finish sketch** also preserves a valid two-point-or-longer pending connected-line chain as an open polyline instead of silently dropping it.
+- Keeps a finished sketch as a persistent timeline feature, Component Browser item, and optional three-dimensional overlay instead of making it disappear.
+- Reopens a sketch by double-clicking its Component Browser row or by using **Edit sketch** in the Inspector.
+- Provides **Extrude profiles** in the Inspector to reopen the sketch with valid closed profiles selected.
+- Extrudes **Positive**, **Negative**, or **Symmetric** relative to the sketch normal.
+- Creates a **New body**, **Joins** the target body, or **Cuts** the target body. A face-supported sketch defaults Join/Cut to its supporting body when appropriate.
+- Preserves the source sketch after extrusion so later profile edits can rebuild downstream features.
+
+![BENCHCAD face sketch with exact supporting-body underlay](docs/images/benchcad-sketch-face-underlay.png)
+
+![Persistent source sketch after a negative cut](docs/images/benchcad-sketch-persistent.png)
 
 ### Viewport rendering and inspection
 
@@ -62,15 +79,21 @@ BENCHCAD separates **how geometry is drawn** from **how it is lit**. This keeps 
 
 **Lighting presets** are selected from the adjacent sparkles menu:
 
-- **Workbench** — the modeling-first default: neutral matte faces, restrained highlights, balanced key/fill lighting, and a soft contact shadow.
-- **Flat / CAD** — diffuse Lambert shading with no real-time cast shadows or specular gloss. This is the clearest option for face selection and long modeling sessions.
-- **Technical** — cool neutral lighting with low surface drama so edges and topology remain dominant.
+- **Workbench** — the modeling-first default: neutral matte faces, restrained highlights, a soft contact shadow, and dedicated camera/underside assistance so standard views remain readable.
+- **Flat / CAD** — diffuse Lambert shading with no real-time cast shadows or specular gloss, plus the strongest neutral all-angle illumination for face selection and long modeling sessions.
+- **Technical** — cool neutral lighting with low surface drama, balanced lower-hemisphere fill, and dominant engineering linework.
 - **Presentation** — warmer key/rim balance, richer highlights, and stronger face contrast for screenshots without returning to the heavy clearcoat look.
-- **Performance** — simplified diffuse lighting, no shadows, and a renderer pixel-ratio cap of 1.25 for dense scenes and lower-power hardware.
+- **Performance** — simplified diffuse all-angle lighting, no shadows, and a renderer pixel-ratio cap of 1.25 for dense scenes and lower-power hardware.
 
-The two menus are independent, so combinations such as **Shaded + edges + Flat / CAD** or **Interior inspect + Workbench** are supported. **Shift+L** cycles lighting presets. **Reset view style and lighting** returns both layers to Shaded + edges and Workbench.
+A third control in the sparkles menu sets **Dark-face lift** independently from the preset:
 
-The selected display style and lighting preset are stored as browser-local interface preferences. Neither creates a timeline feature, dirties the project, changes authoritative geometry, or affects STL/OBJ/3MF/drawing exports.
+- **Natural** — low camera and underside assistance; retains more directional falloff.
+- **Balanced** — default CAD visibility from every standard view.
+- **Bright** — maximum legibility for undersides, recessed faces, and deep cavities.
+
+Display style, lighting preset, and dark-face lift are independent, so combinations such as **Shaded + edges + Flat / CAD + Bright** or **Interior inspect + Workbench + Balanced** are supported. **Shift+L** cycles lighting presets without changing the lift level. **Reset view style and lighting** returns all three layers to Shaded + edges, Workbench, and Balanced.
+
+The selected display style, lighting preset, and lift level are stored as browser-local interface preferences. None creates a timeline feature, dirties the project, changes authoritative geometry, or affects STL/OBJ/3MF/drawing exports.
 
 Edge safeguards remain in place: ordinary feature-edge extraction is skipped for dense unselected bodies above 180,000 triangles, shell-cavity extraction is skipped above 220,000 triangles, and a maximum of 6,000 cavity-edge segments is displayed.
 
@@ -78,7 +101,11 @@ Edge safeguards remain in place: ordinary feature-edge extraction is skipped for
 
 ![Workbench lighting](docs/images/benchcad-lighting-workbench.png)
 
-**Interior inspect and lighting presets are display aids.** They are not true sections, wall-thickness analyses, ambient-occlusion measurements, or manufacturing results.
+The retained v0.36.4 Bottom-view fixture demonstrates the effect of the Balanced default. Median body-region luminance increased from **22.89** in v0.36.3 to **118.51** in v0.36.4 Balanced; Natural and Bright remain available for less or more lift.
+
+![Bottom view with Balanced lift](docs/images/benchcad-bottom-balanced.png)
+
+**Interior inspect, lighting presets, and dark-face lift are display aids.** They are not true sections, wall-thickness analyses, ambient-occlusion measurements, calibrated photometry, or manufacturing results.
 
 ### Editable construction history
 
@@ -189,15 +216,14 @@ After replacing an existing deployment, perform a hard refresh. When an older bu
 
 1. Open BENCHCAD and choose **Fresh Start**.
 2. Insert a **Box** and enter exact width, depth, and height values in the Inspector.
-3. Insert a **Cylinder**, set it to **Hole**, and position it through the plate.
-4. Select both bodies and use the alignment controls.
-5. Use **Combine → Subtract** to cut the hole.
-6. Move the feature-history marker backward to the cylinder creation feature.
-7. Edit the cylinder diameter.
-8. Return the marker to the end and review the rebuilt result.
-9. Export a `.benchcad` backup before exporting STL, OBJ, or 3MF for downstream use.
+3. Select a planar face on the box and choose **Sketch**. The body remains visible beneath the sketch canvas and the editor starts in Select mode.
+4. Choose **Rectangle**, draw a closed profile, then choose **Negative** and **Cut target body** to cut into the supporting face.
+5. Finish the operation and confirm that the source sketch remains visible in the Component Browser and three-dimensional viewport.
+6. Double-click the sketch row, edit the profile, and finish the sketch. BENCHCAD rebuilds the dependent cut.
+7. Move the feature-history marker backward, inspect an earlier state, then return it to the end.
+8. Export a `.benchcad` backup before exporting STL, OBJ, or 3MF for downstream use.
 
-This workflow demonstrates the defining BENCHCAD behavior: the model is not just a final mesh; it is a reconstructable sequence of editable design decisions.
+This workflow demonstrates the defining BENCHCAD behavior: sketches, solid features, and downstream results remain reconstructable design decisions rather than collapsing into an opaque final mesh.
 
 ## Main workspaces
 
@@ -278,7 +304,7 @@ Projects are autosaved to IndexedDB, but browser storage is not a durable backup
 
 ## Keyboard shortcuts
 
-Shortcuts are ignored while a text, number, or other editable field has focus.
+Global shortcuts are ignored while a text, number, or other editable field has focus. In the Sketch editor, `Escape` is captured intentionally so it can blur the field, cancel the current command, clear transient geometry, and restore Select mode.
 
 | Shortcut | Action |
 |---|---|
@@ -302,7 +328,8 @@ Shortcuts are ignored while a text, number, or other editable field has focus.
 | `/` | Focus Shape Library search |
 | `Shift + F` | Toggle Canvas Focus |
 | `Shift + L` | Cycle Workbench, Flat / CAD, Technical, Presentation, and Performance lighting |
-| `Escape` | Cancel the active transform/tool or leave Canvas Focus |
+| `Escape` | Cancel the active transform/tool or leave Canvas Focus; in Sketch, cancel the current command/chain and return to Select, then clear selection on a second press |
+| `Enter` | In Sketch, complete the current open line or polyline chain |
 
 ## Privacy and offline behavior
 
@@ -320,38 +347,49 @@ After one successful hosted load, the application can reopen from cache. The web
 
 ## Browser support
 
-The v0.36.3 lighting workflow was exercised in headed Chromium with the packaged Three.js renderer across desktop, high-device-pixel-ratio, and 390-pixel mobile layouts. The browser suite verified menu operation, Workbench defaults, Flat/CAD and Technical frame differences, Presentation selection, Performance pixel-load reduction, local preference handling, the Shift+L shortcut, the reset command, and continued Drawing workspace access.
+The v0.37.0 sketch workflow was exercised in headed Chromium through two complementary paths:
 
-The focused lighting suite uses a protocol-compatible deterministic geometry-worker adapter so it can isolate viewport and interface behavior on the synthetic test surface. The production geometry worker and packaged Manifold WebAssembly kernel are unchanged from v0.36.2; their real-worker shell reconstruction evidence remains in `V0.36.2-INTERIOR-VISIBILITY-TESTS.json` and `ACTUAL-WORKER-TESTS.json`. JavaScript/worker syntax, WebAssembly magic, runtime references, and service-worker coverage are rechecked by the v0.36.3 package gate.
+- A deterministic exact-box geometry-worker adapter for repeatable interface, selection, underlay, Escape, persistence, reopen, positive extrusion, and negative Cut workflows.
+- The packaged production geometry-worker logic with the packaged Manifold WebAssembly kernel for exact-mesh face underlay and a real negative Cut reconstruction.
+
+The release container blocks ordinary browser navigation to local test origins. Browser qualification therefore loads the packaged application under a synthetic nested HTTPS base. The complete runtime asset graph is separately served and fetched over HTTP under `/projects/benchcad/` during package validation.
 
 Firefox and Safari/WebKit remain design targets. Real-runtime Gecko and WebKit qualification is scheduled for Batch 30 public-beta hardening.
 
 ## Release validation
 
-The v0.36.3 package includes machine-readable evidence rather than relying on feature-presence checks alone:
+The v0.37.0 package includes machine-readable evidence rather than relying on feature-presence checks alone:
 
 | Report | Coverage |
 |---|---|
-| `V0.36.3-LIGHTING-PRESETS-TESTS.json` | 55 headed-browser checks covering the five lighting presets, independent display/lighting controls, reset, Shift+L, persistence, high-DPR Performance behavior, mobile access, Drawing smoke testing, and page/console cleanliness |
-| `V0.36.3-PACKAGE-TESTS.json` | Release identity, schemas, syntax, icon exports, WebAssembly sanity, relative runtime paths, service-worker precache, documentation, checksums, and ZIP structure |
-| `V0.36.2-INTERIOR-VISIBILITY-TESTS.json` | Retained real Three.js, production geometry-worker, and Manifold shell reconstruction evidence for the unchanged geometry path |
-| `V0.36.2-DRAWING-REGRESSION.json` | Retained Technical Drawings 2.0 workflow and SVG/DXF/PDF parity evidence |
+| `V0.37.0-SKETCH-WORKFLOW-TESTS.json` | 39 headed-browser checks covering selected planar-face sketching, exact support underlay, Select-first startup, Escape cancellation, persistent finished sketches, reopen/edit behavior, negative Cut, origin-workplane sketching, and positive extrusion |
+| `V0.37.0-ACTUAL-WORKER-TESTS.json` | 11 production geometry-worker and packaged Manifold WebAssembly checks covering exact meshes, face underlay, negative Cut reconstruction, persistent source sketches, and application-error cleanliness |
+| `V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json` | 10 headed-browser checks covering pending line-chain preservation on Finish Sketch, explicit open-chain semantics, persistence, reopen, and application-error cleanliness |
+| `V0.37.0-SKETCH-2D-BROWSER-TESTS.json` | 29 additional browser checks covering face association, Sketch Inspector selection, profile extrusion access, timeline records, and retained sketch visibility |
+| `V0.37.0-SKETCH-MODEL-TESTS.json` | 15 model/schema checks covering face-frame following, profile recognition, project round-trip, sketch visibility, support-body retention, and legacy-direction migration |
+| `V0.37.0-SCHEMA-MIGRATION-TEST.json` | Schema-9 to schema-10 migration, positive-direction defaults for legacy extrusions, sketch visibility, and migration-history evidence |
+| `V0.37.0-PACKAGE-TESTS.json` | Release identity, syntax, assets, relative paths, service-worker coverage, documentation, internal checksums, nested hosting, and ZIP-root structure |
+| `V0.36.2-DRAWING-REGRESSION.json` | Retained Technical Drawings 2.0 workflow and SVG/DXF/PDF parity evidence for the unchanged drawing path |
 | `SHA256SUMS.txt` | SHA-256 for every packaged file except the checksum list itself |
 
 Release summary:
 
-- **55/55** focused browser checks passed across desktop, Presentation, high-DPR Performance, and mobile scenarios.
-- Workbench, Flat / CAD, and Technical produced distinct WebGL frame hashes; Workbench-to-Flat changed 682,362 captured pixels in the reference viewport.
-- At browser device pixel ratio 2, Performance reduced the canvas backing buffer from **1392 × 1008** to **870 × 630** while retaining the same CSS viewport size.
-- The lighting menu, reset action, Shift+L cycle, and local preference record behaved as intended.
-- The Technical Drawings workspace continued to render after the application-shell changes.
-- No page errors, application console errors, or application warnings were recorded in the focused scenarios.
+- **39/39** first-class sketch browser-workflow checks passed.
+- **11/11** production geometry-worker and Manifold WebAssembly sketch checks passed.
+- **10/10** sketch command-lifecycle checks passed, including Finish Sketch with a pending open chain.
+- **29/29** additional two-dimensional sketch browser checks passed.
+- **15/15** sketch model/schema checks passed.
+- **132/132** package and static-deployment checks passed.
+- **6/6** origin-workplane sketch checks passed.
+- Schema-9 projects migrate to schema 10 with legacy Extrude and Thin Extrude directions preserved as explicit Positive values.
+- The tested negative face Cut retained the source sketch while producing exact reconstructed output with no blocking geometry issue.
+- No application page or console errors were recorded in the focused sketch workflows.
 
 See `RELEASE-NOTES.md` for cumulative history and `KNOWN-LIMITATIONS.md` for the current limitation set.
 
 ## Repository layout
 
-The v0.36.3 complete package is organized as follows:
+The v0.37.0 complete package is organized as follows:
 
 ```text
 .
@@ -360,8 +398,8 @@ The v0.36.3 complete package is organized as follows:
 ├── manifest.webmanifest
 ├── favicon.svg
 ├── assets/
-│   ├── benchcad-v0.36.3.js
-│   ├── benchcad-v0.36.3.css
+│   ├── benchcad-v0.37.0.js
+│   ├── benchcad-v0.37.0.css
 │   ├── geometry.worker-*.js
 │   ├── import.worker-*.js
 │   └── manifold-*.wasm
@@ -369,13 +407,10 @@ The v0.36.3 complete package is organized as follows:
 │   └── images/
 │       ├── benchcad-model-workspace.png
 │       ├── benchcad-drawing-workspace.png
-│       ├── benchcad-lighting-presets.png
-│       ├── benchcad-lighting-workbench.png
-│       ├── benchcad-lighting-flat.png
-│       ├── benchcad-lighting-technical.png
-│       ├── benchcad-shell-shaded-edges.png
-│       ├── benchcad-shell-interior.png
-│       └── benchcad-shell-xray.png
+│       ├── benchcad-sketch-face-underlay.png
+│       ├── benchcad-sketch-negative-cut.png
+│       ├── benchcad-sketch-persistent.png
+│       └── benchcad-sketch-workplane.png
 ├── README.md
 ├── RELEASE-README.md
 ├── RELEASE-NOTES.md
@@ -383,7 +418,7 @@ The v0.36.3 complete package is organized as follows:
 ├── PACKAGE-CONTENTS.md
 ├── VERSION.txt
 ├── SHA256SUMS.txt
-└── V0.36.3-*.json / V0.36.3-*.txt
+└── V0.37.0-*.json / V0.37.0-*.txt
 ```
 
 The hashed worker and WebAssembly filenames are release artifacts and may change between builds. `index.html` and `sw.js` are the authoritative runtime references.
@@ -398,6 +433,10 @@ The implementation was built around TypeScript, React, Vite, Three.js, Manifold,
 
 The most important current limits are:
 
+- Sketching supports planar body faces and planar origin/custom workplanes; curved-face sketching is not implemented.
+- The two-dimensional relation system is practical but not yet a complete professional parametric constraint solver.
+- A drastic upstream topology change can invalidate an associative face reference; BENCHCAD reports the unresolved support instead of silently moving the sketch.
+- Sketch body underlay is an exact-mesh work reference, not a full hidden-line drawing projection or section-analysis system.
 - Mesh topology is not analytic boundary-representation topology.
 - Large upstream topology changes can require reviewed drawing-reference reattachment.
 - Circle recognition is deliberately conservative and does not expose every partial arc.
@@ -408,7 +447,8 @@ The most important current limits are:
 - Large or very dense models and drawings can become computationally expensive.
 - Shell-cavity lines are derived from concavity in the tessellated reconstructed mesh, not persistent analytic boundary-representation edges.
 - Interior inspect is a display aid rather than a clipped section or wall-thickness analysis.
-- Lighting presets prioritize modeling readability; they are not physically calibrated studio illumination or photorealistic rendering.
+- Lighting presets and dark-face lift prioritize modeling readability; the camera headlight, underside fill, ambient floor, and lift multipliers are not physically calibrated studio illumination or photorealistic rendering.
+- Bright lift intentionally flattens some directional shading so dark faces remain legible; use Natural or Presentation when stronger form falloff is preferred.
 - No STEP export, finite-element analysis, computational fluid dynamics, or manufacturing toolpath generation is provided.
 - There is no cloud collaboration or multi-user editing.
 - Firefox and Safari/WebKit still require real-device public-beta qualification.
@@ -452,7 +492,7 @@ Changes to BENCHCAD should preserve these constraints:
 
 ## License
 
-The v0.36.3 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
+The v0.37.0 static package does **not** include a project-level `LICENSE` file. Public availability of the repository does not by itself grant permission to copy, modify, or redistribute BENCHCAD. Add an explicit project license before treating the project as open source or accepting code contributions.
 
 Bundled third-party software remains subject to its respective licenses and notices. Major technologies represented in the distribution include React, Three.js, Manifold, Lucide, Radix UI, JSZip, and related supporting packages. A formal public release should include a reviewed `THIRD_PARTY_NOTICES.md` generated from the actual dependency manifest.
 

@@ -1,0 +1,8 @@
+BENCHCAD v0.37.0 — schema migration test
+
+Result: PASS
+Application: 0.37.0
+Schema: 10
+Legacy extrusion direction: positive
+Snapshot direction: positive
+Sketch visible: True

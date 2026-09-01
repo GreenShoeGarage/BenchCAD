@@ -1,0 +1,16 @@
+{
+  "pass": true,
+  "appVersion": "0.37.0",
+  "schemaVersion": 10,
+  "migratedDirection": "positive",
+  "snapshotDirection": "positive",
+  "sketchVisible": true,
+  "migrationHistory": [
+    {
+      "fromVersion": 9,
+      "toVersion": 10,
+      "migratedAt": "2026-09-01T13:20:20.560Z",
+      "note": "Added first-class face-supported sketches, persistent sketch visibility, and explicit positive, negative, or symmetric extrusion direction without changing existing geometry."
+    }
+  ]
+}

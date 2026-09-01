@@ -1,0 +1,673 @@
+{
+  "version": "0.37.0",
+  "suite": "release-package-and-static-deployment",
+  "passed": 132,
+  "total": 132,
+  "failed": [],
+  "checks": [
+    {
+      "name": "VERSION.txt identifies 0.37.0",
+      "pass": true,
+      "detail": "BENCHCAD 0.37.0 | Project schema: 10 | Drawing schema: 5 | Release: First-class face/workplane sketching and bidirectional extrusion"
+    },
+    {
+      "name": "VERSION.txt identifies project schema 10",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "VERSION.txt identifies drawing schema 5",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle banner identifies first-class sketch release",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle APP_VERSION is 0.37.0",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle project schema is 10",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "bundle drawing schema is 5",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index uses current JavaScript",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index uses current CSS",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "index runtime paths are relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "old 0.36.4 assets removed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/benchcad-v0.37.0.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "JavaScript syntax: sw.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Manifold asset has WebAssembly magic",
+      "pass": true,
+      "detail": "0061736d01000000"
+    },
+    {
+      "name": "Manifold WebAssembly is nontrivial",
+      "pass": true,
+      "detail": "541470"
+    },
+    {
+      "name": "implementation marker: face underlay data hook",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: persistent 3D sketch data hook",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: negative extrusion choice",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: symmetric extrusion choice",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: escape command reset",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: associative face label",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: existing sketch reopen workflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: source snapshot extrusion direction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: persistent sketch scene group",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: sketch inspector extrusion action",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: sketch visibility action",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "implementation marker: exact support warning",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CSS marker: support-body underlay styling",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CSS marker: command-state styling",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CSS marker: support warning styling",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "CSS marker: sketch inspector action styling",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "new sketch state starts in Select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "schema 9-to-10 migration note present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "legacy extrusion defaults to positive",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch visibility defaults true",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest start URL is relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest scope is relative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest describes sketch workflow",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker uses current cache",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./index.html",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./assets/benchcad-v0.37.0.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./assets/benchcad-v0.37.0.css",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./favicon.svg",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./file.svg",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./globe.svg",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./manifest.webmanifest",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service-worker asset exists: ./window.svg",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/benchcad-v0.37.0.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/benchcad-v0.37.0.css",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "service worker precaches ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "document exists: README.md",
+      "pass": true,
+      "detail": "30268"
+    },
+    {
+      "name": "document exists: RELEASE-README.md",
+      "pass": true,
+      "detail": "5779"
+    },
+    {
+      "name": "document exists: RELEASE-NOTES.md",
+      "pass": true,
+      "detail": "23991"
+    },
+    {
+      "name": "document exists: KNOWN-LIMITATIONS.md",
+      "pass": true,
+      "detail": "11631"
+    },
+    {
+      "name": "document exists: PACKAGE-CONTENTS.md",
+      "pass": true,
+      "detail": "2344"
+    },
+    {
+      "name": "README documents First-class 2D sketching",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents Escape",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents Negative",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents Symmetric",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents Finish sketch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents Schema-9 to schema-10",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents 39/39",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents 11/11",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents 10/10",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "README documents 15/15",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "valid sketch screenshot: benchcad-sketch-face-underlay.png",
+      "pass": true,
+      "detail": "1440x900, 126250 bytes"
+    },
+    {
+      "name": "valid sketch screenshot: benchcad-sketch-negative-cut.png",
+      "pass": true,
+      "detail": "1440x900, 164559 bytes"
+    },
+    {
+      "name": "valid sketch screenshot: benchcad-sketch-persistent.png",
+      "pass": true,
+      "detail": "1440x850, 280585 bytes"
+    },
+    {
+      "name": "valid sketch screenshot: benchcad-sketch-workplane.png",
+      "pass": true,
+      "detail": "1280x820, 270745 bytes"
+    },
+    {
+      "name": "valid sketch screenshot: benchcad-sketch-real-worker-cut.png",
+      "pass": true,
+      "detail": "1440x850, 280585 bytes"
+    },
+    {
+      "name": "V0.37.0-SKETCH-WORKFLOW-TESTS.json passes",
+      "pass": true,
+      "detail": "39/39"
+    },
+    {
+      "name": "V0.37.0-SKETCH-WORKFLOW-TESTS.json has no console errors",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "V0.37.0-ACTUAL-WORKER-TESTS.json passes",
+      "pass": true,
+      "detail": "11/11"
+    },
+    {
+      "name": "V0.37.0-ACTUAL-WORKER-TESTS.json has no console errors",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json passes",
+      "pass": true,
+      "detail": "10/10"
+    },
+    {
+      "name": "V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json has no console errors",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "V0.37.0-SKETCH-2D-BROWSER-TESTS.json passes",
+      "pass": true,
+      "detail": "29/29"
+    },
+    {
+      "name": "V0.37.0-WORKPLANE-SKETCH-TESTS.json passes",
+      "pass": true,
+      "detail": "6/6"
+    },
+    {
+      "name": "V0.37.0-SKETCH-MODEL-TESTS.json passes",
+      "pass": true,
+      "detail": "15/15"
+    },
+    {
+      "name": "schema migration test passes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "migration preserves positive direction",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "migration leaves sketch visible",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "migration history records 9 to 10",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-bottom-balanced.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-bottom-balanced.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-drawing-workspace.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-drawing-workspace.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-lighting-presets.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-lighting-presets.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-lighting-workbench.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-lighting-workbench.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-model-workspace.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-model-workspace.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-sketch-face-underlay.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-face-underlay.png"
+    },
+    {
+      "name": "documented image exists: README.md -> docs/images/benchcad-sketch-persistent.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-persistent.png"
+    },
+    {
+      "name": "documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-face-underlay.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-face-underlay.png"
+    },
+    {
+      "name": "documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-negative-cut.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-negative-cut.png"
+    },
+    {
+      "name": "documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-persistent.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-persistent.png"
+    },
+    {
+      "name": "documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-real-worker-cut.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-real-worker-cut.png"
+    },
+    {
+      "name": "documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-workplane.png",
+      "pass": true,
+      "detail": "docs/images/benchcad-sketch-workplane.png"
+    },
+    {
+      "name": "unchanged production runtime asset: assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": "9f4ae0b630523ab39e58e8564393a24fff0aef8b633253eb5e90e4fd33d4e274"
+    },
+    {
+      "name": "unchanged production runtime asset: assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": "c15d5d58edbc011e19a12864dd07600b0293b30f379d43303b8b2522c20f7d2f"
+    },
+    {
+      "name": "unchanged production runtime asset: assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": "73e3b419ad31294f6b1cc478173944e50efc4a34bfdeeff0107bdfc12975f11c"
+    },
+    {
+      "name": "static package contains index.html",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains sw.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains manifest.webmanifest",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains VERSION.txt",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains SHA256SUMS.txt",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains assets/benchcad-v0.37.0.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains assets/benchcad-v0.37.0.css",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static package contains assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static internal checksums verify",
+      "pass": true,
+      "detail": "window.svg: OK"
+    },
+    {
+      "name": "static ZIP exists",
+      "pass": true,
+      "detail": "1377651"
+    },
+    {
+      "name": "static ZIP has index.html at root",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static ZIP has no enclosing folder",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static ZIP CRC integrity passes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "static ZIP excludes old bundle",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "nested HTTP load: ./index.html",
+      "pass": true,
+      "detail": "200, 918 bytes, text/html"
+    },
+    {
+      "name": "nested HTTP load: ./assets/benchcad-v0.37.0.js",
+      "pass": true,
+      "detail": "200, 5563642 bytes, text/javascript"
+    },
+    {
+      "name": "nested HTTP load: ./assets/benchcad-v0.37.0.css",
+      "pass": true,
+      "detail": "200, 293065 bytes, text/css"
+    },
+    {
+      "name": "nested HTTP load: ./assets/geometry.worker-BwAX3YFX.js",
+      "pass": true,
+      "detail": "200, 61583 bytes, text/javascript"
+    },
+    {
+      "name": "nested HTTP load: ./assets/import.worker-4ZIJcZ3b.js",
+      "pass": true,
+      "detail": "200, 103713 bytes, text/javascript"
+    },
+    {
+      "name": "nested HTTP load: ./assets/manifold-BE4c7gO-.wasm",
+      "pass": true,
+      "detail": "200, 541470 bytes, application/wasm"
+    },
+    {
+      "name": "nested HTTP load: ./favicon.svg",
+      "pass": true,
+      "detail": "200, 712 bytes, image/svg+xml"
+    },
+    {
+      "name": "nested HTTP load: ./file.svg",
+      "pass": true,
+      "detail": "200, 392 bytes, image/svg+xml"
+    },
+    {
+      "name": "nested HTTP load: ./globe.svg",
+      "pass": true,
+      "detail": "200, 1036 bytes, image/svg+xml"
+    },
+    {
+      "name": "nested HTTP load: ./manifest.webmanifest",
+      "pass": true,
+      "detail": "200, 576 bytes, application/manifest+json"
+    },
+    {
+      "name": "nested HTTP load: ./window.svg",
+      "pass": true,
+      "detail": "200, 386 bytes, image/svg+xml"
+    }
+  ],
+  "environment": {
+    "node": "v22.16.0",
+    "python": "3.13.5"
+  }
+}

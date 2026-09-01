@@ -1100,7 +1100,7 @@ circle.drawing-entity-hit.selected,
 
 
 
-/* BENCHCAD v0.36.3 — independent modeling-light presets */
+/* BENCHCAD v0.36.4 — balanced all-angle modeling light and dark-face lift */
 .viewport-lighting-trigger{position:relative;}
 .viewport-lighting-trigger:after{content:"";position:absolute;right:4px;bottom:4px;width:4px;height:4px;border-radius:50%;background:var(--bench-amber,#e5a44c);opacity:.82;}
 .viewport-lighting-trigger.is-active{color:var(--bench-amber,#e5a44c);background:color-mix(in srgb,var(--bench-amber,#e5a44c) 13%,var(--bench-surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bench-amber,#e5a44c) 45%,var(--bench-border));}
@@ -1109,3 +1109,21 @@ circle.drawing-entity-hit.selected,
 @media(width<=760px){
   .viewport-lighting-menu{min-width:min(276px,calc(100vw - 20px));}
 }
+
+
+/* BENCHCAD v0.36.4 — underside/headlight balance and dark-face lift */
+.viewport-lighting-section-label{
+  padding:8px 9px 4px;
+  color:var(--bench-amber,#e5a44c);
+  font:700 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;
+  letter-spacing:.11em;
+}
+.viewport-lift-option b{font-size:10px;}
+.viewport-lift-option small{max-width:218px;}
+.cad-viewport.face-lift-bright canvas{filter:brightness(1.015);}
+
+/* BENCHCAD v0.37.0 — first-class sketch workflow */
+.sketch-body-underlay{pointer-events:none}.sketch-underlay-faces polygon{fill:rgba(74,113,122,.26);stroke:none}.sketch-underlay-edges line{stroke:#8edce5;stroke-width:1.25;vector-effect:non-scaling-stroke;opacity:.9}.sketch-underlay-label{fill:#9cdde4;font:700 8px var(--mono,monospace);letter-spacing:.08em}.sketch-command-state{color:#8de7ef!important;border-left:1px solid rgba(141,231,239,.3);padding-left:8px}.extrude-direction-note{display:block;color:#a9bcc0;line-height:1.4;margin:-2px 0 8px}.sketch-canvas.tool-select{cursor:default}.sketch-canvas.tool-line,.sketch-canvas.tool-polyline,.sketch-canvas.tool-rectangle,.sketch-canvas.tool-circle,.sketch-canvas.tool-arc-center,.sketch-canvas.tool-arc-3pt{cursor:crosshair}.sketch-shell .sketch-view-tools button.active{border-color:#72e8f0;color:#9af5fb;background:rgba(67,184,195,.14)}
+@media(max-width:720px){.sketch-command-state{display:none}.sketch-underlay-label{font-size:7px}}
+
+.sketch-command-state{display:inline-flex;align-items:center;gap:8px}.finish-chain-button{font:700 9px var(--mono,monospace);letter-spacing:.04em;border:1px solid rgba(132,245,255,.45);background:rgba(35,121,132,.2);color:#b8fbff;padding:4px 7px;border-radius:3px}.finish-chain-button:hover{background:rgba(49,157,169,.28)}.sketch-inspector-actions{display:grid;gap:8px}.sketch-inspector-actions .activate-component{width:100%;justify-content:flex-start}.sketch-inspector-actions .sketch-extrude-action{border-color:#5fd8e3;background:rgba(62,167,178,.13);color:#b9fbff}.sketch-support-warning{border-left:3px solid #e5a34e;background:rgba(172,106,30,.14);padding:8px 10px;color:#f2c17f}.sketch-child.selected .tree-select,.sketch-child .tree-select:focus-visible{outline:1px solid #74e8ef;background:rgba(57,158,170,.13)}

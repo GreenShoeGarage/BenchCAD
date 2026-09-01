@@ -1,5 +1,109 @@
 # BENCHCAD Release Notes
 
+## v0.37.0 — First-Class 2D Sketching
+
+This feature release repairs the sketch workflow and makes saved sketches persistent, selectable design objects.
+
+### Face and workplane support
+
+- Added sketch creation from exactly one selected planar body face.
+- Preserved associative face reference, supporting body, local origin, frame, normal, and workplane metadata.
+- Retained origin XY, XZ, and YZ plane sketching and associative custom-workplane sketching.
+- Added exact reconstructed supporting-body underlay beneath face-supported sketch geometry.
+- Added an underlay visibility control and underlay-aware Fit behavior before the sketch contains entities.
+
+### Drawing-command lifecycle
+
+- New sketches now start in Select mode instead of beginning a line chain immediately.
+- Connected line and Closed polyline begin only after the user explicitly selects the command.
+- Escape cancels line chains, arcs, drag/marquee state, and pan state, then returns to Select.
+- Escape also works while a sketch input has focus by blurring the field first.
+- Enter finishes an open connected-line chain without implicitly closing the profile.
+- Finishing the whole sketch commits any valid two-point-or-longer pending connected-line chain as an open polyline rather than silently dropping it.
+
+### Persistent sketches
+
+- Finish Sketch now preserves the sketch as a visible project/timeline object.
+- Added persistent three-dimensional sketch line rendering.
+- Added sketch selection in the viewport and a dedicated Sketch Inspector.
+- Added Edit Sketch, Extrude Profiles, and Hide/Show Sketch actions.
+- Added Component Browser sketch rows and double-click reopen behavior.
+- Editing a saved sketch rebuilds supported downstream profile features.
+
+### Positive, negative, and symmetric extrusion
+
+- Added Positive, Negative, and Symmetric directions for solid Extrude.
+- Added the same direction choices for Thin Extrude.
+- Preserved direction in feature parameters and body metadata.
+- Negative extrusion grows opposite the sketch normal; Symmetric centers the total distance on the sketch plane.
+- Face-supported Join and Cut can use the supporting body automatically as their target.
+- Retained New body, Join, and Cut operations.
+
+### Compatibility and integrity
+
+- Application version advanced to 0.37.0.
+- Project schema advanced from 9 to 10.
+- Drawing schema remains 5.
+- Existing Extrude and Thin Extrude features migrate to explicit Positive direction.
+- Existing sketches migrate to visible state without changing geometry.
+- Missing or changed face support is reported rather than silently reassigned.
+
+### Validation
+
+- 39/39 focused first-class sketch workflow checks passed.
+- 11/11 production geometry-worker and packaged Manifold WebAssembly sketch checks passed.
+- 10/10 sketch command-lifecycle checks passed.
+- 29/29 additional two-dimensional browser checks passed.
+- 15/15 sketch model and project round-trip checks passed.
+- 132/132 package and static-deployment checks passed.
+- 6/6 origin-workplane sketch checks passed.
+- Exact face underlay, Escape behavior, persistent sketches, reopen/edit, positive extrusion, and negative Cut were exercised.
+- No application errors were recorded in the focused browser workflows.
+
+---
+
+## v0.36.4 — Balanced Face Lighting
+
+This maintenance release fixes the remaining near-black underside problem in the modeling viewport without returning to glossy presentation-first rendering.
+
+### All-angle modeling light
+
+- Added a camera-relative headlight for the surface currently being inspected.
+- Added a dedicated underside fill for downward-facing geometry.
+- Rebalanced Workbench, Flat / CAD, Technical, and Performance lower-hemisphere and ambient illumination.
+- Added a restrained material-color floor for the darkest shaded regions.
+- Reduced Workbench contact-shadow opacity.
+- Kept Presentation comparatively directional and dramatic.
+- Slightly separated the origin grid from geometry resting exactly on the workplane to reduce coplanar underside artifacts.
+
+### Dark-face lift control
+
+- Added Natural, Balanced, and Bright lift levels to the existing sparkles menu.
+- Made Balanced the default.
+- Kept lift independent from display style and lighting preset.
+- Persisted the selected level in browser-local interface preferences.
+- Updated the lighting-button tooltip and accessible label to report both selections.
+- Updated the combined reset command to restore Shaded + edges, Workbench, and Balanced.
+- Kept Shift+L dedicated to cycling lighting presets only.
+
+### Compatibility
+
+- Application version advanced to 0.36.4.
+- Project schema remains 9.
+- Drawing schema remains 5.
+- Existing projects require no migration.
+- Rendering preferences remain outside the project document and do not affect exports.
+
+### Validation
+
+- 80/80 focused headed-browser checks passed.
+- Natural, Balanced, and Bright produced monotonic Bottom-view luminance.
+- The fixture median increased from 22.89 in v0.36.3 to 118.51 with the v0.36.4 Balanced default.
+- High-DPR Performance behavior, mobile menu containment, preference restore, reset, Shift+L, and Drawing workspace access remained intact.
+- No page errors, application console errors, or application warnings were recorded.
+
+---
+
 ## v0.36.3 — Modeling-First Lighting Presets
 
 This maintenance release separates viewport geometry presentation from lighting so a visually attractive scene no longer has to be the only working environment.

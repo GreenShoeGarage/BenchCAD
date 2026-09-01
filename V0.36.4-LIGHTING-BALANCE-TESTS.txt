@@ -1,0 +1,92 @@
+BENCHCAD v0.36.4 underside visibility and dark-face lift browser validation
+
+Overall: 80/80 checks passed
+
+Scenario: main — 41/41 passed
+[PASS] dashboard opens
+[PASS] dashboard closes
+[PASS] workspace renders
+[PASS] geometry reaches ready
+[PASS] application identifies v0.36.4
+[PASS] Workbench is the default preset — workbench
+[PASS] Balanced is the default dark-face lift — balanced
+[PASS] trigger names preset — Lighting: Workbench · Dark-face lift: Balanced · Shift+L
+[PASS] trigger names lift level — Lighting: Workbench · Dark-face lift: Balanced · Shift+L
+[PASS] trigger advertises Shift+L — Lighting: Workbench · Dark-face lift: Balanced · Shift+L
+[PASS] lighting menu opens
+[PASS] menu includes Workbench
+[PASS] menu includes Flat / CAD
+[PASS] menu includes Technical
+[PASS] menu includes Presentation
+[PASS] menu includes Performance
+[PASS] menu includes lift Natural
+[PASS] menu includes lift Balanced
+[PASS] menu includes lift Bright
+[PASS] menu separates dark-face lift
+[PASS] menu includes combined reset
+[PASS] Bottom standard view exists — 1
+[PASS] Natural lift applies — natural
+[PASS] Balanced lift applies — balanced
+[PASS] Bright lift applies — bright
+[PASS] lift levels are monotonic — {'natural': {'mean': 74.8857714806648, 'p10': 70.7158, 'p50': 75.7536, 'p90': 75.7536}, 'balanced': {'mean': 115.60488014085897, 'p10': 103.12100000000001, 'p50': 118.5078, 'p90': 119.15079999999999}, 'bright': {'mean': 141.63933735856506, 'p10': 123.90039999999999, 'p50': 146.07059999999998, 'p90': 146.71359999999999}, 'v0.36.3': {'mean': 24.99316495507652, 'p10': 22.386799999999997, 'p50': 22.889400000000002, 'p90': 30.6218}}
+[PASS] Balanced underside is materially brighter than v0.36.3 — {'natural': {'mean': 74.8857714806648, 'p10': 70.7158, 'p50': 75.7536, 'p90': 75.7536}, 'balanced': {'mean': 115.60488014085897, 'p10': 103.12100000000001, 'p50': 118.5078, 'p90': 119.15079999999999}, 'bright': {'mean': 141.63933735856506, 'p10': 123.90039999999999, 'p50': 146.07059999999998, 'p90': 146.71359999999999}, 'v0.36.3': {'mean': 24.99316495507652, 'p10': 22.386799999999997, 'p50': 22.889400000000002, 'p90': 30.6218}}
+[PASS] Natural still lifts the old near-black underside — {'natural': {'mean': 74.8857714806648, 'p10': 70.7158, 'p50': 75.7536, 'p90': 75.7536}, 'balanced': {'mean': 115.60488014085897, 'p10': 103.12100000000001, 'p50': 118.5078, 'p90': 119.15079999999999}, 'bright': {'mean': 141.63933735856506, 'p10': 123.90039999999999, 'p50': 146.07059999999998, 'p90': 146.71359999999999}, 'v0.36.3': {'mean': 24.99316495507652, 'p10': 22.386799999999997, 'p50': 22.889400000000002, 'p90': 30.6218}}
+[PASS] Bright stays below clipping — {'mean': 141.63933735856506, 'p10': 123.90039999999999, 'p50': 146.07059999999998, 'p90': 146.71359999999999}
+[PASS] dark-face lift persists locally — {'leftOpen': True, 'rightOpen': True, 'timelineOpen': True, 'outlineOpen': True, 'theme': 'dark', 'mode': 'maker', 'viewportDisplay': 'shadedEdges', 'lightingPreset': 'workbench', 'darkFaceLift': 'bright'}
+[PASS] lighting preset remains independent — {'leftOpen': True, 'rightOpen': True, 'timelineOpen': True, 'outlineOpen': True, 'theme': 'dark', 'mode': 'maker', 'viewportDisplay': 'shadedEdges', 'lightingPreset': 'workbench', 'darkFaceLift': 'bright'}
+[PASS] trigger is marked active for non-default lift — tiny-button viewport-lighting-trigger is-active
+[PASS] reset restores Workbench
+[PASS] reset restores Balanced lift
+[PASS] reset restores Shaded + edges
+[PASS] Shift+L cycles lighting preset — flat
+[PASS] Shift+L leaves lift unchanged — balanced
+[PASS] Drawing workspace renders
+[PASS] no page errors — []
+[PASS] no console errors — []
+[PASS] no application warnings — []
+
+Scenario: restore — 13/13 passed
+[PASS] dashboard opens
+[PASS] dashboard closes
+[PASS] workspace renders
+[PASS] geometry reaches ready
+[PASS] application identifies v0.36.4
+[PASS] stored Flat/CAD preset restores — flat
+[PASS] stored Bright lift restores — bright
+[PASS] stored Technical display restores — technical
+[PASS] restored trigger is active
+[PASS] restored trigger title is complete — Lighting: Flat / CAD · Dark-face lift: Bright · Shift+L
+[PASS] no page errors — []
+[PASS] no console errors — []
+[PASS] no application warnings — []
+
+Scenario: performance — 13/13 passed
+[PASS] dashboard opens
+[PASS] dashboard closes
+[PASS] workspace renders
+[PASS] geometry reaches ready
+[PASS] application identifies v0.36.4
+[PASS] Performance preset applies
+[PASS] Performance reduces backing buffer at DPR 2 — {'before': {'width': 1392, 'height': 1008, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}, 'after': {'width': 870, 'height': 630, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}}
+[PASS] Performance keeps CSS viewport size — {'before': {'width': 1392, 'height': 1008, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}, 'after': {'width': 870, 'height': 630, 'clientWidth': 696, 'clientHeight': 504, 'dpr': 2}}
+[PASS] Bright lift works with Performance
+[PASS] interface remains responsive
+[PASS] no page errors — []
+[PASS] no console errors — []
+[PASS] no application warnings — []
+
+Scenario: mobile — 13/13 passed
+[PASS] dashboard opens
+[PASS] dashboard closes
+[PASS] workspace renders
+[PASS] geometry reaches ready
+[PASS] application identifies v0.36.4
+[PASS] lighting trigger accessible at 390px
+[PASS] lighting menu opens at 390px
+[PASS] all presets remain listed
+[PASS] all lift levels remain listed
+[PASS] menu fits mobile width — {'x': 24.8907413482666, 'y': 128.92494201660156, 'width': 296.1092586517334, 'height': 413.38084411621094}
+[PASS] no page errors — []
+[PASS] no console errors — []
+[PASS] no application warnings — []
+

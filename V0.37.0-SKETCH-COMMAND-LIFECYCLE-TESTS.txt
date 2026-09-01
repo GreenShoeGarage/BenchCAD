@@ -1,0 +1,21 @@
+BENCHCAD v0.37.0 — sketch-command-lifecycle
+
+Result: 10/10 passed
+
+PASS — sketch starts in Select: select
+PASS — pending connected-line chain exists
+PASS — pending chain has Finish chain affordance
+PASS — Finish Sketch closes editor with pending chain
+PASS — finished sketch remains in Component Browser: 1
+PASS — finished sketch remains visible in 3D: 1
+PASS — pending chain sketch reopens
+PASS — pending chain committed as one entity: 1 entities | 0/0 profiles ready | UNDER-CONSTRAINED | 6 degrees of freedom
+PASS — pending chain remains open rather than becoming false profile: 1 entities | 0/0 profiles ready | UNDER-CONSTRAINED | 6 degrees of freedom
+PASS — no application errors: []
+
+Test environment:
+{
+  "browser": "Chromium headed under Xvfb",
+  "geometry": "deterministic exact-box worker adapter",
+  "basePath": "synthetic nested HTTPS base"
+}

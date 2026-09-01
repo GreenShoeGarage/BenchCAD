@@ -1,0 +1,69 @@
+{
+  "version": "0.37.0",
+  "suite": "actual-production-geometry-worker-sketch",
+  "passed": 11,
+  "total": 11,
+  "checks": [
+    {
+      "name": "production geometry worker completed",
+      "pass": true,
+      "detail": "[{'type': 'complete', 'requestId': 1, 'results': [{'targetId': 'body-d9z2egysnb8', 'triangles': 340, 'volume': 17532.553528704615, 'bounds': {'min': [-36, -20.98906158216879, 0], 'max': [36, 20.98906158216879, 6]}}], 'issues': [], 'message': None}]"
+    },
+    {
+      "name": "Manifold worker returned exact meshes",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "initial real-worker reconstruction has no issues",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "geometry ready shown",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "real-mesh face sketch opens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "real mesh supplies exact face underlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "real-worker negative cut command enabled",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "negative cut rebuilt through production worker",
+      "pass": true,
+      "detail": "2"
+    },
+    {
+      "name": "negative cut real-worker reconstruction has no blocking issues",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "source sketch remains visible after real-worker cut",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "no application errors during real-worker workflow",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "consoleErrors": [],
+  "environment": {
+    "browser": "Chromium headed under Xvfb",
+    "worker": "unmodified production geometry worker logic loaded from Blob",
+    "wasm": "exact packaged Manifold WASM embedded as a data URL because direct local/synthetic navigation is administrator-blocked"
+  }
+}

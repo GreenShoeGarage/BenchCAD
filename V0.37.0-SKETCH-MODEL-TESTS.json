@@ -1,0 +1,82 @@
+{
+  "version": "0.37.0",
+  "passed": 15,
+  "total": 15,
+  "checks": [
+    {
+      "name": "application version",
+      "pass": true,
+      "detail": "0.37.0"
+    },
+    {
+      "name": "project schema 10",
+      "pass": true,
+      "detail": "10"
+    },
+    {
+      "name": "face reference retains body",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "face frame top origin",
+      "pass": true,
+      "detail": "[5,6,12]"
+    },
+    {
+      "name": "face frame normal",
+      "pass": true,
+      "detail": "[0,0,1]"
+    },
+    {
+      "name": "face reference follows body resize",
+      "pass": true,
+      "detail": "[5,6,17]"
+    },
+    {
+      "name": "closed rectangle profile recognized",
+      "pass": true,
+      "detail": "[\"rect-1\"]"
+    },
+    {
+      "name": "sketch survives project round trip",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch remains visible after reopen",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "face support survives project round trip",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "schema 9 migrates to 10",
+      "pass": true,
+      "detail": "10"
+    },
+    {
+      "name": "legacy extrusion receives positive direction",
+      "pass": true,
+      "detail": "{\"sketchId\":\"sketch-9370c9c5-8d1c-478b-af69-0e31ff936777\",\"entityIds\":[\"rect-1\"],\"distance\":5,\"operation\":\"new\",\"direction\":\"positive\"}"
+    },
+    {
+      "name": "legacy sketch receives visible default",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "legacy sketch derives support body",
+      "pass": true,
+      "detail": "body-df878592-a1ac-4268-90d9-1c55da9ba270"
+    },
+    {
+      "name": "migration history recorded",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "applicationVersion": "0.36.4",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "distribution": "prebuilt static application",
+  "generatedAt": "2026-09-01T12:23:59.533861+00:00",
+  "javascriptBytes": 5532488,
+  "cssBytes": 291243,
+  "geometryWorker": "assets/geometry.worker-BwAX3YFX.js",
+  "geometryWorkerBytes": 61583,
+  "importWorker": "assets/import.worker-4ZIJcZ3b.js",
+  "importWorkerBytes": 103713,
+  "wasm": "assets/manifold-BE4c7gO-.wasm",
+  "wasmBytes": 541470,
+  "feature": "balanced all-angle modeling illumination and independent dark-face lift",
+  "lightingPresets": [
+    "workbench",
+    "flat",
+    "technical",
+    "presentation",
+    "performance"
+  ],
+  "darkFaceLiftLevels": [
+    "natural",
+    "balanced",
+    "bright"
+  ],
+  "defaultLightingPreset": "workbench",
+  "defaultDarkFaceLift": "balanced",
+  "projectMigrationRequired": false,
+  "productionGeometryAssetsChanged": false,
+  "compatibilityStubs": 0
+}

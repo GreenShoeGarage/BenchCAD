@@ -1,0 +1,10 @@
+BENCHCAD v0.37.0 — V0.37.0-WORKPLANE-SKETCH-TESTS
+
+Result: 6/6 passed
+
+PASS — empty-workplane start command
+PASS — origin workplane editor opens
+PASS — origin sketch starts select
+PASS — origin sketch has no body underlay
+PASS — origin XY shown
+PASS — cancel closes editor

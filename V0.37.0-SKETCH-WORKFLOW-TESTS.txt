@@ -1,0 +1,50 @@
+BENCHCAD v0.37.0 — first-class-sketch-workflow
+
+Result: 39/39 passed
+
+PASS — v0.37.0 application starts
+PASS — selected planar face opens Sketch editor
+PASS — new face sketch begins in Select mode: select
+PASS — face sketch shows supporting-body underlay: 1
+PASS — face sketch is labeled associative: Mounting plate · ASSOCIATIVE FACE · MM
+PASS — Fit works before sketch geometry exists: -14.400000000000006 -14.400000000000006 388.8 388.8
+PASS — line chain does not start until command selected
+PASS — line chain preview is active
+PASS — Escape cancels chain and restores Select: select
+PASS — Escape removes uncommitted chain
+PASS — canceled line chain adds no entity: 0 entities | 0/0 profiles ready | UNDER-CONSTRAINED | 0 degrees of freedom
+PASS — rectangle creates a closed profile: 1 entities | 1/1 profiles ready | UNDER-CONSTRAINED | 4 degrees of freedom
+PASS — completed shape returns to Select
+PASS — negative Cut action is enabled
+PASS — negative Cut closes Sketch editor
+PASS — extrusion appears in timeline
+PASS — Boolean subtraction appears in timeline
+PASS — finished sketch remains visible in 3D: 1
+PASS — finished sketch has Component Browser row: 1
+PASS — saved sketch reopens from Component Browser
+PASS — reopened face sketch retains its entity: 1 entities | 1/1 profiles ready | UNDER-CONSTRAINED | 4 degrees of freedom
+PASS — reopened face sketch retains its underlay
+PASS — origin workplanes are available: 1
+PASS — origin workplane opens Sketch editor
+PASS — workplane sketch begins in Select mode
+PASS — workplane sketch label identifies XZ plane: XZ ORIGIN PLANE · MM
+PASS — empty workplane sketch has no body underlay: 0
+PASS — workplane rectangle profile is ready: 1 entities | 1/1 profiles ready | UNDER-CONSTRAINED | 4 degrees of freedom
+PASS — Finish Sketch closes editor
+PASS — Finish Sketch creates persistent browser row: 1
+PASS — Finish Sketch leaves sketch visible in 3D: 1
+PASS — finished workplane sketch reopens
+PASS — reopened workplane sketch retains profile: 1 entities | 1/1 profiles ready | UNDER-CONSTRAINED | 4 degrees of freedom
+PASS — reopened profile can be selected: 1
+PASS — selected reopened profile exposes Extrude panel: 1
+PASS — positive new-body Extrude is enabled
+PASS — positive workplane Extrude creates body: INSTANCES | Root assembly |  | No occurrences yet |  | DEFINITIONS | 1 COMPONENTS | Mounting plate | ROOT | ACTIVE | Origin XY | Origin XZ | ACTIVE | Origin YZ | Mounting plate | Left hole | Right hole | Sketch 1 extrusion | Sketch 1 | START | FEATURE 6 / 6 | END | Origin | 01 | Create Mounting plate | Mounting plate | OK | 02 | Create Left hole | Mounting plate | OK | 03 | Create Right hole | Mounting plate | OK | 04 | Subtract mounting holes | Mounting plate | OK | 05 | Create Sketch 1 | Mounting plate | OK | 06 | Extrude Sketch 1 | Mounting plate | OK | Sketch extruded positive 12 mm
+PASS — positive Extrude retains source sketch: 1
+PASS — no application errors in browser workflows: []
+
+Test environment:
+{
+  "browser": "Chromium headed under Xvfb",
+  "geometry": "deterministic exact-box worker adapter",
+  "basePath": "https://benchcad.test/projects/benchcad/ via setContent"
+}

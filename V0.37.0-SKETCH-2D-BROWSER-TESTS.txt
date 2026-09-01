@@ -1,0 +1,33 @@
+BENCHCAD v0.37.0 — V0.37.0-SKETCH-2D-BROWSER-TESTS
+
+Result: 29/29 passed
+
+PASS — application version
+PASS — fresh project created
+PASS — box shape button present
+PASS — one body created
+PASS — planar face selected
+PASS — sketch editor opens
+PASS — new sketch starts in select
+PASS — supporting body underlay active
+PASS — exact supporting face drawn
+PASS — face association shown
+PASS — line tool activates only on request
+PASS — unfinished chain exposes finish command
+PASS — escape returns to select
+PASS — escape removes unfinished line chain
+PASS — rectangle creates closed profile
+PASS — drawing command returns to select
+PASS — sketch editor closes
+PASS — finished sketch remains visible in 3D
+PASS — sketch inspector selected
+PASS — component browser retains sketch
+PASS — extrude workflow available
+PASS — extrude action reopens sketch
+PASS — negative cut ready
+PASS — sketch editor closes after extrusion
+PASS — timeline records sketch
+PASS — timeline records extrusion
+PASS — timeline records subtract
+PASS — sketch remains visible after derived feature
+PASS — no application errors: []

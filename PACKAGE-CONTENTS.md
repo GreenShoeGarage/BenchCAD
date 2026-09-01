@@ -1,47 +1,66 @@
-# BENCHCAD v0.36.3 Package Contents
+# BENCHCAD v0.37.0 Package Contents
 
-This archive combines the deployable BENCHCAD v0.36.3 application, GitHub-facing documentation, representative viewport images, and release-validation evidence.
+The release is distributed in two archives.
 
-## Deployable runtime
+## Static deployment archive
 
-Copy these items together into a static web directory:
+`BENCHCAD-v0.37.0-static.zip` contains only the files required to run BENCHCAD from an ordinary static web directory:
 
-- `index.html`
-- `sw.js`
-- `manifest.webmanifest`
-- the SVG icons
-- the complete `assets/` directory
+```text
+index.html
+sw.js
+manifest.webmanifest
+VERSION.txt
+SHA256SUMS.txt
+favicon.svg
+file.svg
+globe.svg
+window.svg
+assets/
+  benchcad-v0.37.0.js
+  benchcad-v0.37.0.css
+  geometry.worker-*.js
+  geometry.worker-*.js.map
+  import.worker-*.js
+  import.worker-*.js.map
+  manifold-*.wasm
+```
 
-The runtime supports a domain root or nested path such as `/projects/benchcad/`. No backend, account, compilation step, or runtime telemetry service is required. After the shell is cached, the Service Worker can reopen it offline.
+`index.html` is directly at the ZIP root. No enclosing release directory, backend, package installation, compilation, or command-line build is required for deployment.
 
-## Documentation
+## Complete GitHub and release archive
 
-- `README.md` — repository front page, capabilities, use, deployment, integrity, limitations, and roadmap.
-- `RELEASE-README.md` — focused v0.36.3 lighting-preset guide.
-- `RELEASE-NOTES.md` — cumulative release history.
-- `KNOWN-LIMITATIONS.md` — current product and technical limitations.
-- `docs/images/` — current model, drawing, lighting, shell-inspection, and mobile screenshots.
+`BENCHCAD-v0.37.0-complete.zip` contains the static runtime plus:
 
-## Current validation evidence
+- `README.md`
+- `RELEASE-README.md`
+- `RELEASE-NOTES.md`
+- `KNOWN-LIMITATIONS.md`
+- `PACKAGE-CONTENTS.md`
+- current and retained validation reports
+- model, drawing, lighting, shell, and sketch screenshots under `docs/images/`
+- internal per-file `SHA256SUMS.txt`
 
-- `V0.36.3-LIGHTING-PRESETS-TESTS.json` and `.txt` — 55 browser checks across desktop, Presentation, high-DPR Performance, mobile, reset, shortcut, persistence, and Drawing smoke scenarios.
-- `V0.36.3-PACKAGE-TESTS.json` and `.txt` — release identity, schemas, syntax, icon exports, WebAssembly, runtime assets, relative paths, service-worker cache, documentation, screenshots, checksums, and ZIP structure.
-- `V0.36.3-BUILD-REPORT.json` — static-bundle size and release summary.
-- `V0.36.2-INTERIOR-VISIBILITY-TESTS.json` — retained production geometry-worker and Manifold shell evidence for the unchanged geometry path.
-- `V0.36.2-DRAWING-REGRESSION.json` — retained Technical Drawings 2.0 regression evidence.
-- `SHA256SUMS.txt` — checksum coverage for every file inside the package except the checksum list itself.
+## Current v0.37.0 validation evidence
 
-## Representative screenshots
+| File | Purpose |
+|---|---|
+| `V0.37.0-SKETCH-WORKFLOW-TESTS.json` | Primary 39-check face/workplane sketch workflow |
+| `V0.37.0-ACTUAL-WORKER-TESTS.json` | 11-check production geometry-worker and Manifold qualification |
+| `V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json` | Pending chain, Finish Sketch, open-chain persistence, and reopen behavior |
+| `V0.37.0-SKETCH-2D-BROWSER-TESTS.json` | Additional 29-check sketch browser suite |
+| `V0.37.0-SKETCH-MODEL-TESTS.json` | 15 model, face-frame, round-trip, and migration checks |
+| `V0.37.0-WORKPLANE-SKETCH-TESTS.json` | Origin-workplane startup and cancel behavior |
+| `V0.37.0-SCHEMA-MIGRATION-TEST.json` | Schema-9 to schema-10 migration |
+| `V0.37.0-PACKAGE-TESTS.json` | Static/runtime/package release gate |
+| `V0.37.0-BUILD-REPORT.json` | Build identity and aggregate validation summary |
 
-- `docs/images/benchcad-model-workspace.png`
-- `docs/images/benchcad-drawing-workspace.png`
-- `docs/images/benchcad-lighting-presets.png`
-- `docs/images/benchcad-lighting-workbench.png`
-- `docs/images/benchcad-lighting-flat.png`
-- `docs/images/benchcad-lighting-technical.png`
-- `docs/images/benchcad-lighting-mobile.png`
-- `docs/images/benchcad-shell-shaded-edges.png`
-- `docs/images/benchcad-shell-interior.png`
-- `docs/images/benchcad-shell-xray.png`
+## Representative sketch screenshots
 
-The static and complete ZIP files have no extra enclosing directory. `index.html` is directly at the archive root.
+- `docs/images/benchcad-sketch-face-underlay.png`
+- `docs/images/benchcad-sketch-negative-cut.png`
+- `docs/images/benchcad-sketch-persistent.png`
+- `docs/images/benchcad-sketch-workplane.png`
+- `docs/images/benchcad-sketch-real-worker-cut.png`
+
+The complete package remains a prebuilt static distribution rather than the original TypeScript source checkout.

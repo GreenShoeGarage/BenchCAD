@@ -1,0 +1,101 @@
+# BENCHCAD v0.36.4 package validation
+
+Result: PASS
+Checks: 94/94 passed
+
+[PASS] required static file: index.html — 915
+[PASS] required static file: sw.js — 1743
+[PASS] required static file: manifest.webmanifest — 592
+[PASS] required static file: VERSION.txt — 128
+[PASS] required static file: assets/benchcad-v0.36.4.js — 5532488
+[PASS] required static file: assets/benchcad-v0.36.4.css — 291243
+[PASS] required static file: assets/geometry.worker-BwAX3YFX.js — 61583
+[PASS] required static file: assets/import.worker-4ZIJcZ3b.js — 103713
+[PASS] required static file: assets/manifold-BE4c7gO-.wasm — 541470
+[PASS] application version is 0.36.4
+[PASS] project schema remains 9
+[PASS] drawing schema remains 5
+[PASS] index uses relative v0.36.4 JavaScript
+[PASS] index uses relative v0.36.4 CSS
+[PASS] manifest uses relative start and scope
+[PASS] service worker cache version updated
+[PASS] current runtime references contain no old main bundle names
+[PASS] node syntax: assets/benchcad-v0.36.4.js
+[PASS] node syntax: assets/geometry.worker-BwAX3YFX.js
+[PASS] node syntax: assets/import.worker-4ZIJcZ3b.js
+[PASS] node syntax: sw.js
+[PASS] Manifold asset has WebAssembly magic — 0061736d
+[PASS] main bundle references packaged geometry worker
+[PASS] main bundle references packaged import worker
+[PASS] geometry worker references packaged Manifold WebAssembly
+[PASS] service worker application-shell entries exist
+[PASS] service worker includes workers and WebAssembly
+[PASS] lighting preset implemented: workbench
+[PASS] lighting preset implemented: flat
+[PASS] lighting preset implemented: technical
+[PASS] lighting preset implemented: presentation
+[PASS] lighting preset implemented: performance
+[PASS] lighting menu label: Workbench
+[PASS] lighting menu label: Flat / CAD
+[PASS] lighting menu label: Technical
+[PASS] lighting menu label: Presentation
+[PASS] lighting menu label: Performance
+[PASS] dark-face lift level implemented: natural
+[PASS] dark-face lift level implemented: balanced
+[PASS] dark-face lift level implemented: bright
+[PASS] dark-face lift menu label: Natural
+[PASS] dark-face lift menu label: Balanced
+[PASS] dark-face lift menu label: Bright
+[PASS] dark-face lift section is labeled
+[PASS] Workbench is default lighting preset
+[PASS] Balanced is default dark-face lift
+[PASS] camera-relative viewport headlight exists
+[PASS] dedicated viewport underside light exists
+[PASS] dark-face lift controls light multiplier
+[PASS] dark-face lift controls ambient contribution
+[PASS] dark-face lift controls emissive floor
+[PASS] lower hemisphere illumination is preset-controlled
+[PASS] Workbench contact shadow is restrained
+[PASS] Presentation remains comparatively directional
+[PASS] lighting and lift preferences are persisted
+[PASS] viewport exposes preset and lift data attributes
+[PASS] lighting trigger reports preset and lift
+[PASS] combined reset restores Workbench and Balanced
+[PASS] Shift+L cycles only lighting preset
+[PASS] Performance pixel ratio remains capped at 1.25
+[PASS] shadow map resolution remains bounded at 1024
+[PASS] origin grid underside z-fight mitigation is present
+[PASS] v0.36.4 lighting menu CSS exists
+[PASS] all referenced Lucide icons are bundled
+[PASS] focused browser suite passed
+[PASS] focused browser suite has 80 checks
+[PASS] four isolated browser scenarios passed
+[PASS] Bottom-view luminance is strictly monotonic
+[PASS] Balanced materially lifts the v0.36.3 underside
+[PASS] Bright fixture remains below clipping — 146.71359999999999
+[PASS] retained validation evidence: ACTUAL-WORKER-TESTS.json
+[PASS] retained validation evidence: V0.36.2-INTERIOR-VISIBILITY-TESTS.json
+[PASS] retained validation evidence: V0.36.2-DRAWING-REGRESSION.json
+[PASS] retained validation evidence: BATCH28D-TESTS.json
+[PASS] document current version: README.md
+[PASS] document current version: RELEASE-README.md
+[PASS] document current version: RELEASE-NOTES.md
+[PASS] document current version: KNOWN-LIMITATIONS.md
+[PASS] document current version: PACKAGE-CONTENTS.md
+[PASS] document current version: VERSION.txt
+[PASS] documentation image: benchcad-lighting-presets.png — 158900
+[PASS] documentation image: benchcad-lighting-workbench.png — 141220
+[PASS] documentation image: benchcad-lighting-flat.png — 127495
+[PASS] documentation image: benchcad-lighting-technical.png — 137900
+[PASS] documentation image: benchcad-lighting-mobile-v0.36.4.png — 105359
+[PASS] documentation image: benchcad-bottom-before-v0.36.3.png — 108856
+[PASS] documentation image: benchcad-bottom-natural.png — 118876
+[PASS] documentation image: benchcad-bottom-balanced.png — 116795
+[PASS] documentation image: benchcad-bottom-bright.png — 124288
+[PASS] static internal checksums verify
+[PASS] complete preliminary internal checksums verify
+[PASS] static ZIP integrity, root structure, and embedded checksums
+[PASS] complete preliminary ZIP integrity, root structure, and embedded checksums
+[PASS] real HTTP nested /projects/benchcad/ deployment resolves runtime assets
+
+Note: ZIP checks were performed against the preliminary package with the final runtime and documentation set. The final complete archive adds this report, regenerates SHA256SUMS.txt, and is reverified by the release packaging step.

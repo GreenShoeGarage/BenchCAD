@@ -1,79 +1,88 @@
-# BENCHCAD v0.36.3 — Modeling-First Lighting Presets
+# BENCHCAD v0.37.0 — First-Class 2D Sketching
 
-BENCHCAD is a local-first browser CAD workbench combining direct solid modeling, exact numeric control, editable feature history, manufacturing screening, and associative technical drawings.
+BENCHCAD is a local-first browser CAD workbench combining direct solid modeling, exact numeric control, persistent feature history, manufacturing screening, and associative technical drawings.
 
-Version 0.36.3 separates viewport **display style** from viewport **lighting**. The default is now explicitly modeling-first: **Shaded + edges + Workbench**. Users can reduce shading drama for precision work or select a richer presentation look without changing model geometry.
+Version 0.37.0 repairs the sketch workflow so a sketch can be created on a planar body face or workplane, edited against visible supporting geometry, finished without disappearing, reopened later, and used for additive or subtractive profile features.
 
 ## Release identity
 
 | Item | Value |
 |---|---|
-| Application | **BENCHCAD 0.36.3** |
-| Project schema | **9** |
+| Application | **BENCHCAD 0.37.0** |
+| Project schema | **10** |
 | Drawing schema | **5** |
-| Project migration | None |
-| Default display style | Shaded + edges |
-| Default lighting | Workbench |
+| Project migration | Local schema-9 to schema-10 migration |
 | Runtime backend | None |
 | Telemetry | None |
 | Geometry kernel | Packaged Manifold WebAssembly |
+| Default sketch command | Select |
 
-## Lighting presets
+## Sketch workflow
 
-Open the **sparkles** menu beside the viewport eye menu.
+### Sketch on a body face
 
-### Workbench
+1. Switch the selection filter to **Face**.
+2. Select exactly one planar face.
+3. Choose **Sketch**.
+4. Draw against the exact reconstructed supporting body shown beneath the sketch plane.
+5. Choose **Finish sketch**.
+6. Select the persistent sketch in the viewport or Component Browser and choose **Extrude profiles**.
 
-The default modeling light. It uses neutral matte surfaces, balanced key/fill light, restrained highlights, and a soft contact shadow. It is designed to keep faces, internal edges, split boundaries, and shell cavities readable during ordinary work.
+The sketch stores an associative reference to its support body and face frame. If the face can no longer be resolved after an upstream edit, BENCHCAD reports the support failure instead of inventing a replacement.
 
-### Flat / CAD
+### Sketch on a workplane
 
-Uses diffuse Lambert materials with no real-time cast shadows or specular gloss. Choose this when surface reflections interfere with face selection, alignment, shell inspection, or long modeling sessions.
+Activate an origin XY, XZ, or YZ workplane—or an associative custom workplane—and choose **Sketch** without selecting a face. The saved sketch retains that workplane relationship and local coordinate frame.
 
-### Technical
+### Command behavior
 
-Uses cool neutral light, high roughness, and restrained face contrast so technical edge overlays remain dominant.
+- A new sketch opens in **Select** mode.
+- Connected line begins only after the command is chosen.
+- `Escape` cancels the active chain or transient command and restores Select.
+- `Enter` finishes an open connected-line chain.
+- **Close profile** explicitly closes a polyline loop.
+- **Finish sketch** stores the sketch and any valid pending open line chain.
 
-### Presentation
+## Persistent sketch objects
 
-Uses a warmer key/rim balance, lower roughness, and richer highlights for screenshots and design reviews. It remains lighter than the previous glossy renderer and avoids the expensive clearcoat path.
+Finished sketches remain available as design inputs:
 
-### Performance
+- visible three-dimensional sketch linework;
+- selectable viewport objects;
+- Component Browser rows;
+- feature-history records;
+- Sketch Inspector actions for Edit, Extrude Profiles, and visibility;
+- downstream rebuild sources for profile features.
 
-Uses simplified diffuse lighting, disables cast shadows, and caps the renderer pixel ratio at 1.25. On the validated DPR-2 fixture, the backing buffer fell from 1392 × 1008 to 870 × 630 without changing the CSS viewport size.
+Hiding a sketch changes only its display state. It does not delete the sketch or its profile data.
 
-## Independent display and lighting layers
+## Extrusion directions and operations
 
-The existing eye menu still controls geometry presentation:
+Closed profiles support:
 
-- Shaded + edges
-- Shaded
-- Technical
-- Interior inspect
-- X-ray inspect
-- Wireframe
+- **Positive** — along the sketch normal;
+- **Negative** — opposite the sketch normal;
+- **Symmetric** — total distance divided equally across the sketch plane.
 
-Lighting is independent. For example:
+Operations are:
 
-- **Shaded + edges + Flat / CAD** for precision modeling
-- **Interior inspect + Workbench** for hollow parts
-- **Technical + Technical** for diagram-like inspection
-- **Shaded + Presentation** for screenshots
+- **New body**;
+- **Join target body**;
+- **Cut target body**.
 
-Use **Shift+L** to cycle lighting presets. The shortcut works when a toolbar or menu button retains focus, but it does not intercept text entry. **Reset view style and lighting** returns to Shaded + edges and Workbench.
+A face-supported Join or Cut can automatically target its supporting body. Solid Extrude and Thin Extrude both preserve their direction in feature parameters and reconstruct it during later sketch edits.
 
-## Data integrity and compatibility
+## Compatibility
 
-Lighting and display selections are browser-local interface preferences. They do not:
+Opening a schema-9 project creates a recovery-safe schema-10 migration:
 
-- create feature-timeline entries;
-- modify project geometry;
-- change project or drawing schemas;
-- dirty the project;
-- affect manufacturing analysis;
-- alter STL, OBJ, 3MF, SVG, DXF, or PDF output.
+- existing Extrude and Thin Extrude features receive explicit Positive direction;
+- existing sketches receive persistent visibility defaults;
+- support-body metadata is retained where available;
+- project geometry is not otherwise changed;
+- migration is recorded in project history.
 
-Existing schema-9 projects open without migration.
+Drawing schema 5 is unchanged.
 
 ## Static deployment
 
@@ -85,14 +94,14 @@ sw.js
 manifest.webmanifest
 favicon.svg
 assets/
-  benchcad-v0.36.3.js
-  benchcad-v0.36.3.css
+  benchcad-v0.37.0.js
+  benchcad-v0.37.0.css
   geometry.worker-*.js
   import.worker-*.js
   manifold-*.wasm
 ```
 
-All runtime references are relative and support a domain root or a nested path such as:
+All runtime references are relative and support a domain root or nested path such as:
 
 ```text
 https://example.com/projects/benchcad/
@@ -104,50 +113,36 @@ For local testing:
 python3 -m http.server 8080
 ```
 
-Then open `http://localhost:8080/`. Direct `file:` loading is not supported because Workers, WebAssembly, IndexedDB, and the Service Worker are most reliable over HTTPS or localhost.
+Open `http://localhost:8080/`. Direct `file:` loading is not supported because Workers, WebAssembly, IndexedDB, and the Service Worker are most reliable over HTTPS or localhost.
 
 ## Updating an existing deployment
 
-1. Replace the previous BENCHCAD files with the v0.36.3 static archive contents.
+1. Replace the old deployment files with the v0.37.0 static archive contents.
 2. Hard-refresh the page.
-3. Clear the old BENCHCAD service worker/site cache once if v0.36.2 remains visible.
-4. Reload while online so the new shell can be cached.
+3. Clear the previous BENCHCAD service worker/site cache once if an older build remains visible.
+4. Reload while online so `benchcad-v0.37.0-first-class-sketch` can cache the new shell.
 
-The current cache name is:
+## Validation
 
-```text
-benchcad-v0.36.3-lighting-presets
-```
+The release includes:
 
-## Validation evidence
+- **39/39** focused first-class sketch browser checks;
+- **11/11** production geometry-worker and packaged Manifold WebAssembly checks;
+- **10/10** sketch command-lifecycle checks;
+- **29/29** additional two-dimensional browser checks;
+- **15/15** sketch model/schema checks;
+- **132/132** package and static-deployment checks;
+- **6/6** origin-workplane checks;
+- schema-9 to schema-10 migration evidence;
+- nested `/projects/benchcad/` asset-path and service-worker validation;
+- JavaScript, worker, and service-worker syntax checks;
+- internal per-file SHA-256 verification;
+- ZIP integrity and root-level `index.html` verification.
 
-`V0.36.3-LIGHTING-PRESETS-TESTS.json` records **55/55 passing checks** across:
+The focused workflow covers face selection, exact underlay, Select-first startup, Escape reset, profile creation, Finish Sketch persistence, viewport/browser selection, reopen/edit, positive extrusion, negative Cut, and retained source sketches.
 
-- the default Workbench state;
-- menu access and all five options;
-- Flat/CAD selection;
-- Shift+L cycling from toolbar focus;
-- reset behavior;
-- browser-local preference storage;
-- distinct Workbench, Flat/CAD, and Technical WebGL frames;
-- direct Presentation selection and responsiveness;
-- high-DPR Performance buffer reduction;
-- 390-pixel mobile access;
-- Technical Drawings workspace smoke testing;
-- page and console cleanliness.
+## Known boundaries
 
-The focused browser suite uses a deterministic Worker adapter to isolate UI and WebGL behavior. The production geometry worker and Manifold WebAssembly assets are unchanged from v0.36.2 and are covered by retained real-worker evidence plus the current package syntax and asset gates.
+BENCHCAD remains a mesh-based pre-1.0 CAD system. Sketches support planar faces and planar workplanes, not curved surfaces. The relation solver is not a complete professional geometric constraint system. Exact-mesh Boolean operations can fail on invalid or numerically marginal geometry. Read `KNOWN-LIMITATIONS.md` before fabrication.
 
-## Known limitations
-
-- Lighting presets are practical viewport aids, not calibrated photometric or physically measured illumination.
-- BENCHCAD does not include ray tracing, path tracing, environment-map authoring, material textures, or a studio-rendering pipeline.
-- Presentation is intentionally restrained; it is not intended to replace a dedicated renderer.
-- Performance lowers viewport pixel density on high-DPR screens, so linework may appear slightly softer.
-- Real-time transparent Interior and X-ray modes can exhibit ordinary depth-sorting artifacts.
-
-Read `KNOWN-LIMITATIONS.md` before fabrication use.
-
-## Roadmap position
-
-Batch 28 — Technical Drawings 2.0 remains complete. Version 0.36.3 is a focused maintenance release before **Batch 29 — Large-Model Performance**.
+Batch 28 — Technical Drawings 2.0 remains complete. Batch 29 — Large-Model Performance remains next on the roadmap.

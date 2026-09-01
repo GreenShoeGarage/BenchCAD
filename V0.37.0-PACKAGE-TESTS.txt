@@ -1,0 +1,136 @@
+BENCHCAD v0.37.0 — PACKAGE AND STATIC DEPLOYMENT TESTS
+
+Result: 132/132 passed
+
+001. [PASS] VERSION.txt identifies 0.37.0 — BENCHCAD 0.37.0 | Project schema: 10 | Drawing schema: 5 | Release: First-class face/workplane sketching and bidirectional extrusion
+002. [PASS] VERSION.txt identifies project schema 10
+003. [PASS] VERSION.txt identifies drawing schema 5
+004. [PASS] bundle banner identifies first-class sketch release
+005. [PASS] bundle APP_VERSION is 0.37.0
+006. [PASS] bundle project schema is 10
+007. [PASS] bundle drawing schema is 5
+008. [PASS] index uses current JavaScript
+009. [PASS] index uses current CSS
+010. [PASS] index runtime paths are relative
+011. [PASS] old 0.36.4 assets removed
+012. [PASS] JavaScript syntax: assets/benchcad-v0.37.0.js
+013. [PASS] JavaScript syntax: assets/geometry.worker-BwAX3YFX.js
+014. [PASS] JavaScript syntax: assets/import.worker-4ZIJcZ3b.js
+015. [PASS] JavaScript syntax: sw.js
+016. [PASS] Manifold asset has WebAssembly magic — 0061736d01000000
+017. [PASS] Manifold WebAssembly is nontrivial — 541470
+018. [PASS] implementation marker: face underlay data hook
+019. [PASS] implementation marker: persistent 3D sketch data hook
+020. [PASS] implementation marker: negative extrusion choice
+021. [PASS] implementation marker: symmetric extrusion choice
+022. [PASS] implementation marker: escape command reset
+023. [PASS] implementation marker: associative face label
+024. [PASS] implementation marker: existing sketch reopen workflow
+025. [PASS] implementation marker: source snapshot extrusion direction
+026. [PASS] implementation marker: persistent sketch scene group
+027. [PASS] implementation marker: sketch inspector extrusion action
+028. [PASS] implementation marker: sketch visibility action
+029. [PASS] implementation marker: exact support warning
+030. [PASS] CSS marker: support-body underlay styling
+031. [PASS] CSS marker: command-state styling
+032. [PASS] CSS marker: support warning styling
+033. [PASS] CSS marker: sketch inspector action styling
+034. [PASS] new sketch state starts in Select
+035. [PASS] schema 9-to-10 migration note present
+036. [PASS] legacy extrusion defaults to positive
+037. [PASS] sketch visibility defaults true
+038. [PASS] manifest start URL is relative
+039. [PASS] manifest scope is relative
+040. [PASS] manifest describes sketch workflow
+041. [PASS] service worker uses current cache
+042. [PASS] service-worker asset exists: ./index.html
+043. [PASS] service-worker asset exists: ./assets/benchcad-v0.37.0.js
+044. [PASS] service-worker asset exists: ./assets/benchcad-v0.37.0.css
+045. [PASS] service-worker asset exists: ./assets/geometry.worker-BwAX3YFX.js
+046. [PASS] service-worker asset exists: ./assets/import.worker-4ZIJcZ3b.js
+047. [PASS] service-worker asset exists: ./assets/manifold-BE4c7gO-.wasm
+048. [PASS] service-worker asset exists: ./favicon.svg
+049. [PASS] service-worker asset exists: ./file.svg
+050. [PASS] service-worker asset exists: ./globe.svg
+051. [PASS] service-worker asset exists: ./manifest.webmanifest
+052. [PASS] service-worker asset exists: ./window.svg
+053. [PASS] service worker precaches ./assets/benchcad-v0.37.0.js
+054. [PASS] service worker precaches ./assets/benchcad-v0.37.0.css
+055. [PASS] service worker precaches ./assets/geometry.worker-BwAX3YFX.js
+056. [PASS] service worker precaches ./assets/import.worker-4ZIJcZ3b.js
+057. [PASS] service worker precaches ./assets/manifold-BE4c7gO-.wasm
+058. [PASS] document exists: README.md — 30268
+059. [PASS] document exists: RELEASE-README.md — 5779
+060. [PASS] document exists: RELEASE-NOTES.md — 23991
+061. [PASS] document exists: KNOWN-LIMITATIONS.md — 11631
+062. [PASS] document exists: PACKAGE-CONTENTS.md — 2344
+063. [PASS] README documents First-class 2D sketching
+064. [PASS] README documents Escape
+065. [PASS] README documents Negative
+066. [PASS] README documents Symmetric
+067. [PASS] README documents Finish sketch
+068. [PASS] README documents Schema-9 to schema-10
+069. [PASS] README documents 39/39
+070. [PASS] README documents 11/11
+071. [PASS] README documents 10/10
+072. [PASS] README documents 15/15
+073. [PASS] valid sketch screenshot: benchcad-sketch-face-underlay.png — 1440x900, 126250 bytes
+074. [PASS] valid sketch screenshot: benchcad-sketch-negative-cut.png — 1440x900, 164559 bytes
+075. [PASS] valid sketch screenshot: benchcad-sketch-persistent.png — 1440x850, 280585 bytes
+076. [PASS] valid sketch screenshot: benchcad-sketch-workplane.png — 1280x820, 270745 bytes
+077. [PASS] valid sketch screenshot: benchcad-sketch-real-worker-cut.png — 1440x850, 280585 bytes
+078. [PASS] V0.37.0-SKETCH-WORKFLOW-TESTS.json passes — 39/39
+079. [PASS] V0.37.0-SKETCH-WORKFLOW-TESTS.json has no console errors — 0
+080. [PASS] V0.37.0-ACTUAL-WORKER-TESTS.json passes — 11/11
+081. [PASS] V0.37.0-ACTUAL-WORKER-TESTS.json has no console errors — 0
+082. [PASS] V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json passes — 10/10
+083. [PASS] V0.37.0-SKETCH-COMMAND-LIFECYCLE-TESTS.json has no console errors — 0
+084. [PASS] V0.37.0-SKETCH-2D-BROWSER-TESTS.json passes — 29/29
+085. [PASS] V0.37.0-WORKPLANE-SKETCH-TESTS.json passes — 6/6
+086. [PASS] V0.37.0-SKETCH-MODEL-TESTS.json passes — 15/15
+087. [PASS] schema migration test passes
+088. [PASS] migration preserves positive direction
+089. [PASS] migration leaves sketch visible
+090. [PASS] migration history records 9 to 10
+091. [PASS] documented image exists: README.md -> docs/images/benchcad-bottom-balanced.png — docs/images/benchcad-bottom-balanced.png
+092. [PASS] documented image exists: README.md -> docs/images/benchcad-drawing-workspace.png — docs/images/benchcad-drawing-workspace.png
+093. [PASS] documented image exists: README.md -> docs/images/benchcad-lighting-presets.png — docs/images/benchcad-lighting-presets.png
+094. [PASS] documented image exists: README.md -> docs/images/benchcad-lighting-workbench.png — docs/images/benchcad-lighting-workbench.png
+095. [PASS] documented image exists: README.md -> docs/images/benchcad-model-workspace.png — docs/images/benchcad-model-workspace.png
+096. [PASS] documented image exists: README.md -> docs/images/benchcad-sketch-face-underlay.png — docs/images/benchcad-sketch-face-underlay.png
+097. [PASS] documented image exists: README.md -> docs/images/benchcad-sketch-persistent.png — docs/images/benchcad-sketch-persistent.png
+098. [PASS] documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-face-underlay.png — docs/images/benchcad-sketch-face-underlay.png
+099. [PASS] documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-negative-cut.png — docs/images/benchcad-sketch-negative-cut.png
+100. [PASS] documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-persistent.png — docs/images/benchcad-sketch-persistent.png
+101. [PASS] documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-real-worker-cut.png — docs/images/benchcad-sketch-real-worker-cut.png
+102. [PASS] documented image exists: PACKAGE-CONTENTS.md -> docs/images/benchcad-sketch-workplane.png — docs/images/benchcad-sketch-workplane.png
+103. [PASS] unchanged production runtime asset: assets/geometry.worker-BwAX3YFX.js — 9f4ae0b630523ab39e58e8564393a24fff0aef8b633253eb5e90e4fd33d4e274
+104. [PASS] unchanged production runtime asset: assets/import.worker-4ZIJcZ3b.js — c15d5d58edbc011e19a12864dd07600b0293b30f379d43303b8b2522c20f7d2f
+105. [PASS] unchanged production runtime asset: assets/manifold-BE4c7gO-.wasm — 73e3b419ad31294f6b1cc478173944e50efc4a34bfdeeff0107bdfc12975f11c
+106. [PASS] static package contains index.html
+107. [PASS] static package contains sw.js
+108. [PASS] static package contains manifest.webmanifest
+109. [PASS] static package contains VERSION.txt
+110. [PASS] static package contains SHA256SUMS.txt
+111. [PASS] static package contains assets/benchcad-v0.37.0.js
+112. [PASS] static package contains assets/benchcad-v0.37.0.css
+113. [PASS] static package contains assets/geometry.worker-BwAX3YFX.js
+114. [PASS] static package contains assets/import.worker-4ZIJcZ3b.js
+115. [PASS] static package contains assets/manifold-BE4c7gO-.wasm
+116. [PASS] static internal checksums verify — window.svg: OK
+117. [PASS] static ZIP exists — 1377651
+118. [PASS] static ZIP has index.html at root
+119. [PASS] static ZIP has no enclosing folder
+120. [PASS] static ZIP CRC integrity passes
+121. [PASS] static ZIP excludes old bundle
+122. [PASS] nested HTTP load: ./index.html — 200, 918 bytes, text/html
+123. [PASS] nested HTTP load: ./assets/benchcad-v0.37.0.js — 200, 5563642 bytes, text/javascript
+124. [PASS] nested HTTP load: ./assets/benchcad-v0.37.0.css — 200, 293065 bytes, text/css
+125. [PASS] nested HTTP load: ./assets/geometry.worker-BwAX3YFX.js — 200, 61583 bytes, text/javascript
+126. [PASS] nested HTTP load: ./assets/import.worker-4ZIJcZ3b.js — 200, 103713 bytes, text/javascript
+127. [PASS] nested HTTP load: ./assets/manifold-BE4c7gO-.wasm — 200, 541470 bytes, application/wasm
+128. [PASS] nested HTTP load: ./favicon.svg — 200, 712 bytes, image/svg+xml
+129. [PASS] nested HTTP load: ./file.svg — 200, 392 bytes, image/svg+xml
+130. [PASS] nested HTTP load: ./globe.svg — 200, 1036 bytes, image/svg+xml
+131. [PASS] nested HTTP load: ./manifest.webmanifest — 200, 576 bytes, application/manifest+json
+132. [PASS] nested HTTP load: ./window.svg — 200, 386 bytes, image/svg+xml

@@ -1,0 +1,152 @@
+{
+  "version": "0.37.0",
+  "checks": [
+    {
+      "name": "application version",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "fresh project created",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "box shape button present",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "one body created",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "planar face selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch editor opens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "new sketch starts in select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "supporting body underlay active",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "exact supporting face drawn",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "face association shown",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "line tool activates only on request",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "unfinished chain exposes finish command",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "escape returns to select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "escape removes unfinished line chain",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "rectangle creates closed profile",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "drawing command returns to select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch editor closes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "finished sketch remains visible in 3D",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch inspector selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "component browser retains sketch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "extrude workflow available",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "extrude action reopens sketch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "negative cut ready",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch editor closes after extrusion",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "timeline records sketch",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "timeline records extrusion",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "timeline records subtract",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "sketch remains visible after derived feature",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no application errors",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "passed": 29,
+  "total": 29
+}

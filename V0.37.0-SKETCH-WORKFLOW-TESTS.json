@@ -1,0 +1,210 @@
+{
+  "version": "0.37.0",
+  "suite": "first-class-sketch-workflow",
+  "passed": 39,
+  "total": 39,
+  "failed": [],
+  "checks": [
+    {
+      "name": "v0.37.0 application starts",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "selected planar face opens Sketch editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "new face sketch begins in Select mode",
+      "pass": true,
+      "detail": "select"
+    },
+    {
+      "name": "face sketch shows supporting-body underlay",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "face sketch is labeled associative",
+      "pass": true,
+      "detail": "Mounting plate \u00b7 ASSOCIATIVE FACE \u00b7 MM"
+    },
+    {
+      "name": "Fit works before sketch geometry exists",
+      "pass": true,
+      "detail": "-14.400000000000006 -14.400000000000006 388.8 388.8"
+    },
+    {
+      "name": "line chain does not start until command selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "line chain preview is active",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Escape cancels chain and restores Select",
+      "pass": true,
+      "detail": "select"
+    },
+    {
+      "name": "Escape removes uncommitted chain",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "canceled line chain adds no entity",
+      "pass": true,
+      "detail": "0 entities\n0/0 profiles ready\nUNDER-CONSTRAINED\n0 degrees of freedom"
+    },
+    {
+      "name": "rectangle creates a closed profile",
+      "pass": true,
+      "detail": "1 entities\n1/1 profiles ready\nUNDER-CONSTRAINED\n4 degrees of freedom"
+    },
+    {
+      "name": "completed shape returns to Select",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "negative Cut action is enabled",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "negative Cut closes Sketch editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "extrusion appears in timeline",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Boolean subtraction appears in timeline",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "finished sketch remains visible in 3D",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "finished sketch has Component Browser row",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "saved sketch reopens from Component Browser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "reopened face sketch retains its entity",
+      "pass": true,
+      "detail": "1 entities\n1/1 profiles ready\nUNDER-CONSTRAINED\n4 degrees of freedom"
+    },
+    {
+      "name": "reopened face sketch retains its underlay",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "origin workplanes are available",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "origin workplane opens Sketch editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "workplane sketch begins in Select mode",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "workplane sketch label identifies XZ plane",
+      "pass": true,
+      "detail": "XZ ORIGIN PLANE \u00b7 MM"
+    },
+    {
+      "name": "empty workplane sketch has no body underlay",
+      "pass": true,
+      "detail": "0"
+    },
+    {
+      "name": "workplane rectangle profile is ready",
+      "pass": true,
+      "detail": "1 entities\n1/1 profiles ready\nUNDER-CONSTRAINED\n4 degrees of freedom"
+    },
+    {
+      "name": "Finish Sketch closes editor",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Finish Sketch creates persistent browser row",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "Finish Sketch leaves sketch visible in 3D",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "finished workplane sketch reopens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "reopened workplane sketch retains profile",
+      "pass": true,
+      "detail": "1 entities\n1/1 profiles ready\nUNDER-CONSTRAINED\n4 degrees of freedom"
+    },
+    {
+      "name": "reopened profile can be selected",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "selected reopened profile exposes Extrude panel",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "positive new-body Extrude is enabled",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "positive workplane Extrude creates body",
+      "pass": true,
+      "detail": " INSTANCES\nRoot assembly\n\nNo occurrences yet\n\nDEFINITIONS\n1 COMPONENTS\nMounting plate\nROOT\nACTIVE\nOrigin XY\nOrigin XZ\nACTIVE\nOrigin YZ\nMounting plate\nLeft hole\nRight hole\nSketch 1 extrusion\nSketch 1\nSTART\nFEATURE 6 / 6\nEND\nOrigin\n01\nCreate Mounting plate\nMounting plate\nOK\n02\nCreate Left hole\nMounting plate\nOK\n03\nCreate Right hole\nMounting plate\nOK\n04\nSubtract mounting holes\nMounting plate\nOK\n05\nCreate Sketch 1\nMounting plate\nOK\n06\nExtrude Sketch 1\nMounting plate\nOK\nSketch extruded positive 12 mm"
+    },
+    {
+      "name": "positive Extrude retains source sketch",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "no application errors in browser workflows",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "consoleErrors": [],
+  "testEnvironment": {
+    "browser": "Chromium headed under Xvfb",
+    "geometry": "deterministic exact-box worker adapter",
+    "basePath": "https://benchcad.test/projects/benchcad/ via setContent"
+  }
+}

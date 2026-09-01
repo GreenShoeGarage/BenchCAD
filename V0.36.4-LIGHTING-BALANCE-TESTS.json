@@ -1,0 +1,634 @@
+{
+  "suite": "BENCHCAD v0.36.4 underside visibility and dark-face lift browser validation",
+  "applicationVersion": "0.36.4",
+  "projectSchema": 9,
+  "drawingSchema": 5,
+  "environment": {
+    "browser": "Chromium headed under Xvfb",
+    "webgl": "Three.js WebGL renderer using the container software WebGL implementation",
+    "geometryWorker": "Protocol-compatible deterministic adapter for UI/lighting isolation",
+    "storage": "In-memory localStorage adapter on an inline synthetic base",
+    "comparisonFixture": "v0.36.3 Bottom-view capture from the same bundled mounting-plate sample",
+    "note": "Production worker, WebAssembly, syntax, relative paths, and service-worker coverage are validated by the package gate; retained real-worker evidence is included."
+  },
+  "scenarios": [
+    {
+      "scenario": "main",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "application identifies v0.36.4",
+          "pass": true
+        },
+        {
+          "name": "Workbench is the default preset",
+          "pass": true,
+          "detail": "workbench"
+        },
+        {
+          "name": "Balanced is the default dark-face lift",
+          "pass": true,
+          "detail": "balanced"
+        },
+        {
+          "name": "trigger names preset",
+          "pass": true,
+          "detail": "Lighting: Workbench \u00b7 Dark-face lift: Balanced \u00b7 Shift+L"
+        },
+        {
+          "name": "trigger names lift level",
+          "pass": true,
+          "detail": "Lighting: Workbench \u00b7 Dark-face lift: Balanced \u00b7 Shift+L"
+        },
+        {
+          "name": "trigger advertises Shift+L",
+          "pass": true,
+          "detail": "Lighting: Workbench \u00b7 Dark-face lift: Balanced \u00b7 Shift+L"
+        },
+        {
+          "name": "lighting menu opens",
+          "pass": true
+        },
+        {
+          "name": "menu includes Workbench",
+          "pass": true
+        },
+        {
+          "name": "menu includes Flat / CAD",
+          "pass": true
+        },
+        {
+          "name": "menu includes Technical",
+          "pass": true
+        },
+        {
+          "name": "menu includes Presentation",
+          "pass": true
+        },
+        {
+          "name": "menu includes Performance",
+          "pass": true
+        },
+        {
+          "name": "menu includes lift Natural",
+          "pass": true
+        },
+        {
+          "name": "menu includes lift Balanced",
+          "pass": true
+        },
+        {
+          "name": "menu includes lift Bright",
+          "pass": true
+        },
+        {
+          "name": "menu separates dark-face lift",
+          "pass": true
+        },
+        {
+          "name": "menu includes combined reset",
+          "pass": true
+        },
+        {
+          "name": "Bottom standard view exists",
+          "pass": true,
+          "detail": 1
+        },
+        {
+          "name": "Natural lift applies",
+          "pass": true,
+          "detail": "natural"
+        },
+        {
+          "name": "Balanced lift applies",
+          "pass": true,
+          "detail": "balanced"
+        },
+        {
+          "name": "Bright lift applies",
+          "pass": true,
+          "detail": "bright"
+        },
+        {
+          "name": "lift levels are monotonic",
+          "pass": true,
+          "detail": {
+            "natural": {
+              "mean": 74.8857714806648,
+              "p10": 70.7158,
+              "p50": 75.7536,
+              "p90": 75.7536
+            },
+            "balanced": {
+              "mean": 115.60488014085897,
+              "p10": 103.12100000000001,
+              "p50": 118.5078,
+              "p90": 119.15079999999999
+            },
+            "bright": {
+              "mean": 141.63933735856506,
+              "p10": 123.90039999999999,
+              "p50": 146.07059999999998,
+              "p90": 146.71359999999999
+            },
+            "v0.36.3": {
+              "mean": 24.99316495507652,
+              "p10": 22.386799999999997,
+              "p50": 22.889400000000002,
+              "p90": 30.6218
+            }
+          }
+        },
+        {
+          "name": "Balanced underside is materially brighter than v0.36.3",
+          "pass": true,
+          "detail": {
+            "natural": {
+              "mean": 74.8857714806648,
+              "p10": 70.7158,
+              "p50": 75.7536,
+              "p90": 75.7536
+            },
+            "balanced": {
+              "mean": 115.60488014085897,
+              "p10": 103.12100000000001,
+              "p50": 118.5078,
+              "p90": 119.15079999999999
+            },
+            "bright": {
+              "mean": 141.63933735856506,
+              "p10": 123.90039999999999,
+              "p50": 146.07059999999998,
+              "p90": 146.71359999999999
+            },
+            "v0.36.3": {
+              "mean": 24.99316495507652,
+              "p10": 22.386799999999997,
+              "p50": 22.889400000000002,
+              "p90": 30.6218
+            }
+          }
+        },
+        {
+          "name": "Natural still lifts the old near-black underside",
+          "pass": true,
+          "detail": {
+            "natural": {
+              "mean": 74.8857714806648,
+              "p10": 70.7158,
+              "p50": 75.7536,
+              "p90": 75.7536
+            },
+            "balanced": {
+              "mean": 115.60488014085897,
+              "p10": 103.12100000000001,
+              "p50": 118.5078,
+              "p90": 119.15079999999999
+            },
+            "bright": {
+              "mean": 141.63933735856506,
+              "p10": 123.90039999999999,
+              "p50": 146.07059999999998,
+              "p90": 146.71359999999999
+            },
+            "v0.36.3": {
+              "mean": 24.99316495507652,
+              "p10": 22.386799999999997,
+              "p50": 22.889400000000002,
+              "p90": 30.6218
+            }
+          }
+        },
+        {
+          "name": "Bright stays below clipping",
+          "pass": true,
+          "detail": {
+            "mean": 141.63933735856506,
+            "p10": 123.90039999999999,
+            "p50": 146.07059999999998,
+            "p90": 146.71359999999999
+          }
+        },
+        {
+          "name": "dark-face lift persists locally",
+          "pass": true,
+          "detail": {
+            "leftOpen": true,
+            "rightOpen": true,
+            "timelineOpen": true,
+            "outlineOpen": true,
+            "theme": "dark",
+            "mode": "maker",
+            "viewportDisplay": "shadedEdges",
+            "lightingPreset": "workbench",
+            "darkFaceLift": "bright"
+          }
+        },
+        {
+          "name": "lighting preset remains independent",
+          "pass": true,
+          "detail": {
+            "leftOpen": true,
+            "rightOpen": true,
+            "timelineOpen": true,
+            "outlineOpen": true,
+            "theme": "dark",
+            "mode": "maker",
+            "viewportDisplay": "shadedEdges",
+            "lightingPreset": "workbench",
+            "darkFaceLift": "bright"
+          }
+        },
+        {
+          "name": "trigger is marked active for non-default lift",
+          "pass": true,
+          "detail": "tiny-button viewport-lighting-trigger is-active"
+        },
+        {
+          "name": "reset restores Workbench",
+          "pass": true
+        },
+        {
+          "name": "reset restores Balanced lift",
+          "pass": true
+        },
+        {
+          "name": "reset restores Shaded + edges",
+          "pass": true
+        },
+        {
+          "name": "Shift+L cycles lighting preset",
+          "pass": true,
+          "detail": "flat"
+        },
+        {
+          "name": "Shift+L leaves lift unchanged",
+          "pass": true,
+          "detail": "balanced"
+        },
+        {
+          "name": "Drawing workspace renders",
+          "pass": true
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {
+        "bottomLuminance": {
+          "natural": {
+            "mean": 74.8857714806648,
+            "p10": 70.7158,
+            "p50": 75.7536,
+            "p90": 75.7536
+          },
+          "balanced": {
+            "mean": 115.60488014085897,
+            "p10": 103.12100000000001,
+            "p50": 118.5078,
+            "p90": 119.15079999999999
+          },
+          "bright": {
+            "mean": 141.63933735856506,
+            "p10": 123.90039999999999,
+            "p50": 146.07059999999998,
+            "p90": 146.71359999999999
+          },
+          "v0.36.3": {
+            "mean": 24.99316495507652,
+            "p10": 22.386799999999997,
+            "p50": 22.889400000000002,
+            "p90": 30.6218
+          }
+        }
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 41,
+        "failed": 0,
+        "total": 41
+      },
+      "pass": true
+    },
+    {
+      "scenario": "restore",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "application identifies v0.36.4",
+          "pass": true
+        },
+        {
+          "name": "stored Flat/CAD preset restores",
+          "pass": true,
+          "detail": "flat"
+        },
+        {
+          "name": "stored Bright lift restores",
+          "pass": true,
+          "detail": "bright"
+        },
+        {
+          "name": "stored Technical display restores",
+          "pass": true,
+          "detail": "technical"
+        },
+        {
+          "name": "restored trigger is active",
+          "pass": true
+        },
+        {
+          "name": "restored trigger title is complete",
+          "pass": true,
+          "detail": "Lighting: Flat / CAD \u00b7 Dark-face lift: Bright \u00b7 Shift+L"
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {},
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 13,
+        "failed": 0,
+        "total": 13
+      },
+      "pass": true
+    },
+    {
+      "scenario": "performance",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "application identifies v0.36.4",
+          "pass": true
+        },
+        {
+          "name": "Performance preset applies",
+          "pass": true
+        },
+        {
+          "name": "Performance reduces backing buffer at DPR 2",
+          "pass": true,
+          "detail": {
+            "before": {
+              "width": 1392,
+              "height": 1008,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            },
+            "after": {
+              "width": 870,
+              "height": 630,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            }
+          }
+        },
+        {
+          "name": "Performance keeps CSS viewport size",
+          "pass": true,
+          "detail": {
+            "before": {
+              "width": 1392,
+              "height": 1008,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            },
+            "after": {
+              "width": 870,
+              "height": 630,
+              "clientWidth": 696,
+              "clientHeight": 504,
+              "dpr": 2
+            }
+          }
+        },
+        {
+          "name": "Bright lift works with Performance",
+          "pass": true
+        },
+        {
+          "name": "interface remains responsive",
+          "pass": true
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {
+        "before": {
+          "width": 1392,
+          "height": 1008,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        },
+        "after": {
+          "width": 870,
+          "height": 630,
+          "clientWidth": 696,
+          "clientHeight": 504,
+          "dpr": 2
+        }
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 13,
+        "failed": 0,
+        "total": 13
+      },
+      "pass": true
+    },
+    {
+      "scenario": "mobile",
+      "checks": [
+        {
+          "name": "dashboard opens",
+          "pass": true
+        },
+        {
+          "name": "dashboard closes",
+          "pass": true
+        },
+        {
+          "name": "workspace renders",
+          "pass": true
+        },
+        {
+          "name": "geometry reaches ready",
+          "pass": true
+        },
+        {
+          "name": "application identifies v0.36.4",
+          "pass": true
+        },
+        {
+          "name": "lighting trigger accessible at 390px",
+          "pass": true
+        },
+        {
+          "name": "lighting menu opens at 390px",
+          "pass": true
+        },
+        {
+          "name": "all presets remain listed",
+          "pass": true
+        },
+        {
+          "name": "all lift levels remain listed",
+          "pass": true
+        },
+        {
+          "name": "menu fits mobile width",
+          "pass": true,
+          "detail": {
+            "x": 24.8907413482666,
+            "y": 128.92494201660156,
+            "width": 296.1092586517334,
+            "height": 413.38084411621094
+          }
+        },
+        {
+          "name": "no page errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no console errors",
+          "pass": true,
+          "detail": []
+        },
+        {
+          "name": "no application warnings",
+          "pass": true,
+          "detail": []
+        }
+      ],
+      "extra": {
+        "menuBox": {
+          "x": 24.8907413482666,
+          "y": 128.92494201660156,
+          "width": 296.1092586517334,
+          "height": 413.38084411621094
+        }
+      },
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "filteredWarnings": [],
+      "summary": {
+        "passed": 13,
+        "failed": 0,
+        "total": 13
+      },
+      "pass": true
+    }
+  ],
+  "summary": {
+    "passed": 80,
+    "failed": 0,
+    "total": 80
+  },
+  "pass": true,
+  "screenshots": [
+    "benchcad-v0.36.4-face-lift-menu.png",
+    "benchcad-v0.36.4-bottom-natural.png",
+    "benchcad-v0.36.4-bottom-balanced.png",
+    "benchcad-v0.36.4-bottom-bright.png",
+    "benchcad-v0.36.4-lighting-mobile.png"
+  ]
+}

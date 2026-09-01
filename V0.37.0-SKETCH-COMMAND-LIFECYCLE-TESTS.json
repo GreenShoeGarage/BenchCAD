@@ -1,0 +1,65 @@
+{
+  "version": "0.37.0",
+  "suite": "sketch-command-lifecycle",
+  "passed": 10,
+  "total": 10,
+  "failed": [],
+  "checks": [
+    {
+      "name": "sketch starts in Select",
+      "pass": true,
+      "detail": "select"
+    },
+    {
+      "name": "pending connected-line chain exists",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pending chain has Finish chain affordance",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Finish Sketch closes editor with pending chain",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "finished sketch remains in Component Browser",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "finished sketch remains visible in 3D",
+      "pass": true,
+      "detail": "1"
+    },
+    {
+      "name": "pending chain sketch reopens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pending chain committed as one entity",
+      "pass": true,
+      "detail": "1 entities\n0/0 profiles ready\nUNDER-CONSTRAINED\n6 degrees of freedom"
+    },
+    {
+      "name": "pending chain remains open rather than becoming false profile",
+      "pass": true,
+      "detail": "1 entities\n0/0 profiles ready\nUNDER-CONSTRAINED\n6 degrees of freedom"
+    },
+    {
+      "name": "no application errors",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "consoleErrors": [],
+  "testEnvironment": {
+    "browser": "Chromium headed under Xvfb",
+    "geometry": "deterministic exact-box worker adapter",
+    "basePath": "synthetic nested HTTPS base"
+  }
+}
